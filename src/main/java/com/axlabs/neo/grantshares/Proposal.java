@@ -9,7 +9,8 @@ public class Proposal {
     int yesVotes;
     int noVotes;
 
+    public Hash160 contract;
     public String method;
-//    public byte[][] parameters;
+    public Object[] parameters;
 
 }
