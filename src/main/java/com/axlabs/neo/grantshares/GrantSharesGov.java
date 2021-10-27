@@ -4,19 +4,16 @@ import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Hash256;
-import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.List;
-import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
-import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
-import io.neow3j.devpack.constants.FindOptions;
-import io.neow3j.devpack.contracts.StdLib;
+import io.neow3j.devpack.contracts.LedgerContract;
+import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event7Args;
 
 import static io.neow3j.devpack.Runtime.checkWitness;
@@ -39,7 +36,7 @@ public class GrantSharesGov { //TODO: test with extends
     static final byte[] VOTING_LENGTH_KEY = new byte[]{11};
     static final byte[] QUEUED_LENGTH_KEY = new byte[]{12};
     static final byte[] MIN_ACCEPTANCE_RATE_KEY = new byte[]{13};
-    static final byte[] MIN_QUORUM_KEY = new byte[14];
+    static final byte[] MIN_QUORUM_KEY = new byte[]{14};
 
     static final byte[] MAX_FUNDING_AMOUNT_KEY = new byte[]{15};
 
@@ -58,7 +55,7 @@ public class GrantSharesGov { //TODO: test with extends
         if (!update) {
             List<Object> params = (List<Object>) data;
             for (int i = 0; i < params.size(); i += 2) {
-                parameters.put((String) params.get(i), (byte[]) params.get(i + 1));
+                parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
             }
         }
     }
@@ -97,8 +94,8 @@ public class GrantSharesGov { //TODO: test with extends
                 intents,
                 description,
                 null,
-                Storage.getInteger(ctx, MIN_ACCEPTANCE_RATE_KEY),
-                Storage.getInteger(ctx, MIN_QUORUM_KEY));
+                parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY),
+                parameters.getInteger(MIN_QUORUM_KEY));
     }
 
     /**
@@ -107,9 +104,9 @@ public class GrantSharesGov { //TODO: test with extends
      * @param proposer       The account set as the proposer.
      * @param intents        The intents to be executed when the proposal is accepted.
      * @param description    A description of the proposals intents.
-     * @param linkedProposal
-     * @param acceptanceRate
-     * @param quorum
+     * @param linkedProposal A proposal that preceded this one.
+     * @param acceptanceRate The desired acceptance rate.
+     * @param quorum         The desired quorum.
      * @return The hash of the proposal.
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
@@ -118,19 +115,21 @@ public class GrantSharesGov { //TODO: test with extends
             Hash256 linkedProposal, int acceptanceRate, int quorum) {
 
         assert checkWitness(proposer) : "GrantSharesDAO: Proposer not authorised";
-        assert acceptanceRate >= Storage.getInteger(ctx, MIN_ACCEPTANCE_RATE_KEY) :
+        assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY) :
                 "GrantSharesDAO: Acceptance rate not allowed";
-        assert quorum >= Storage.getInteger(ctx, MIN_QUORUM_KEY) :
+        assert quorum >= parameters.getInteger(MIN_QUORUM_KEY) :
                 "GrantSharesDAO: Quorum not allowed";
 
-        Hash256 proposalHash = hashProposal(intents, sha256(new ByteString(description)));
+//        Hash256 proposalHash = hashProposal(intents, sha256(new ByteString(description)));
+        Hash256 proposalHash = LedgerContract.currentHash();
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
         assert proposalBytes == null : "GrantSharesDAO: Proposal already exists";
 
         // Proposal periods
-        int reviewEnd = currentIndex() + Storage.getInteger(ctx, REVIEW_LENGTH_KEY);
-        int votingEnd = reviewEnd + Storage.getInteger(ctx, VOTING_LENGTH_KEY);
-        int queuedEnd = votingEnd + Storage.getInteger(ctx, QUEUED_LENGTH_KEY);
+        // Add +1 because the current idx is the block before this execution happens.
+        int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
+        int votingEnd = reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
+        int queuedEnd = votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
 
         proposals.put(proposalHash.toByteString(), serialize(new Proposal(proposalHash, proposer,
                 linkedProposal, reviewEnd, votingEnd, queuedEnd, acceptanceRate, quorum)));
@@ -142,7 +141,6 @@ public class GrantSharesGov { //TODO: test with extends
         return proposalHash;
     }
 
-    @Safe
     public static Proposal getProposal(Hash256 proposalHash) {
         return (Proposal) deserialize(proposals.get(proposalHash.toByteString()));
     }
@@ -154,17 +152,9 @@ public class GrantSharesGov { //TODO: test with extends
         Proposal p = (Proposal) deserialize(proposalBytes);
 
         Object returnVal = Contract.call(intents[0].targetContract, intents[0].method,
-        CallFlags.All, intents[0].params);
+                CallFlags.All, intents[0].params);
 
         return returnVal;
-    }
-
-    public static boolean callback(Hash160 param1, int param2) throws Exception {
-        // Only this governance contract itself should be able to call this method.
-        if (Runtime.getCallingScriptHash() != Runtime.getExecutingScriptHash()) {
-            throw new Exception("No authorization!");
-        }
-        return true;
     }
 
     public static void vote(Hash256 proposalHash, int vote, Hash160 member) {
