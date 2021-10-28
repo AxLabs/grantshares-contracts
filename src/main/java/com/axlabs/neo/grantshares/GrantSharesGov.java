@@ -8,13 +8,13 @@ import io.neow3j.devpack.List;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
+import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.constants.CallFlags;
-import io.neow3j.devpack.contracts.LedgerContract;
-import io.neow3j.devpack.events.Event2Args;
-import io.neow3j.devpack.events.Event7Args;
+import io.neow3j.devpack.events.Event5Args;
+import io.neow3j.devpack.events.Event6Args;
 
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.contracts.CryptoLib.sha256;
@@ -29,6 +29,7 @@ public class GrantSharesGov { //TODO: test with extends
     // Storage, Keys, Prefixes
     static final byte[] PROPOSALS_PREFIX = new byte[]{1};
     static final byte[] PROPOSAL_VOTES_PREFIX = new byte[]{2};
+    static final byte[] PROPOSAL_PHASES_PREFIX = new byte[]{2};
     static final byte[] PARAMETERS_PREFIX = new byte[]{3};
     static final byte[] MEMBERS_PREFIX = new byte[]{3};
 
@@ -43,12 +44,15 @@ public class GrantSharesGov { //TODO: test with extends
     static final StorageContext ctx = Storage.getStorageContext();
     static final StorageMap proposals = ctx.createMap(PROPOSALS_PREFIX);
     static final StorageMap proposalVotes = ctx.createMap(PROPOSAL_VOTES_PREFIX);
+    static final StorageMap proposalPhases = ctx.createMap(PROPOSAL_PHASES_PREFIX);
     static final StorageMap parameters = ctx.createMap(PARAMETERS_PREFIX);
     static final StorageMap members = ctx.createMap(MEMBERS_PREFIX);
 
     // Events
-    static Event7Args<Hash256, Hash160, Intent[], String, Integer, Integer, Integer>
-            proposalCreated;
+    @DisplayName("ProposalCreated")
+    static Event6Args<Hash256, Hash160, Intent[], String, Integer, Integer> created;
+    @DisplayName("ProposalEndorsed")
+    static Event5Args<Hash256, Hash160, Integer, Integer, Integer> endorsed;
 
     @OnDeployment
     public static void deploy(Object data, boolean update) throws Exception {
@@ -115,34 +119,51 @@ public class GrantSharesGov { //TODO: test with extends
             Hash256 linkedProposal, int acceptanceRate, int quorum) {
 
         assert checkWitness(proposer) : "GrantSharesDAO: Proposer not authorised";
-        assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY) :
-                "GrantSharesDAO: Acceptance rate not allowed";
-        assert quorum >= parameters.getInteger(MIN_QUORUM_KEY) :
-                "GrantSharesDAO: Quorum not allowed";
+        assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY)
+                : "GrantSharesDAO: Acceptance rate not allowed";
+        assert quorum >= parameters.getInteger(MIN_QUORUM_KEY)
+                : "GrantSharesDAO: Quorum not allowed";
 
-//        Hash256 proposalHash = hashProposal(intents, sha256(new ByteString(description)));
-        Hash256 proposalHash = LedgerContract.currentHash();
+        Hash256 proposalHash = hashProposal(intents, sha256(new ByteString(description)));
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
         assert proposalBytes == null : "GrantSharesDAO: Proposal already exists";
 
-        // Proposal periods
-        // Add +1 because the current idx is the block before this execution happens.
-        int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
-        int votingEnd = reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
-        int queuedEnd = votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
-
         proposals.put(proposalHash.toByteString(), serialize(new Proposal(proposalHash, proposer,
-                linkedProposal, reviewEnd, votingEnd, queuedEnd, acceptanceRate, quorum)));
-        proposalVotes.put(proposalHash.toByteString(), serialize(new ProposalVotes(0, 0, 0)));
+                linkedProposal, acceptanceRate, quorum)));
 
-        proposalCreated.fire(proposalHash, proposer, intents, description, reviewEnd, votingEnd,
-                queuedEnd);
+        created.fire(proposalHash, proposer, intents, description, acceptanceRate, quorum);
 
         return proposalHash;
     }
 
+    public static void endorseProposal(Hash256 proposalHash, Hash160 endorser) {
+        assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
+                : "GrantSharesDAO: No authorisation";
+        assert proposals.get(proposalHash.toByteString()) != null
+                : "GrantSharesDAO: Proposal doesn't exist";
+
+        // Add +1 because the current idx is the block before this execution happens.
+        int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
+        int votingEnd = reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
+        int queuedEnd = votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
+        proposalPhases.put(proposalHash.toByteString(),
+                serialize(new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
+
+        proposalVotes.put(proposalHash.toByteString(), serialize(new ProposalVotes(1, 0, 0)));
+
+        endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
+    }
+
     public static Proposal getProposal(Hash256 proposalHash) {
         return (Proposal) deserialize(proposals.get(proposalHash.toByteString()));
+    }
+
+    public static ProposalVotes getProposalVotes(Hash256 proposalHash) {
+        return (ProposalVotes) deserialize(proposalVotes.get(proposalHash.toByteString()));
+    }
+
+    public static ProposalPhases getProposalPhases(Hash256 proposalHash) {
+        return (ProposalPhases) deserialize(proposalPhases.get(proposalHash.toByteString()));
     }
 
     public static Object execute(Intent[] intents, ByteString descriptionHash) {
@@ -160,14 +181,12 @@ public class GrantSharesGov { //TODO: test with extends
     public static void vote(Hash256 proposalHash, int vote, Hash160 member) {
         assert members.get(member.toByteString()) != null && checkWitness(member)
                 : "GrantSharesDAO: Not a member";
-
-        ByteString proposalBytes = proposals.get(proposalHash.toByteString());
-        assert proposalBytes != null : "GrantSharesDAO: Proposal doesn't exist";
-        Proposal p = (Proposal) deserialize(proposalBytes);
-
+        ByteString ppBytes = proposalPhases.get(proposalHash.toByteString());
+        assert ppBytes != null : "GrantSharesDAO: Proposal doesn't exist or wasn't endorsed yet.";
+        ProposalPhases pp = (ProposalPhases) deserialize(ppBytes);
         int currentIdx = currentIndex();
-        assert currentIdx > p.reviewEnd && currentIdx <= p.votingEnd :
-                "GrantSharesDAO: Proposal not active.";
+        assert currentIdx > pp.reviewEnd && currentIdx <= pp.votingEnd
+                : "GrantSharesDAO: Proposal not active.";
     }
 
 }
