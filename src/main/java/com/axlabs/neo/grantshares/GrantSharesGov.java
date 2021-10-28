@@ -27,12 +27,6 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 public class GrantSharesGov { //TODO: test with extends
 
     // Storage, Keys, Prefixes
-    static final byte[] PROPOSALS_PREFIX = new byte[]{1};
-    static final byte[] PROPOSAL_VOTES_PREFIX = new byte[]{2};
-    static final byte[] PROPOSAL_PHASES_PREFIX = new byte[]{2};
-    static final byte[] PARAMETERS_PREFIX = new byte[]{3};
-    static final byte[] MEMBERS_PREFIX = new byte[]{3};
-
     static final byte[] REVIEW_LENGTH_KEY = new byte[]{10};
     static final byte[] VOTING_LENGTH_KEY = new byte[]{11};
     static final byte[] QUEUED_LENGTH_KEY = new byte[]{12};
@@ -42,11 +36,11 @@ public class GrantSharesGov { //TODO: test with extends
     static final byte[] MAX_FUNDING_AMOUNT_KEY = new byte[]{15};
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap proposals = ctx.createMap(PROPOSALS_PREFIX);
-    static final StorageMap proposalVotes = ctx.createMap(PROPOSAL_VOTES_PREFIX);
-    static final StorageMap proposalPhases = ctx.createMap(PROPOSAL_PHASES_PREFIX);
-    static final StorageMap parameters = ctx.createMap(PARAMETERS_PREFIX);
-    static final StorageMap members = ctx.createMap(MEMBERS_PREFIX);
+    static final StorageMap proposals = ctx.createMap(1);
+    static final StorageMap proposalVotes = ctx.createMap(2);
+    static final StorageMap proposalPhases = ctx.createMap(3);
+    static final StorageMap parameters = ctx.createMap(4);
+    static final StorageMap members = ctx.createMap(5);
 
     // Events
     @DisplayName("ProposalCreated")

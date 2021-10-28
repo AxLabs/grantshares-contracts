@@ -80,7 +80,7 @@ public class GrantSharesGovTest {
 
     @Test
     @DisplayName("Succeed creating a proposal and retrieving it.")
-    public void create_and_retrieve_proposal() throws Throwable {
+    public void succeed_creating_and_retrieving_proposal() throws Throwable {
         ///////////////////////////////
         // Setup and create proposal //
         ///////////////////////////////
