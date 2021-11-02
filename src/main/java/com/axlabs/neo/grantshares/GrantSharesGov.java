@@ -47,14 +47,26 @@ public class GrantSharesGov { //TODO: test with extends
 
     // Events
     @DisplayName("ProposalCreated")
-    static Event6Args<Hash256, Hash160, Intent[], String, Integer, Integer> created;
+    static Event5Args<ByteString, Hash160, ByteString, Integer, Integer> created;
+    @DisplayName("ProposalIntent")
+    static Event2Args<ByteString, Intent> intent;
     @DisplayName("ProposalEndorsed")
-    static Event5Args<Hash256, Hash160, Integer, Integer, Integer> endorsed;
+    static Event5Args<ByteString, Hash160, Integer, Integer, Integer> endorsed;
+    @DisplayName("Voted")
+    static Event3Args<ByteString, Hash160, Integer> voted;
 
     @OnDeployment
+    @SuppressWarnings("unchecked")
     public static void deploy(Object data, boolean update) throws Exception {
         if (!update) {
-            List<Object> params = (List<Object>) data;
+            List<Object> membersAndParams = (List<Object>) data;
+            List<Hash160> initialMembers = (List<Hash160>) membersAndParams.get(0);
+            int blockIdx = currentIndex();
+            for (int i = 0; i < initialMembers.size(); i++) {
+                // TODO: Any information we should map the members to?
+                members.put(initialMembers.get(i).toByteString(), blockIdx);
+            }
+            List<Object> params = (List<Object>) membersAndParams.get(1);
             for (int i = 0; i < params.size(); i += 2) {
                 parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
             }
