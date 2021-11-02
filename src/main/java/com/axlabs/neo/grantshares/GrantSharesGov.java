@@ -5,6 +5,7 @@ import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Hash256;
 import io.neow3j.devpack.List;
+import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
@@ -12,9 +13,11 @@ import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
+import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
+import io.neow3j.devpack.events.Event2Args;
+import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event5Args;
-import io.neow3j.devpack.events.Event6Args;
 
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.contracts.CryptoLib.sha256;
@@ -24,16 +27,16 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 
 @ManifestExtra(key = "name", value = "GrantShares")
 @Permission(contract = "*", methods = "*")
+@SuppressWarnings("unchecked")
 public class GrantSharesGov { //TODO: test with extends
 
     // Storage, Keys, Prefixes
-    static final byte[] REVIEW_LENGTH_KEY = new byte[]{10};
-    static final byte[] VOTING_LENGTH_KEY = new byte[]{11};
-    static final byte[] QUEUED_LENGTH_KEY = new byte[]{12};
-    static final byte[] MIN_ACCEPTANCE_RATE_KEY = new byte[]{13};
-    static final byte[] MIN_QUORUM_KEY = new byte[]{14};
-
-    static final byte[] MAX_FUNDING_AMOUNT_KEY = new byte[]{15};
+    static final String REVIEW_LENGTH_KEY = "review_len";
+    static final String VOTING_LENGTH_KEY = "voting_len";
+    static final String QUEUED_LENGTH_KEY = "queued_len";
+    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
+    static final String MIN_QUORUM_KEY = "min_quorum";
+    static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
 
     static final StorageContext ctx = Storage.getStorageContext();
     static final StorageMap proposals = ctx.createMap(1);

@@ -14,60 +14,105 @@ import io.neow3j.transaction.AccountSigner;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
+import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
+import io.neow3j.utils.Files;
+import io.neow3j.utils.Numeric;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.io.File;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.security.MessageDigest;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
+import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
-import static io.neow3j.types.ContractParameter.hash256;
+import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
-import static io.neow3j.utils.Numeric.reverseHexString;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@ContractTest(contracts = GrantSharesGov.class, blockTime = 1)
+@ContractTest(contracts = GrantSharesGov.class, blockTime = 1, neoxpConfig = "default.neo-express",
+        batchFile = "setup.batch")
 public class GrantSharesGovTest {
 
+    //region CONSTANTS
+    // Account names available in the neo-express config file.
+    private static final String ALICE = "Alice";
+    private static final String BOB = "Bob";
+    private static final String CHARLIE = "Charlie";
+
     // contract methods
-    private static final String CREATE_PROPOSAL = "createProposal";
-    private static final String GET_PROPOSAL = "getProposal";
+    private static final String CREATE = "createProposal";
+    private static final String GET = "getProposal";
+    private static final String ENDORSE = "endorseProposal";
+    private static final String GET_PHASES = "getProposalPhases";
+    private static final String GET_VOTES = "getProposalVotes";
+    private static final String VOTE = "vote";
     private static final String EXECUTE = "execute";
     private static final String HASH_PROPOSAL = "hashProposal";
+    private static final String GET_PARAMETER = "getParameter";
 
     // events
     private static final String PROPOSAL_CREATED = "ProposalCreated";
+    private static final String PROPOSAL_INTENT = "ProposalIntent";
+    private static final String PROPOSAL_ENDORSED = "ProposalEndorsed";
+    private static final String VOTED = "Voted";
 
-    // governance parameters
+    // governance parameters values
     private static final int REVIEW_LENGTH = 5;
     private static final int VOTING_LENGTH = 5;
     private static final int QUEUED_LENGTH = 5;
     private static final int MIN_ACCEPTANCE_RATE = 50;
     private static final int MIN_QUORUM = 25;
 
+    // parameter names
+    static final String REVIEW_LENGTH_KEY = "review_len";
+    static final String VOTING_LENGTH_KEY = "voting_len";
+    static final String QUEUED_LENGTH_KEY = "queued_len";
+    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
+    static final String MIN_QUORUM_KEY = "min_quorum";
+    static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
+
+    //endregion CONSTANTS
+
     @RegisterExtension
     private static ContractTestExtension ext = new ContractTestExtension();
 
     private static Neow3jExpress neow3j;
     private static SmartContract contract;
-    private static Account alice;
+    private static Account alice; // Set to be a DAO member.
+    private static Account bob;
+    private static Account charlie; // Set to be a DAO member.
+    private static String defaultProposalHash;
 
     @DeployConfig(GrantSharesGov.class)
-    public static ContractParameter config(DeployContext ctx) {
+    public static ContractParameter config(DeployContext ctx) throws IOException {
         return array(
-                new byte[]{10}, REVIEW_LENGTH,
-                new byte[]{11}, VOTING_LENGTH,
-                new byte[]{12}, QUEUED_LENGTH,
-                new byte[]{13}, MIN_ACCEPTANCE_RATE,
-                new byte[]{14}, MIN_QUORUM
+                array(
+                        ext.getAccount(ALICE).getScriptHash(),
+                        ext.getAccount(CHARLIE).getScriptHash()),
+                array(
+                        REVIEW_LENGTH_KEY, REVIEW_LENGTH,
+                        VOTING_LENGTH_KEY, VOTING_LENGTH,
+                        QUEUED_LENGTH_KEY, QUEUED_LENGTH,
+                        MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
+                        MIN_QUORUM_KEY, MIN_QUORUM
+                )
         );
     }
 
