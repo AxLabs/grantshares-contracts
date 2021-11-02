@@ -3,6 +3,7 @@ package com.axlabs.neo.grantshares;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3jExpress;
+import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoInvokeFunction;
 import io.neow3j.protocol.core.stackitem.StackItem;
@@ -120,15 +121,24 @@ public class GrantSharesGovTest {
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
         contract = ext.getDeployedContract(GrantSharesGov.class);
-        alice = ext.getAccount("Alice");
+        alice = ext.getAccount(ALICE);
+        bob = ext.getAccount(BOB);
+        charlie = ext.getAccount(CHARLIE);
+
+        Hash256 creationTx = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
+                        array(array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                array(new Hash160(defaultAccountScriptHash())))),
+                        string("default_proposal"))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        defaultProposalHash = neow3j.getApplicationLog(creationTx).send().getApplicationLog()
+                .getExecutions().get(0).getStack().get(0).getHexString();
     }
 
     @Test
-    @DisplayName("Succeed creating a proposal and retrieving it.")
     public void succeed_creating_and_retrieving_proposal() throws Throwable {
-        ///////////////////////////////
-        // Setup and create proposal //
-        ///////////////////////////////
+        // 1. Setup and create proposal
         Hash160 targetContract = NeoToken.SCRIPT_HASH;
         String targetMethod = "transfer";
         Hash160 targetParam1 = contract.getScriptHash();
@@ -136,9 +146,8 @@ public class GrantSharesGovTest {
         int targetParam3 = 1;
         ContractParameter intent = array(targetContract, targetMethod,
                 array(targetParam1, targetParam2, targetParam3));
-        // TODO: Add at least one other intent.
         String proposalDescription = "description of the proposal";
-        Hash256 proposalCreationTx = contract.invokeFunction(CREATE_PROPOSAL,
+        Hash256 proposalCreationTx = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
                         string(proposalDescription))
@@ -146,111 +155,300 @@ public class GrantSharesGovTest {
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(proposalCreationTx, neow3j);
 
-        String proposalHash = reverseHexString(neow3j.getApplicationLog(proposalCreationTx).send()
-                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString());
+        String proposalHash = neow3j.getApplicationLog(proposalCreationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
 
-        ///////////////////////////////////////////////
-        // Retrieve created proposal and test values //
-        ///////////////////////////////////////////////
-        NeoInvokeFunction r =
-                contract.callInvokeFunction(GET_PROPOSAL, asList(hash256(proposalHash)));
+        // 2. Test correct setup of the created proposal.
+        NeoInvokeFunction r = contract.callInvokeFunction(GET, asList(byteArray(proposalHash)));
         List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(reverseHexString(list.get(0).getHexString()), is(proposalHash));
+        assertThat(list.get(0).getHexString(), is(proposalHash));
         assertThat(list.get(1).getAddress(), is(alice.getAddress()));
         assertThat(list.get(2).getValue(), is(nullValue()));
         assertThat(list.get(3).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
         assertThat(list.get(4).getInteger().intValue(), is(MIN_QUORUM));
 
-        //////////////////////////////////////
-        // Test CreateProposal event values //
-        //////////////////////////////////////
-        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(proposalCreationTx)
-                .send().getApplicationLog().getExecutions().get(0).getNotifications().get(0);
+        // 3. Test CreateProposal event values
+        List<NeoApplicationLog.Execution.Notification> ntfs =
+                neow3j.getApplicationLog(proposalCreationTx).send().getApplicationLog()
+                        .getExecutions().get(0).getNotifications();
+
+        NeoApplicationLog.Execution.Notification ntf = ntfs.get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
         List<StackItem> state = ntf.getState().getList();
-        assertThat(reverseHexString(state.get(0).getHexString()), is(proposalHash));
+        assertThat(state.get(0).getHexString(), is(proposalHash));
         assertThat(state.get(1).getAddress(), is(alice.getAddress()));
-        // first intent
-        List<StackItem> i1 = state.get(2).getList().get(0).getList();
-        assertThat(i1.get(0).getAddress(), is(targetContract.toAddress()));
-        assertThat(i1.get(1).getString(), is(targetMethod));
-        List<StackItem> i1Params = i1.get(2).getList();
-        assertThat(i1Params.get(0).getAddress(), is(targetParam1.toAddress()));
-        assertThat(i1Params.get(1).getAddress(), is(targetParam2.toAddress()));
-        assertThat(i1Params.get(2).getInteger().intValue(), is(targetParam3));
-        assertThat(state.get(3).getString(), is(proposalDescription));
-        assertThat(state.get(4).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
-        assertThat(state.get(5).getInteger().intValue(), is(MIN_QUORUM));
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        assertThat(state.get(2).getHexString(),
+                is(Numeric.toHexStringNoPrefix(md.digest(proposalDescription.getBytes()))));
+        assertThat(state.get(3).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
+        assertThat(state.get(4).getInteger().intValue(), is(MIN_QUORUM));
+
+        // 4. Test ProposalIntent event
+        ntf = ntfs.get(1);
+        assertThat(ntf.getEventName(), is(PROPOSAL_INTENT));
+        assertThat(ntf.getState().getList().get(0).getHexString(), is(proposalHash));
+        List<StackItem> intentItem = ntf.getState().getList().get(1).getList();
+        assertThat(intentItem.get(0).getAddress(), is(targetContract.toAddress()));
+        assertThat(intentItem.get(1).getString(), is(targetMethod));
+        List<StackItem> params = intentItem.get(2).getList();
+        assertThat(params.get(0).getAddress(), is(targetParam1.toAddress()));
+        assertThat(params.get(1).getAddress(), is(targetParam2.toAddress()));
+        assertThat(params.get(2).getInteger().intValue(), is(targetParam3));
     }
 
     @Test
-    public void succeed_endorsing_with_member() {
-//        int n = neow3j.getTransactionHeight(proposalCreationTx).send().getHeight().intValue();
-//        assertThat(list.get(3).getInteger().intValue(), is(n + REVIEW_LENGTH));
-//        assertThat(list.get(4).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
-//        assertThat(list.get(5).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
-//                + QUEUED_LENGTH));
-        fail();
-    }
-    @Test
-    public void fail_endorsing_with_non_member() {
-        fail();
-    }
+    public void succeed_endorsing_with_member() throws Throwable {
+        // 1. Create a proposal
+        Hash256 creationTx = sendCreateTestProposalTransaction(alice.getScriptHash(),
+                alice, "succeed_endorsing_with_member");
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        String proposalHash = neow3j.getApplicationLog(creationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
 
-    @Test
-    public void succeed_voting_in_voting_state() throws Throwable {
-        // 1. Create proposal
-        Hash256 proposalCreationTx = contract.invokeFunction(CREATE_PROPOSAL,
-                        hash160(alice.getScriptHash()), array(), string("empty"))
+        // 2. Test that proposal phases have not yet been setup.
+        assertThat(contract.callInvokeFunction(GET_PHASES, asList(byteArray(proposalHash)))
+                .getInvocationResult().getStack().get(0).getValue(), is(nullValue()));
+
+        // 3. Endorse
+        Hash256 endorseTx = contract.invokeFunction(ENDORSE, byteArray(proposalHash),
+                        hash160(alice.getScriptHash()))
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(proposalCreationTx, neow3j);
-        String proposalHash = reverseHexString(neow3j.getApplicationLog(proposalCreationTx).send()
-                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString());
+        Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
+
+        // 4. Test the right setup of the proposal phases
+        NeoInvokeFunction r = contract.callInvokeFunction(GET_PHASES,
+                asList(byteArray(proposalHash)));
+        List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
+        int n = neow3j.getTransactionHeight(endorseTx).send().getHeight().intValue();
+        assertThat(list.get(0).getInteger().intValue(), is(n + REVIEW_LENGTH));
+        assertThat(list.get(1).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
+        assertThat(list.get(2).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
+                + QUEUED_LENGTH));
+
+        // 5. Test the right setup of the votes map
+        r = contract.callInvokeFunction(GET_VOTES, asList(byteArray(proposalHash)));
+        Map<StackItem, StackItem> map = r.getInvocationResult().getStack().get(0).getMap();
+        assertThat(map.keySet().stream().map(StackItem::getAddress).collect(Collectors.toList()),
+                contains(alice.getAddress()));
+        assertThat(map.values().stream().map(StackItem::getInteger).collect(Collectors.toList()),
+                contains(BigInteger.ONE));
+
+        // 6. Test emitted "endrosed" event
+        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(endorseTx).send()
+                .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
+        assertThat(ntf.getEventName(), is(PROPOSAL_ENDORSED));
+        List<StackItem> state = ntf.getState().getList();
+        assertThat(state.get(0).getHexString(), is(proposalHash));
+        assertThat(state.get(1).getAddress(), is(alice.getAddress()));
+        assertThat(state.get(2).getInteger().intValue(), is(n + REVIEW_LENGTH));
+        assertThat(state.get(3).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
+        assertThat(state.get(4).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
+                + QUEUED_LENGTH));
+    }
+
+    @Test
+    public void fail_endorsing_with_non_member() throws Throwable {
+        InvocationResult res = contract.callInvokeFunction(ENDORSE, asList(
+                        byteArray(defaultProposalHash), hash160(bob.getScriptHash())),
+                AccountSigner.calledByEntry(bob)).getInvocationResult();
+        assertThat(res.getState(), is(NeoVMStateType.FAULT));
+        assertThat(res.getException(), containsString("Not authorised"));
+        assertThat(contract.callInvokeFunction(GET_PHASES, asList(byteArray(defaultProposalHash)))
+                .getInvocationResult().getStack().get(0).getValue(), is(nullValue()));
+    }
+
+    @Test
+    public void fail_endorsing_with_member_but_wrong_signer() throws Throwable {
+        InvocationResult res = contract.callInvokeFunction(ENDORSE, asList(
+                        byteArray(defaultProposalHash), hash160(alice.getScriptHash())),
+                AccountSigner.calledByEntry(bob)).getInvocationResult();
+        assertThat(res.getState(), is(NeoVMStateType.FAULT));
+        assertThat(res.getException(), containsString("Not authorised"));
+        assertThat(contract.callInvokeFunction(GET_PHASES, asList(byteArray(defaultProposalHash)))
+                .getInvocationResult().getStack().get(0).getValue(), is(nullValue()));
+    }
+
+    @Test
+    public void succeed_voting() throws Throwable {
+        // 1. Create proposal
+        Hash256 creationTx = sendCreateTestProposalTransaction(bob.getScriptHash(),
+                bob, "succeed_voting");
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        String proposalHash = neow3j.getApplicationLog(creationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
 
         // 2. Endorse
+        Hash256 endorseTx = contract.invokeFunction(ENDORSE, byteArray(proposalHash),
+                        hash160(alice.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Wait till review phase ends.
+        ext.fastForward(REVIEW_LENGTH);
 
         // 4. Vote
-        // 5. Check ProposalVotes
+        Hash256 voteTx = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(-1),
+                        hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(voteTx, neow3j);
 
-        fail();
+        // 5. Test the right setting of the votes
+        NeoInvokeFunction r =
+                contract.callInvokeFunction(GET_VOTES, asList(byteArray(proposalHash)));
+        Map<StackItem, StackItem> votersMap = r.getInvocationResult().getStack().get(0).getMap();
+        List<String> voters = votersMap.keySet().stream().map(StackItem::getAddress)
+                .collect(Collectors.toList());
+        assertThat(voters, containsInAnyOrder(alice.getAddress(), charlie.getAddress()));
+        List<Integer> votes = votersMap.values().stream().map(s -> s.getInteger().intValue())
+                .collect(Collectors.toList());
+        assertThat(votes, containsInAnyOrder(1, -1));
+
+        // 6. Test the emitted vote event
+        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(voteTx).send()
+                .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
+        assertThat(ntf.getEventName(), is(VOTED));
+        List<StackItem> state = ntf.getState().getList();
+        assertThat(state.get(0).getHexString(), is(proposalHash));
+        assertThat(state.get(1).getAddress(), is(charlie.getAddress()));
+        assertThat(state.get(2).getInteger().intValue(), is(-1));
     }
 
     @Test
     public void fail_voting_in_review_state() {
+        // TODO: Try voting on a proposal that is in review state
         fail();
     }
 
     @Test
     public void fail_voting_in_queued_state() {
-        fail();
+        // TODO: Try voting on a proposal that is in queued state
     }
 
     @Test
-    public void create_proposal_with_large_description() {
-        fail();
+    public void create_proposal_with_large_description() throws Throwable {
+        String desc = Files.readString(new File(this.getClass().getClassLoader().getResource(
+                "proposal_description.txt").toURI()));
+        Hash256 tx = sendCreateTestProposalTransaction(bob.getScriptHash(), bob, desc);
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
+                .getExecutions().get(0).getStack().get(0).getHexString();
+
+        NeoInvokeFunction r = contract.callInvokeFunction(GET, asList(byteArray(proposalHash)));
+        List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(list.get(0).getHexString(), is(proposalHash));
+
+        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(tx).send().getApplicationLog()
+                        .getExecutions().get(0).getNotifications().get(0);
+        assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
+        List<StackItem> state = ntf.getState().getList();
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        assertThat(state.get(2).getHexString(),
+                is(Numeric.toHexStringNoPrefix(md.digest(desc.getBytes()))));
     }
 
-//    @Test
-//    @DisplayName("Succeed executing proposal")
-//    public void execute_proposal_success() throws Throwable {
-//        Hash256 txHash = contract.invokeFunction(EXECUTE, integer(propId))
-//                .signers(AccountSigner.calledByEntry(alice))
-//                .sign().send().getSendRawTransaction().getHash();
-//        Await.waitUntilTransactionIsExecuted(txHash, neow3j);
-//        NeoApplicationLog log = neow3j.getApplicationLog(txHash).send().getApplicationLog();
-//        assertTrue(log.getExecutions().get(0).getStack().get(0).getBoolean());
-//    }
-//
-//    @Test
-//    @DisplayName("Fail calling contract-exclusive method")
-//    public void call_contract_excl_method_fail() throws Throwable {
-//        NeoInvokeFunction response = contract.callInvokeFunction(CALLBACK, asList(hash160(alice),
-//                integer(propId)), AccountSigner.calledByEntry(alice));
-//        assertThat(response.getInvocationResult().getException(),
-//                containsString("No authorization!"));
-//    }
+    @Test
+    public void create_proposal_with_large_intents() throws Throwable {
+        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob),
+                        array(
+                                array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
+                                                "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
+                                        array(
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash())
+                                        )),
+                                array(NeoToken.SCRIPT_HASH, "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
+                                                "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
+                                        array(
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash())
+                                        )),
+                                array(NeoToken.SCRIPT_HASH, "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
+                                                "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
+                                        array(
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                new Hash160(defaultAccountScriptHash()),
+                                                "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfiojpasodm" +
+                                                        "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
+                                                        "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
+                                                        "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
+                                                        "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
+                                                        "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
+                                        ))
+                        ),
+                        string("create_proposal_with_large_intents"))
+                .signers(AccountSigner.calledByEntry(bob))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        String proposalHash = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
+
+        NeoInvokeFunction r = contract.callInvokeFunction(GET, asList(byteArray(proposalHash)));
+        List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(list.get(0).getHexString(), is(proposalHash));
+        assertThat(list.get(1).getAddress(), is(bob.getAddress()));
+        assertThat(list.get(2).getValue(), is(nullValue()));
+        assertThat(list.get(3).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
+        assertThat(list.get(4).getInteger().intValue(), is(MIN_QUORUM));
+
+        // TODO: Test the intent events.
+    }
+
+    @Test
+    public void get_parameters() throws IOException {
+        assertThat(contract.callInvokeFunction(GET_PARAMETER, asList(string(REVIEW_LENGTH_KEY)))
+                        .getInvocationResult().getStack().get(0).getInteger().intValue(),
+                is(REVIEW_LENGTH));
+    }
+
+    private Hash256 sendCreateTestProposalTransaction(Hash160 proposer,
+            Account signer, String description) throws Throwable {
+
+        return contract.invokeFunction(CREATE, hash160(proposer),
+                        array(
+                                array(
+                                        NeoToken.SCRIPT_HASH,
+                                        "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))
+                                )
+                        ),
+                        string(description))
+                .signers(AccountSigner.calledByEntry(signer))
+                .sign()
+                .send().getSendRawTransaction().getHash();
+    }
 
 }

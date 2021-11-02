@@ -79,7 +79,7 @@ public class GrantSharesGov { //TODO: test with extends
     //  proposal with the same hash. But in our implementation, every value takes exactly the
     //  amount of space that it needs. Creating a proposal with different intents but with the
     //  same hash is easier.
-    public static Hash256 hashProposal(Intent[] intents, ByteString descriptionHash) {
+    public static ByteString hashProposal(Intent[] intents, ByteString descriptionHash) {
         ByteString b = new ByteString("");
         for (Intent i : intents) {
             b.concat(i.targetContract.toByteString());
@@ -88,7 +88,7 @@ public class GrantSharesGov { //TODO: test with extends
                 b.concat(serialize(p));
             }
         }
-        return new Hash256(sha256(b.concat(descriptionHash)));
+        return sha256(b.concat(descriptionHash));
     }
 
     /**
@@ -101,7 +101,9 @@ public class GrantSharesGov { //TODO: test with extends
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
      */
-    public static Hash256 createProposal(Hash160 proposer, Intent[] intents, String description) {
+    public static ByteString createProposal(Hash160 proposer, Intent[] intents,
+            String description) {
+
         return createProposal(
                 proposer,
                 intents,
@@ -124,60 +126,87 @@ public class GrantSharesGov { //TODO: test with extends
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
      */
-    public static Hash256 createProposal(Hash160 proposer, Intent[] intents, String description,
-            Hash256 linkedProposal, int acceptanceRate, int quorum) {
+    public static ByteString createProposal(Hash160 proposer, Intent[] intents, String description,
+            ByteString linkedProposal, int acceptanceRate, int quorum) {
 
-        assert checkWitness(proposer) : "GrantSharesDAO: Proposer not authorised";
+        assert checkWitness(proposer) : "GrantSharesDAO: Not authorised";
         assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY)
                 : "GrantSharesDAO: Acceptance rate not allowed";
         assert quorum >= parameters.getInteger(MIN_QUORUM_KEY)
                 : "GrantSharesDAO: Quorum not allowed";
 
-        Hash256 proposalHash = hashProposal(intents, sha256(new ByteString(description)));
+        // TODO: do we need to validate the intent contents, e.g. if the targetContract is a
+        //  Hash160, etc.
+        ByteString descriptionHash = sha256(new ByteString(description));
+        ByteString proposalHash = hashProposal(intents, descriptionHash);
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
         assert proposalBytes == null : "GrantSharesDAO: Proposal already exists";
 
-        proposals.put(proposalHash.toByteString(), serialize(new Proposal(proposalHash, proposer,
+        // TODO: Check if linked proposal exists.
+
+        proposals.put(proposalHash, serialize(new Proposal(proposalHash, proposer,
                 linkedProposal, acceptanceRate, quorum)));
 
-        created.fire(proposalHash, proposer, intents, description, acceptanceRate, quorum);
+        // An event cannot take a large amount of data, i.e., we should not pass the description,
+        // since it might be too large. The max size of a state item is 1024 bytes.
+        created.fire(proposalHash, proposer, descriptionHash, acceptanceRate, quorum);
+        for (Intent i : intents) {
+            intent.fire(proposalHash, i);
+        }
 
         return proposalHash;
     }
 
-    public static void endorseProposal(Hash256 proposalHash, Hash160 endorser) {
+    public static void endorseProposal(ByteString proposalHash, Hash160 endorser) {
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
-                : "GrantSharesDAO: No authorisation";
-        assert proposals.get(proposalHash.toByteString()) != null
+                : "GrantSharesDAO: Not authorised";
+        assert proposals.get(proposalHash) != null
                 : "GrantSharesDAO: Proposal doesn't exist";
 
         // Add +1 because the current idx is the block before this execution happens.
         int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
         int votingEnd = reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
         int queuedEnd = votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
-        proposalPhases.put(proposalHash.toByteString(),
-                serialize(new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
+        proposalPhases.put(proposalHash, serialize(
+                new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
 
-        proposalVotes.put(proposalHash.toByteString(), serialize(new ProposalVotes(1, 0, 0)));
+        Map<Hash160, Integer> votes = new Map<>();
+        votes.put(endorser, 1);
+        proposalVotes.put(proposalHash, serialize(votes));
 
         endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
     }
 
-    public static Proposal getProposal(Hash256 proposalHash) {
-        return (Proposal) deserialize(proposals.get(proposalHash.toByteString()));
+    @Safe
+    public static Proposal getProposal(ByteString proposalHash) {
+        ByteString bytes = proposals.get(proposalHash);
+        if (bytes == null) {
+            return null;
+        }
+        return (Proposal) deserialize(proposals.get(proposalHash));
     }
 
-    public static ProposalVotes getProposalVotes(Hash256 proposalHash) {
-        return (ProposalVotes) deserialize(proposalVotes.get(proposalHash.toByteString()));
+    @Safe
+    public static Map<Hash160, Integer> getProposalVotes(ByteString proposalHash) {
+        ByteString bytes = proposalVotes.get(proposalHash);
+        if (bytes == null) {
+            return null;
+        }
+        return (Map<Hash160, Integer>) deserialize(proposalVotes.get(proposalHash));
     }
 
-    public static ProposalPhases getProposalPhases(Hash256 proposalHash) {
-        return (ProposalPhases) deserialize(proposalPhases.get(proposalHash.toByteString()));
+    @Safe
+    public static ProposalPhases getProposalPhases(ByteString proposalHash) {
+        ByteString bytes = proposalPhases.get(proposalHash);
+        if (bytes == null) {
+            return null;
+        }
+        return (ProposalPhases) deserialize(proposalPhases.get(proposalHash));
     }
 
     public static Object execute(Intent[] intents, ByteString descriptionHash) {
-        Hash256 proposalHash = hashProposal(intents, descriptionHash);
-        ByteString proposalBytes = proposals.get(proposalHash.toByteString());
+        ByteString proposalHash = hashProposal(intents, descriptionHash);
+        ByteString proposalBytes = proposals.get(proposalHash);
         assert proposalBytes != null : "GrantSharesDAO: Proposal doesn't exist";
         Proposal p = (Proposal) deserialize(proposalBytes);
 
@@ -187,15 +216,40 @@ public class GrantSharesGov { //TODO: test with extends
         return returnVal;
     }
 
-    public static void vote(Hash256 proposalHash, int vote, Hash160 member) {
-        assert members.get(member.toByteString()) != null && checkWitness(member)
-                : "GrantSharesDAO: Not a member";
-        ByteString ppBytes = proposalPhases.get(proposalHash.toByteString());
+    /**
+     * Casts a vote of the {@code voter} on the proposal with {@code proposalHash}.
+     *
+     * @param proposalHash The hash of the proposal to vote on.
+     * @param vote         The vote. Must be either -1 for rejecting, 1 for approving or 0 for
+     *                     abstaining.
+     * @param voter        The script hash of the voter. Must be a member of the DAO and the
+     *                     invoking
+     *                     script must hold a witness of the voter.
+     * @throws Exception if the voter is not a DAO member, no witness for the voter is found, the
+     *                   proposal does not exist or the proposal is not in its voting phase.
+     */
+    public static void vote(ByteString proposalHash, int vote, Hash160 voter) {
+        assert vote >= -1 && vote <= 1 : "GrantSharesDAO: Illegal vote. Right to jail!";
+        assert members.get(voter.toByteString()) != null && checkWitness(voter)
+                : "GrantSharesDAO: Not authorised";
+        ByteString ppBytes = proposalPhases.get(proposalHash);
         assert ppBytes != null : "GrantSharesDAO: Proposal doesn't exist or wasn't endorsed yet.";
         ProposalPhases pp = (ProposalPhases) deserialize(ppBytes);
         int currentIdx = currentIndex();
-        assert currentIdx > pp.reviewEnd && currentIdx <= pp.votingEnd
+        assert currentIdx >= pp.reviewEnd && currentIdx < pp.votingEnd
                 : "GrantSharesDAO: Proposal not active.";
+
+        // No need for null check. This map was created in the endorsement.
+        Map<Hash160, Integer> pv = (Map<Hash160, Integer>) deserialize(
+                proposalVotes.get(proposalHash));
+        pv.put(voter, vote);
+        proposalVotes.put(proposalHash, serialize(pv));
+
+        voted.fire(proposalHash, voter, vote);
+    }
+
+    public static Object getParameter(String paramName) {
+        return parameters.get(paramName);
     }
 
 }
