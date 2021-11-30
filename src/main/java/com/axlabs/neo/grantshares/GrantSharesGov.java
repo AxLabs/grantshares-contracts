@@ -92,6 +92,38 @@ public class GrantSharesGov { //TODO: test with extends
         return sha256(b.concat(descriptionHash));
     }
 
+    @Safe
+    public static Object getParameter(String paramName) {
+        return parameters.get(paramName);
+    }
+
+    @Safe
+    public static Proposal getProposal(ByteString proposalHash) {
+        ByteString bytes = proposals.get(proposalHash);
+        if (bytes == null) {
+            return null;
+        }
+        return (Proposal) deserialize(proposals.get(proposalHash));
+    }
+
+    @Safe
+    public static Map<Hash160, Integer> getProposalVotes(ByteString proposalHash) {
+        ByteString bytes = proposalVotes.get(proposalHash);
+        if (bytes == null) {
+            return null;
+        }
+        return (Map<Hash160, Integer>) deserialize(proposalVotes.get(proposalHash));
+    }
+
+    @Safe
+    public static ProposalPhases getProposalPhases(ByteString proposalHash) {
+        ByteString bytes = proposalPhases.get(proposalHash);
+        if (bytes == null) {
+            return null;
+        }
+        return (ProposalPhases) deserialize(proposalPhases.get(proposalHash));
+    }
+
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
      *
@@ -187,33 +219,6 @@ public class GrantSharesGov { //TODO: test with extends
         endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
     }
 
-    @Safe
-    public static Proposal getProposal(ByteString proposalHash) {
-        ByteString bytes = proposals.get(proposalHash);
-        if (bytes == null) {
-            return null;
-        }
-        return (Proposal) deserialize(proposals.get(proposalHash));
-    }
-
-    @Safe
-    public static Map<Hash160, Integer> getProposalVotes(ByteString proposalHash) {
-        ByteString bytes = proposalVotes.get(proposalHash);
-        if (bytes == null) {
-            return null;
-        }
-        return (Map<Hash160, Integer>) deserialize(proposalVotes.get(proposalHash));
-    }
-
-    @Safe
-    public static ProposalPhases getProposalPhases(ByteString proposalHash) {
-        ByteString bytes = proposalPhases.get(proposalHash);
-        if (bytes == null) {
-            return null;
-        }
-        return (ProposalPhases) deserialize(proposalPhases.get(proposalHash));
-    }
-
     public static Object execute(Intent[] intents, ByteString descriptionHash) {
         ByteString proposalHash = hashProposal(intents, descriptionHash);
         ByteString proposalBytes = proposals.get(proposalHash);
@@ -256,11 +261,6 @@ public class GrantSharesGov { //TODO: test with extends
         proposalVotes.put(proposalHash, serialize(pv));
 
         voted.fire(proposalHash, voter, vote);
-    }
-
-    @Safe
-    public static Object getParameter(String paramName) {
-        return parameters.get(paramName);
     }
 
 }
