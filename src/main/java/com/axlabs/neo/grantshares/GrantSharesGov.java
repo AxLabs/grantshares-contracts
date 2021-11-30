@@ -3,7 +3,6 @@ package com.axlabs.neo.grantshares;
 import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.Hash256;
 import io.neow3j.devpack.List;
 import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Storage;
@@ -195,7 +194,7 @@ public class GrantSharesGov { //TODO: test with extends
      * proposal, it becomes endorsed and its phases are set.
      *
      * @param proposalHash The proposal to endorse.
-     * @param endorser The script hash of the endorsing DAO member.
+     * @param endorser     The script hash of the endorsing DAO member.
      */
     public static void endorseProposal(ByteString proposalHash, Hash160 endorser) {
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
@@ -238,8 +237,7 @@ public class GrantSharesGov { //TODO: test with extends
      * @param vote         The vote. Must be either -1 for rejecting, 1 for approving or 0 for
      *                     abstaining.
      * @param voter        The script hash of the voter. Must be a member of the DAO and the
-     *                     invoking
-     *                     script must hold a witness of the voter.
+     *                     invoking script must hold a witness of the voter.
      * @throws Exception if the voter is not a DAO member, no witness for the voter is found, the
      *                   proposal does not exist or the proposal is not in its voting phase.
      */
@@ -248,13 +246,14 @@ public class GrantSharesGov { //TODO: test with extends
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
                 : "GrantSharesDAO: Not authorised";
         ByteString ppBytes = proposalPhases.get(proposalHash);
-        assert ppBytes != null : "GrantSharesDAO: Proposal doesn't exist or wasn't endorsed yet.";
+        assert ppBytes != null : "GrantSharesDAO: Proposal doesn't exist or wasn't endorsed yet";
         ProposalPhases pp = (ProposalPhases) deserialize(ppBytes);
         int currentIdx = currentIndex();
         assert currentIdx >= pp.reviewEnd && currentIdx < pp.votingEnd
-                : "GrantSharesDAO: Proposal not active.";
+                : "GrantSharesDAO: Proposal not active";
 
-        // No need for null check. This map was created in the endorsement.
+        // No need for null check. This map was created in the endorsement and we know the
+        // endorsement happened because the proposal phases were set.
         Map<Hash160, Integer> pv = (Map<Hash160, Integer>) deserialize(
                 proposalVotes.get(proposalHash));
         pv.put(voter, vote);

@@ -2,7 +2,7 @@ package com.axlabs.neo.grantshares;
 
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
-import io.neow3j.protocol.Neow3jExpress;
+import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoInvokeFunction;
@@ -10,7 +10,7 @@ import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
-import io.neow3j.test.DeployContext;
+import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
@@ -281,8 +282,6 @@ public class GrantSharesGovTest {
                 AccountSigner.calledByEntry(bob)).getInvocationResult();
         assertThat(res.getState(), is(NeoVMStateType.FAULT));
         assertThat(res.getException(), containsString("Not authorised"));
-        assertThat(contract.callInvokeFunction(GET_PHASES, asList(byteArray(defaultProposalHash)))
-                .getInvocationResult().getStack().get(0).getValue(), is(nullValue()));
     }
 
     @Test
@@ -373,15 +372,43 @@ public class GrantSharesGovTest {
     }
 
     @Test
-    public void fail_voting_in_review_state() {
-        // TODO: Try voting on a proposal that is in review state
-        fail();
+    public void fail_voting_in_review_and_queued_phase() throws Throwable {
+        Hash256 creationTx = sendCreateTestProposalTransaction(bob.getScriptHash(),
+                bob, "fail_voting_in_review_phase");
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        String proposalHash = neow3j.getApplicationLog(creationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
+
+        // 2. Endorse
+        Hash256 endorseTx = contract.invokeFunction(ENDORSE, byteArray(proposalHash),
+                        hash160(alice.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
+
+        // 3. Vote in review phase
+        String exception = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(-1),
+                        hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Proposal not active"));
+
+        // 5. Fast-forward till after the voting phase.
+        ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH);
+
+        // 4. Vote in queued or later phase
+        exception = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(-1),
+                        hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Proposal not active"));
     }
 
-    @Test
-    public void fail_voting_in_queued_state() {
-        // TODO: Try voting on a proposal that is in queued state
-    }
+    // TODO:
+    //  - fail_voting_with_non_member
+    //  - fail_voting_on_non_existent_proposal
+    //  - fail_voting_on_not_endorsed_proposal
+    //  - fail_voting_with_invalid_vote
 
     @Test
     public void create_proposal_with_large_description() throws Throwable {
@@ -397,8 +424,8 @@ public class GrantSharesGovTest {
         List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
         assertThat(list.get(0).getHexString(), is(proposalHash));
 
-        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(tx).send().getApplicationLog()
-                        .getExecutions().get(0).getNotifications().get(0);
+        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
         List<StackItem> state = ntf.getState().getList();
         MessageDigest md = MessageDigest.getInstance("SHA-256");
@@ -464,7 +491,8 @@ public class GrantSharesGovTest {
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
                                         ))
                         ),
-                        string("create_proposal_with_large_intents"))
+                        string("create_proposal_with_large_intents"),
+                        any(null))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
