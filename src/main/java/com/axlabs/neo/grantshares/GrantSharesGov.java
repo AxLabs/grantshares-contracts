@@ -102,13 +102,13 @@ public class GrantSharesGov { //TODO: test with extends
      *                   witness for the proposer.
      */
     public static ByteString createProposal(Hash160 proposer, Intent[] intents,
-            String description) {
+            String description, ByteString linkedProposal) {
 
         return createProposal(
                 proposer,
                 intents,
                 description,
-                null,
+                linkedProposal,
                 parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY),
                 parameters.getInteger(MIN_QUORUM_KEY));
     }
@@ -134,15 +134,15 @@ public class GrantSharesGov { //TODO: test with extends
                 : "GrantSharesDAO: Acceptance rate not allowed";
         assert quorum >= parameters.getInteger(MIN_QUORUM_KEY)
                 : "GrantSharesDAO: Quorum not allowed";
+        assert linkedProposal == null || proposals.get(linkedProposal) != null
+                : "GrantSharesDAO: Linked proposal doesn't exist";
 
-        // TODO: do we need to validate the intent contents, e.g. if the targetContract is a
-        //  Hash160, etc.
+        // We don't perform any validation of the intents. It is up to the endorser and other DAO
+        // members to check if they are functional.
         ByteString descriptionHash = sha256(new ByteString(description));
         ByteString proposalHash = hashProposal(intents, descriptionHash);
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
         assert proposalBytes == null : "GrantSharesDAO: Proposal already exists";
-
-        // TODO: Check if linked proposal exists.
 
         proposals.put(proposalHash, serialize(new Proposal(proposalHash, proposer,
                 linkedProposal, acceptanceRate, quorum)));

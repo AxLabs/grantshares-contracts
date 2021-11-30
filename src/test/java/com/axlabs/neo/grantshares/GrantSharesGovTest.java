@@ -45,17 +45,16 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
-import static org.junit.jupiter.api.Assertions.fail;
 
-@ContractTest(contracts = GrantSharesGov.class, blockTime = 1, neoxpConfig = "default.neo-express",
+@ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
         batchFile = "setup.batch")
 public class GrantSharesGovTest {
 
     //region CONSTANTS
     // Account names available in the neo-express config file.
-    private static final String ALICE = "Alice";
-    private static final String BOB = "Bob";
-    private static final String CHARLIE = "Charlie";
+    private static final String ALICE = "NM7Aky765FG8NhhwtxjXRx7jEL1cnw7PBP";
+    private static final String BOB = "NZpsgXn9VQQoLexpuXJsrX8BsoyAhKUyiX";
+    private static final String CHARLIE = "NdbtgSku2qLuwsBBzLx3FLtmmMdm32Ktor";
 
     // contract methods
     private static final String CREATE = "createProposal";
@@ -94,7 +93,7 @@ public class GrantSharesGovTest {
     @RegisterExtension
     private static ContractTestExtension ext = new ContractTestExtension();
 
-    private static Neow3jExpress neow3j;
+    private static Neow3j neow3j;
     private static SmartContract contract;
     private static Account alice; // Set to be a DAO member.
     private static Account bob;
@@ -102,8 +101,8 @@ public class GrantSharesGovTest {
     private static String defaultProposalHash;
 
     @DeployConfig(GrantSharesGov.class)
-    public static ContractParameter config(DeployContext ctx) throws IOException {
-        return array(
+    public static void deployConfig(DeployConfiguration config) throws Exception {
+        config.setDeployParam(array(
                 array(
                         ext.getAccount(ALICE).getScriptHash(),
                         ext.getAccount(CHARLIE).getScriptHash()),
@@ -114,7 +113,7 @@ public class GrantSharesGovTest {
                         MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
                         MIN_QUORUM_KEY, MIN_QUORUM
                 )
-        );
+        ));
     }
 
     @BeforeAll
@@ -128,7 +127,8 @@ public class GrantSharesGovTest {
         Hash256 creationTx = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                         array(array(NeoToken.SCRIPT_HASH, "balanceOf",
                                 array(new Hash160(defaultAccountScriptHash())))),
-                        string("default_proposal"))
+                        string("default_proposal"),
+                        any(null))
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
@@ -150,7 +150,8 @@ public class GrantSharesGovTest {
         Hash256 proposalCreationTx = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(proposalDescription))
+                        string(proposalDescription),
+                        any(null)) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(proposalCreationTx, neow3j);
@@ -195,6 +196,32 @@ public class GrantSharesGovTest {
         assertThat(params.get(1).getAddress(), is(targetParam2.toAddress()));
         assertThat(params.get(2).getInteger().intValue(), is(targetParam3));
     }
+
+    @Test
+    public void fail_creating_with_missing_linked_proposal() throws Throwable {
+        Hash160 targetContract = NeoToken.SCRIPT_HASH;
+        String targetMethod = "transfer";
+        Hash160 targetParam1 = contract.getScriptHash();
+        Hash160 targetParam2 = alice.getScriptHash();
+        int targetParam3 = 1;
+        ContractParameter intent = array(targetContract, targetMethod,
+                array(targetParam1, targetParam2, targetParam3));
+        String proposalDescription = "description of the proposal";
+
+        String exception = contract.invokeFunction(CREATE,
+                        hash160(alice.getScriptHash()),
+                        array(intent),
+                        string(proposalDescription),
+                        byteArray(Hash256.ZERO.toArray()))
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Linked proposal doesn't exist"));
+    }
+
+    // TODO:
+    //  - fail_creating_with_bad_acceptance_rate
+    //  - fail_creating_with_bad_quorum
+    //  - Create proposal with weird intents
 
     @Test
     public void succeed_endorsing_with_member() throws Throwable {
@@ -445,7 +472,8 @@ public class GrantSharesGovTest {
                                         array(new Hash160(defaultAccountScriptHash()))
                                 )
                         ),
-                        string(description))
+                        string(description),
+                        any(null))
                 .signers(AccountSigner.calledByEntry(signer))
                 .sign()
                 .send().getSendRawTransaction().getHash();
