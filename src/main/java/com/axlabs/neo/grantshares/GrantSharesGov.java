@@ -79,6 +79,7 @@ public class GrantSharesGov { //TODO: test with extends
     //  proposal with the same hash. But in our implementation, every value takes exactly the
     //  amount of space that it needs. Creating a proposal with different intents but with the
     //  same hash is easier.
+    @Safe
     public static ByteString hashProposal(Intent[] intents, ByteString descriptionHash) {
         ByteString b = new ByteString("");
         for (Intent i : intents) {
@@ -257,6 +258,7 @@ public class GrantSharesGov { //TODO: test with extends
         voted.fire(proposalHash, voter, vote);
     }
 
+    @Safe
     public static Object getParameter(String paramName) {
         return parameters.get(paramName);
     }
