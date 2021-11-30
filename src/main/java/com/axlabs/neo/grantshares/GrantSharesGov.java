@@ -157,11 +157,20 @@ public class GrantSharesGov { //TODO: test with extends
         return proposalHash;
     }
 
+    /**
+     * If the {@code endorser} is a DAO member and the proposal is an existing un-endorsed
+     * proposal, it becomes endorsed and its phases are set.
+     *
+     * @param proposalHash The proposal to endorse.
+     * @param endorser The script hash of the endorsing DAO member.
+     */
     public static void endorseProposal(ByteString proposalHash, Hash160 endorser) {
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
                 : "GrantSharesDAO: Not authorised";
         assert proposals.get(proposalHash) != null
                 : "GrantSharesDAO: Proposal doesn't exist";
+        assert proposalPhases.get(proposalHash) == null
+                : "GrantSharesDAO: Proposal already endorsed";
 
         // Add +1 because the current idx is the block before this execution happens.
         int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);

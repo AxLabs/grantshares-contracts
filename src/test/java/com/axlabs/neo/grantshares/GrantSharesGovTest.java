@@ -292,8 +292,37 @@ public class GrantSharesGovTest {
                 AccountSigner.calledByEntry(bob)).getInvocationResult();
         assertThat(res.getState(), is(NeoVMStateType.FAULT));
         assertThat(res.getException(), containsString("Not authorised"));
-        assertThat(contract.callInvokeFunction(GET_PHASES, asList(byteArray(defaultProposalHash)))
-                .getInvocationResult().getStack().get(0).getValue(), is(nullValue()));
+    }
+
+    @Test
+    public void fail_endorsing_already_endorsed_proposal() throws Throwable {
+        // 1. Create a proposal
+        Hash256 creationTx = sendCreateTestProposalTransaction(alice.getScriptHash(),
+                alice, "fail_endorsing_already_endrosed");
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        String proposalHash = neow3j.getApplicationLog(creationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
+
+        // 2. Endorse
+        Hash256 endorseTx = contract.invokeFunction(ENDORSE, byteArray(proposalHash),
+                        hash160(alice.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
+
+        // 3. Endorse again
+        String exception = contract.callInvokeFunction(ENDORSE, asList(byteArray(proposalHash),
+                        hash160(charlie.getScriptHash())), AccountSigner.calledByEntry(charlie))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Proposal already endorsed"));
+    }
+
+    @Test
+    public void fail_endorsing_non_existent_proposal() throws Throwable {
+        InvocationResult res = contract.callInvokeFunction(ENDORSE, asList(
+                        byteArray(Hash256.ZERO.toArray()), hash160(alice.getScriptHash())),
+                AccountSigner.calledByEntry(alice)).getInvocationResult();
+        assertThat(res.getException(), containsString("Proposal doesn't exist"));
     }
 
     @Test
