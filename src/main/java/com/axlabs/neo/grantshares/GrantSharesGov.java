@@ -3,8 +3,9 @@ package com.axlabs.neo.grantshares;
 import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.Hash160;
+import io.neow3j.devpack.Helper;
 import io.neow3j.devpack.List;
-import io.neow3j.devpack.Map;
+import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
@@ -27,7 +28,13 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 @ManifestExtra(key = "name", value = "GrantShares")
 @Permission(contract = "*", methods = "*")
 @SuppressWarnings("unchecked")
-public class GrantSharesGov { //TODO: test with extends
+public class GrantSharesGov {
+
+    //region CONTRACT VARIABLES
+    // Constants
+    // TODO: Set these constants
+    static final int MAX_METHOD_LEN = 256;
+    static final int MAX_SERIALIZED_INTENT_PARAM_LEN = 1024;
 
     // Storage, Keys, Prefixes
     static final String REVIEW_LENGTH_KEY = "review_len";
@@ -36,15 +43,18 @@ public class GrantSharesGov { //TODO: test with extends
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     static final String MIN_QUORUM_KEY = "min_quorum";
     static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
+    static final String NR_OF_MEMBERS_KEY = "#_members";
 
     static final StorageContext ctx = Storage.getStorageContext();
     static final StorageMap proposals = ctx.createMap(1);
     static final StorageMap proposalVotes = ctx.createMap(2);
     static final StorageMap proposalPhases = ctx.createMap(3);
     static final StorageMap parameters = ctx.createMap(4);
+    // Maps member hashes to the block index at which they became a member.
     static final StorageMap members = ctx.createMap(5);
+    //endregion CONTRACT VARIABLES
 
-    // Events
+    //region EVENTS
     @DisplayName("ProposalCreated")
     static Event5Args<ByteString, Hash160, ByteString, Integer, Integer> created;
     @DisplayName("ProposalIntent")
@@ -53,6 +63,7 @@ public class GrantSharesGov { //TODO: test with extends
     static Event5Args<ByteString, Hash160, Integer, Integer, Integer> endorsed;
     @DisplayName("Voted")
     static Event3Args<ByteString, Hash160, Integer> voted;
+    //endregion EVENTS
 
     @OnDeployment
     @SuppressWarnings("unchecked")
@@ -65,10 +76,13 @@ public class GrantSharesGov { //TODO: test with extends
                 // TODO: Any information we should map the members to?
                 members.put(initialMembers.get(i).toByteString(), blockIdx);
             }
+            Storage.put(ctx, NR_OF_MEMBERS_KEY, initialMembers.size());
+
             List<Object> params = (List<Object>) membersAndParams.get(1);
             for (int i = 0; i < params.size(); i += 2) {
                 parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
             }
+            // TODO: Consider failing if not all parameters were set.
         }
     }
 
@@ -82,10 +96,27 @@ public class GrantSharesGov { //TODO: test with extends
     public static ByteString hashProposal(Intent[] intents, ByteString descriptionHash) {
         ByteString b = new ByteString("");
         for (Intent i : intents) {
-            b.concat(i.targetContract.toByteString());
-            b.concat(i.method);
+            // Concatenate target contract
+            assert Hash160.isValid(i.targetContract)
+                    : "GrantSharesGov: Invalid target contract hash";
+            b = b.concat(i.targetContract.toByteString());
+
+            // Pad and concatenate target method
+            byte[] paddedMethod = new byte[MAX_METHOD_LEN];
+            ByteString methodBytes = new ByteString(i.method);
+            assert methodBytes.length() <= GrantSharesGov.MAX_METHOD_LEN
+                    : "GrantSharesGov: Target method name too long";
+            Helper.memcpy(paddedMethod, 0, methodBytes, 0, methodBytes.length());
+            b = b.concat(paddedMethod);
+
+            // Pad and concatenate method parameters
             for (Object p : i.params) {
-                b.concat(serialize(p));
+                byte[] paddedParam = new byte[MAX_SERIALIZED_INTENT_PARAM_LEN];
+                ByteString paramBytes = serialize(p);
+                assert paramBytes.length() <= MAX_SERIALIZED_INTENT_PARAM_LEN
+                        : "GrantSharesGov: Intent method parameter too big";
+                Helper.memcpy(paddedParam, 0, paramBytes, 0, paramBytes.length());
+                b = b.concat(paddedParam);
             }
         }
         return sha256(b.concat(descriptionHash));
@@ -106,12 +137,12 @@ public class GrantSharesGov { //TODO: test with extends
     }
 
     @Safe
-    public static Map<Hash160, Integer> getProposalVotes(ByteString proposalHash) {
+    public static ProposalVotes getProposalVotes(ByteString proposalHash) {
         ByteString bytes = proposalVotes.get(proposalHash);
         if (bytes == null) {
             return null;
         }
-        return (Map<Hash160, Integer>) deserialize(proposalVotes.get(proposalHash));
+        return (ProposalVotes) deserialize(proposalVotes.get(proposalHash));
     }
 
     @Safe
@@ -126,20 +157,20 @@ public class GrantSharesGov { //TODO: test with extends
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
      *
-     * @param proposer    The account set as the proposer.
-     * @param intents     The intents to be executed when the proposal is accepted.
-     * @param description A description of the proposals intents.
+     * @param proposer        The account set as the proposer.
+     * @param intents         The intents to be executed when the proposal is accepted.
+     * @param descriptionHash A SHA-256 of the proposal's description.
      * @return The hash of the proposal.
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
      */
     public static ByteString createProposal(Hash160 proposer, Intent[] intents,
-            String description, ByteString linkedProposal) {
+            ByteString descriptionHash, ByteString linkedProposal) {
 
         return createProposal(
                 proposer,
                 intents,
-                description,
+                descriptionHash,
                 linkedProposal,
                 parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY),
                 parameters.getInteger(MIN_QUORUM_KEY));
@@ -148,33 +179,32 @@ public class GrantSharesGov { //TODO: test with extends
     /**
      * Creates a proposal.
      *
-     * @param proposer       The account set as the proposer.
-     * @param intents        The intents to be executed when the proposal is accepted.
-     * @param description    A description of the proposals intents.
-     * @param linkedProposal A proposal that preceded this one.
-     * @param acceptanceRate The desired acceptance rate.
-     * @param quorum         The desired quorum.
+     * @param proposer        The account set as the proposer.
+     * @param intents         The intents to be executed when the proposal is accepted.
+     * @param descriptionHash A SHA-256 of the proposal's description.
+     * @param linkedProposal  A proposal that preceded this one.
+     * @param acceptanceRate  The desired acceptance rate.
+     * @param quorum          The desired quorum.
      * @return The hash of the proposal.
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
      */
-    public static ByteString createProposal(Hash160 proposer, Intent[] intents, String description,
-            ByteString linkedProposal, int acceptanceRate, int quorum) {
+    public static ByteString createProposal(Hash160 proposer, Intent[] intents,
+            ByteString descriptionHash, ByteString linkedProposal, int acceptanceRate, int quorum) {
 
-        assert checkWitness(proposer) : "GrantSharesDAO: Not authorised";
+        assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
         assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY)
-                : "GrantSharesDAO: Acceptance rate not allowed";
+                : "GrantSharesGov: Acceptance rate not allowed";
         assert quorum >= parameters.getInteger(MIN_QUORUM_KEY)
-                : "GrantSharesDAO: Quorum not allowed";
+                : "GrantSharesGov: Quorum not allowed";
         assert linkedProposal == null || proposals.get(linkedProposal) != null
-                : "GrantSharesDAO: Linked proposal doesn't exist";
+                : "GrantSharesGov: Linked proposal doesn't exist";
 
-        // We don't perform any validation of the intents. It is up to the endorser and other DAO
-        // members to check if they are functional.
-        ByteString descriptionHash = sha256(new ByteString(description));
         ByteString proposalHash = hashProposal(intents, descriptionHash);
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
-        assert proposalBytes == null : "GrantSharesDAO: Proposal already exists";
+        // TODO: Consider also checking the phase of an already existing proposal and allow
+        //  creation if the proposal if the existing one was executed.
+        assert proposalBytes == null : "GrantSharesGov: Proposal already exists";
 
         proposals.put(proposalHash, serialize(new Proposal(proposalHash, proposer,
                 linkedProposal, acceptanceRate, quorum)));
@@ -198,11 +228,11 @@ public class GrantSharesGov { //TODO: test with extends
      */
     public static void endorseProposal(ByteString proposalHash, Hash160 endorser) {
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
-                : "GrantSharesDAO: Not authorised";
+                : "GrantSharesGov: Not authorised";
         assert proposals.get(proposalHash) != null
-                : "GrantSharesDAO: Proposal doesn't exist";
+                : "GrantSharesGov: Proposal doesn't exist";
         assert proposalPhases.get(proposalHash) == null
-                : "GrantSharesDAO: Proposal already endorsed";
+                : "GrantSharesGov: Proposal already endorsed";
 
         // Add +1 because the current idx is the block before this execution happens.
         int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
@@ -211,10 +241,7 @@ public class GrantSharesGov { //TODO: test with extends
         proposalPhases.put(proposalHash, serialize(
                 new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
 
-        Map<Hash160, Integer> votes = new Map<>();
-        votes.put(endorser, 1);
-        proposalVotes.put(proposalHash, serialize(votes));
-
+        proposalVotes.put(proposalHash, serialize(new ProposalVotes()));
         endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
     }
 
@@ -230,23 +257,27 @@ public class GrantSharesGov { //TODO: test with extends
      *                   proposal does not exist or the proposal is not in its voting phase.
      */
     public static void vote(ByteString proposalHash, int vote, Hash160 voter) {
-        assert vote >= -1 && vote <= 1 : "GrantSharesDAO: Illegal vote. Right to jail!";
+        assert vote >= -1 && vote <= 1 : "GrantSharesGov: Illegal vote. Right to jail!";
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
-                : "GrantSharesDAO: Not authorised";
+                : "GrantSharesGov: Not authorised";
         ByteString ppBytes = proposalPhases.get(proposalHash);
-        assert ppBytes != null : "GrantSharesDAO: Proposal doesn't exist or wasn't endorsed yet";
+        assert ppBytes != null : "GrantSharesGov: Proposal doesn't exist or wasn't endorsed yet";
         ProposalPhases pp = (ProposalPhases) deserialize(ppBytes);
         int currentIdx = currentIndex();
         assert currentIdx >= pp.reviewEnd && currentIdx < pp.votingEnd
-                : "GrantSharesDAO: Proposal not active";
+                : "GrantSharesGov: Proposal not active";
 
         // No need for null check. This map was created in the endorsement and we know the
         // endorsement happened because the proposal phases were set.
-        Map<Hash160, Integer> pv = (Map<Hash160, Integer>) deserialize(
-                proposalVotes.get(proposalHash));
-        pv.put(voter, vote);
+        ProposalVotes pv = (ProposalVotes) deserialize(proposalVotes.get(proposalHash));
+        if (vote < 0) {
+            pv.reject += 1;
+        } else if (vote > 0) {
+            pv.approve += 1;
+        } else {
+            pv.abstain += 1;
+        }
         proposalVotes.put(proposalHash, serialize(pv));
-
         voted.fire(proposalHash, voter, vote);
     }
 
@@ -289,4 +320,20 @@ public class GrantSharesGov { //TODO: test with extends
         }
         return returnVals;
     }
+
+    // TODO:
+    //  - leave()
+    //  - claimFunds() maybe add this to the treasury
+
+    public static void changeParam(String paramKey, Object value) {
+        assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
+                "GrantSharesGov: Method only callable by the DAO itself";
+        parameters.put(paramKey, (byte[]) value);
+    }
+
+    // TODO: Consider adding specific setters for each DAO parameter.
+
+    // TODO:
+    //  - Methods called by proposals
+
 }

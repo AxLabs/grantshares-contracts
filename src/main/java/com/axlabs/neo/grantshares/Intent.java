@@ -1,6 +1,5 @@
 package com.axlabs.neo.grantshares;
 
-
 import io.neow3j.devpack.Hash160;
 
 public class Intent {
