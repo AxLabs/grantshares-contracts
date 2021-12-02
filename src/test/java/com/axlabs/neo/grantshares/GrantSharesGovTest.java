@@ -32,6 +32,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static com.axlabs.neo.grantshares.TestConstants.ALICE;
+import static com.axlabs.neo.grantshares.TestConstants.BOB;
+import static com.axlabs.neo.grantshares.TestConstants.CHARLIE;
+import static com.axlabs.neo.grantshares.TestConstants.CREATE;
+import static com.axlabs.neo.grantshares.TestConstants.ENDORSE;
+import static com.axlabs.neo.grantshares.TestConstants.GET;
+import static com.axlabs.neo.grantshares.TestConstants.GET_PARAMETER;
+import static com.axlabs.neo.grantshares.TestConstants.GET_PHASES;
+import static com.axlabs.neo.grantshares.TestConstants.GET_VOTES;
+import static com.axlabs.neo.grantshares.TestConstants.MIN_ACCEPTANCE_RATE;
+import static com.axlabs.neo.grantshares.TestConstants.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.TestConstants.MIN_QUORUM;
+import static com.axlabs.neo.grantshares.TestConstants.MIN_QUORUM_KEY;
+import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_CREATED;
+import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_ENDORSED;
+import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_INTENT;
+import static com.axlabs.neo.grantshares.TestConstants.QUEUED_LENGTH;
+import static com.axlabs.neo.grantshares.TestConstants.QUEUED_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestConstants.REVIEW_LENGTH;
+import static com.axlabs.neo.grantshares.TestConstants.REVIEW_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestConstants.VOTE;
+import static com.axlabs.neo.grantshares.TestConstants.VOTED;
+import static com.axlabs.neo.grantshares.TestConstants.VOTING_LENGTH;
+import static com.axlabs.neo.grantshares.TestConstants.VOTING_LENGTH_KEY;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
@@ -39,6 +63,7 @@ import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
@@ -51,46 +76,6 @@ import static org.hamcrest.core.Is.is;
         batchFile = "setup.batch")
 public class GrantSharesGovTest {
 
-    //region CONSTANTS
-    // Account names available in the neo-express config file.
-    private static final String ALICE = "NM7Aky765FG8NhhwtxjXRx7jEL1cnw7PBP";
-    private static final String BOB = "NZpsgXn9VQQoLexpuXJsrX8BsoyAhKUyiX";
-    private static final String CHARLIE = "NdbtgSku2qLuwsBBzLx3FLtmmMdm32Ktor";
-
-    // contract methods
-    private static final String CREATE = "createProposal";
-    private static final String GET = "getProposal";
-    private static final String ENDORSE = "endorseProposal";
-    private static final String GET_PHASES = "getProposalPhases";
-    private static final String GET_VOTES = "getProposalVotes";
-    private static final String VOTE = "vote";
-    private static final String EXECUTE = "execute";
-    private static final String HASH_PROPOSAL = "hashProposal";
-    private static final String GET_PARAMETER = "getParameter";
-
-    // events
-    private static final String PROPOSAL_CREATED = "ProposalCreated";
-    private static final String PROPOSAL_INTENT = "ProposalIntent";
-    private static final String PROPOSAL_ENDORSED = "ProposalEndorsed";
-    private static final String VOTED = "Voted";
-
-    // governance parameters values
-    private static final int REVIEW_LENGTH = 5;
-    private static final int VOTING_LENGTH = 5;
-    private static final int QUEUED_LENGTH = 5;
-    private static final int MIN_ACCEPTANCE_RATE = 50;
-    private static final int MIN_QUORUM = 25;
-
-    // parameter names
-    static final String REVIEW_LENGTH_KEY = "review_len";
-    static final String VOTING_LENGTH_KEY = "voting_len";
-    static final String QUEUED_LENGTH_KEY = "queued_len";
-    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
-    static final String MIN_QUORUM_KEY = "min_quorum";
-    static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
-
-    //endregion CONSTANTS
-
     @RegisterExtension
     private static ContractTestExtension ext = new ContractTestExtension();
 
@@ -100,6 +85,7 @@ public class GrantSharesGovTest {
     private static Account bob;
     private static Account charlie; // Set to be a DAO member.
     private static String defaultProposalHash;
+    private static MessageDigest hasher;
 
     @DeployConfig(GrantSharesGov.class)
     public static void deployConfig(DeployConfiguration config) throws Exception {
@@ -124,11 +110,12 @@ public class GrantSharesGovTest {
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
+        hasher = MessageDigest.getInstance("SHA-256");
 
         Hash256 creationTx = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                         array(array(NeoToken.SCRIPT_HASH, "balanceOf",
                                 array(new Hash160(defaultAccountScriptHash())))),
-                        string("default_proposal"),
+                        byteArray(hasher.digest("default_proposal".getBytes(UTF_8))),
                         any(null))
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -151,7 +138,7 @@ public class GrantSharesGovTest {
         Hash256 proposalCreationTx = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(proposalDescription),
+                        byteArray(hasher.digest(proposalDescription.getBytes(UTF_8))),
                         any(null)) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -179,9 +166,8 @@ public class GrantSharesGovTest {
         List<StackItem> state = ntf.getState().getList();
         assertThat(state.get(0).getHexString(), is(proposalHash));
         assertThat(state.get(1).getAddress(), is(alice.getAddress()));
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
         assertThat(state.get(2).getHexString(),
-                is(Numeric.toHexStringNoPrefix(md.digest(proposalDescription.getBytes()))));
+                is(Numeric.toHexStringNoPrefix(hasher.digest(proposalDescription.getBytes(UTF_8)))));
         assertThat(state.get(3).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
         assertThat(state.get(4).getInteger().intValue(), is(MIN_QUORUM));
 
@@ -212,7 +198,7 @@ public class GrantSharesGovTest {
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(proposalDescription),
+                        byteArray(hasher.digest(proposalDescription.getBytes(UTF_8))),
                         byteArray(Hash256.ZERO.toArray()))
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
@@ -428,9 +414,8 @@ public class GrantSharesGovTest {
                 .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
         List<StackItem> state = ntf.getState().getList();
-        MessageDigest md = MessageDigest.getInstance("SHA-256");
         assertThat(state.get(2).getHexString(),
-                is(Numeric.toHexStringNoPrefix(md.digest(desc.getBytes()))));
+                is(Numeric.toHexStringNoPrefix(hasher.digest(desc.getBytes(UTF_8)))));
     }
 
     @Test
@@ -491,7 +476,7 @@ public class GrantSharesGovTest {
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
                                         ))
                         ),
-                        string("create_proposal_with_large_intents"),
+                        byteArray(hasher.digest("create_proposal_with_large_intents".getBytes(UTF_8))),
                         any(null))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -529,7 +514,7 @@ public class GrantSharesGovTest {
                                         array(new Hash160(defaultAccountScriptHash()))
                                 )
                         ),
-                        string(description),
+                        byteArray(hasher.digest(description.getBytes(UTF_8))),
                         any(null))
                 .signers(AccountSigner.calledByEntry(signer))
                 .sign()
