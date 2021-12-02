@@ -242,11 +242,10 @@ public class GrantSharesGovTest {
 
         // 5. Test the right setup of the votes map
         r = contract.callInvokeFunction(GET_VOTES, asList(byteArray(proposalHash)));
-        Map<StackItem, StackItem> map = r.getInvocationResult().getStack().get(0).getMap();
-        assertThat(map.keySet().stream().map(StackItem::getAddress).collect(Collectors.toList()),
-                contains(alice.getAddress()));
-        assertThat(map.values().stream().map(StackItem::getInteger).collect(Collectors.toList()),
-                contains(BigInteger.ONE));
+        List<StackItem> votes = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(votes.get(0).getInteger(), is(BigInteger.ZERO));
+        assertThat(votes.get(1).getInteger(), is(BigInteger.ZERO));
+        assertThat(votes.get(2).getInteger(), is(BigInteger.ZERO));
 
         // 6. Test emitted "endrosed" event
         NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(endorseTx).send()
@@ -339,13 +338,10 @@ public class GrantSharesGovTest {
         // 5. Test the right setting of the votes
         NeoInvokeFunction r =
                 contract.callInvokeFunction(GET_VOTES, asList(byteArray(proposalHash)));
-        Map<StackItem, StackItem> votersMap = r.getInvocationResult().getStack().get(0).getMap();
-        List<String> voters = votersMap.keySet().stream().map(StackItem::getAddress)
-                .collect(Collectors.toList());
-        assertThat(voters, containsInAnyOrder(alice.getAddress(), charlie.getAddress()));
-        List<Integer> votes = votersMap.values().stream().map(s -> s.getInteger().intValue())
-                .collect(Collectors.toList());
-        assertThat(votes, containsInAnyOrder(1, -1));
+        List<StackItem> votes = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(votes.get(0).getInteger(), is(BigInteger.ZERO));
+        assertThat(votes.get(1).getInteger(), is(BigInteger.ONE));
+        assertThat(votes.get(2).getInteger(), is(BigInteger.ZERO));
 
         // 6. Test the emitted vote event
         NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(voteTx).send()
