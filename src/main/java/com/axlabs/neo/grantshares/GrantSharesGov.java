@@ -218,18 +218,6 @@ public class GrantSharesGov { //TODO: test with extends
         endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
     }
 
-    public static Object execute(Intent[] intents, ByteString descriptionHash) {
-        ByteString proposalHash = hashProposal(intents, descriptionHash);
-        ByteString proposalBytes = proposals.get(proposalHash);
-        assert proposalBytes != null : "GrantSharesDAO: Proposal doesn't exist";
-        Proposal p = (Proposal) deserialize(proposalBytes);
-
-        Object returnVal = Contract.call(intents[0].targetContract, intents[0].method,
-                CallFlags.All, intents[0].params);
-
-        return returnVal;
-    }
-
     /**
      * Casts a vote of the {@code voter} on the proposal with {@code proposalHash}.
      *
@@ -262,4 +250,43 @@ public class GrantSharesGov { //TODO: test with extends
         voted.fire(proposalHash, voter, vote);
     }
 
+    /**
+     * Executes the proposal with the given {@code intents} and {@code descriptionHash}. Anyone
+     * can execute a proposal.
+     * <p>
+     * Execution is only successful if the proposal is out of its queued phase, was accepted and
+     * does not have a connected abrogation proposal that was accepted.
+     *
+     * @param intents         The intents of the proposal.
+     * @param descriptionHash The hash of the proposal description.
+     * @return the values returned the called intents.
+     */
+    public static Object[] execute(Intent[] intents, ByteString descriptionHash) {
+        ByteString proposalHash = hashProposal(intents, descriptionHash);
+        ByteString proposalBytes = proposals.get(proposalHash);
+        assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
+        ByteString proposalPhasesBytes = proposalPhases.get(proposalHash);
+        assert proposalPhasesBytes != null : "GrantSharesGov: Proposal wasn't endorsed yet";
+        ProposalPhases pp = (ProposalPhases) deserialize(proposalPhasesBytes);
+        assert currentIndex() >= pp.queuedEnd : "GrantSharesGov: Proposal not in execution phase";
+        ByteString proposalVotesBytes = proposalVotes.get(proposalHash);
+        assert proposalVotesBytes != null : "GrantSharesGov: Proposal was not handled";
+
+        ProposalVotes pv = (ProposalVotes) deserialize(proposalVotesBytes);
+        Proposal p = (Proposal) deserialize(proposalBytes);
+        int participation = pv.approve + pv.abstain + pv.reject;
+        assert participation * 100 / Storage.getInteger(ctx, NR_OF_MEMBERS_KEY) >= p.quorum
+                : "GrantSharesGov: Quorum not reached";
+        assert pv.approve * 100 / participation >= p.acceptanceRate
+                : "GrantSharesGov: Proposal rejected";
+
+        // TODO: Check if has abrogation proposal that was accepted.
+
+        Object[] returnVals = new Object[intents.length];
+        for (int i = 0; i < intents.length; i++) {
+            Intent t = intents[i];
+            returnVals[i] = Contract.call(t.targetContract, t.method, CallFlags.All, t.params);
+        }
+        return returnVals;
+    }
 }
