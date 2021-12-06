@@ -3,7 +3,6 @@ package com.axlabs.neo.grantshares;
 import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.Helper;
 import io.neow3j.devpack.List;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
@@ -19,6 +18,7 @@ import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event5Args;
 
+import static io.neow3j.devpack.Helper.memcpy;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.contracts.CryptoLib.sha256;
 import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
@@ -106,7 +106,7 @@ public class GrantSharesGov {
             ByteString methodBytes = new ByteString(i.method);
             assert methodBytes.length() <= GrantSharesGov.MAX_METHOD_LEN
                     : "GrantSharesGov: Target method name too long";
-            Helper.memcpy(paddedMethod, 0, methodBytes, 0, methodBytes.length());
+            memcpy(paddedMethod, 0, methodBytes, 0, methodBytes.length());
             b = b.concat(paddedMethod);
 
             // Pad and concatenate method parameters
@@ -115,7 +115,7 @@ public class GrantSharesGov {
                 ByteString paramBytes = serialize(p);
                 assert paramBytes.length() <= MAX_SERIALIZED_INTENT_PARAM_LEN
                         : "GrantSharesGov: Intent method parameter too big";
-                Helper.memcpy(paddedParam, 0, paramBytes, 0, paramBytes.length());
+                memcpy(paddedParam, 0, paramBytes, 0, paramBytes.length());
                 b = b.concat(paddedParam);
             }
         }
