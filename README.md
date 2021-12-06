@@ -27,11 +27,11 @@ Running the tests:
 ./gradlew clean test
 ```
 
-## Documentation
+## Docs
 
 Documents about proposals, flow, etc., are in the official documentation page for GrantShares.
 
-## Maintainers
+## Acknowledgement
 
 [AxLabs](https://axlabs.com) develops and maintains the GrantSharesDAO, with
 the support from the whole community.
