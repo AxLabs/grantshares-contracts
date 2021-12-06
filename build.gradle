@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'io.neow3j.gradle-plugin' version '3.13.1'
+    id 'io.neow3j.gradle-plugin' version '3.14.0-SNAPSHOT'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
