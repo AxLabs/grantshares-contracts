@@ -17,7 +17,7 @@ dependencies {
     implementation 'io.neow3j:devpack:3.13.2-SNAPSHOT'
 
     testImplementation 'io.neow3j:devpack-test:3.13.2-SNAPSHOT',
-            'org.junit.jupiter:junit-jupiter:5.8.1',
+            'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 }
 
