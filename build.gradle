@@ -14,9 +14,9 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.13.2-SNAPSHOT'
+    implementation 'io.neow3j:devpack:3.14.0-SNAPSHOT'
 
-    testImplementation 'io.neow3j:devpack-test:3.13.2-SNAPSHOT',
+    testImplementation 'io.neow3j:devpack-test:3.14.0-SNAPSHOT',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 }
