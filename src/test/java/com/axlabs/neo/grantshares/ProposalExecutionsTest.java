@@ -55,7 +55,6 @@ import static org.hamcrest.core.Is.is;
         batchFile = "setup.batch")
 public class ProposalExecutionsTest {
 
-
     @RegisterExtension
     private static ContractTestExtension ext = new ContractTestExtension();
 

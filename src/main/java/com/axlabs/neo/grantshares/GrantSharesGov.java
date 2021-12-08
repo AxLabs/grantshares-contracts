@@ -46,7 +46,7 @@ public class GrantSharesGov {
     static final String NR_OF_MEMBERS_KEY = "#_members";
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap proposals = ctx.createMap(1);
+    static final StorageMap proposals = ctx.createMap((byte) 1);
     static final StorageMap proposalVotes = ctx.createMap(2);
     static final StorageMap proposalPhases = ctx.createMap(3);
     static final StorageMap parameters = ctx.createMap(4);

@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'io.neow3j.gradle-plugin' version '3.13.1'
+    id 'io.neow3j.gradle-plugin' version '3.14.0'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -9,14 +9,12 @@ targetCompatibility = JavaVersion.VERSION_1_8
 repositories {
     // Use Maven Central for resolving dependencies.
     mavenCentral()
-    // For SNAPSHOTS
-    maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.14.0-SNAPSHOT'
+    implementation 'io.neow3j:devpack:3.14.0'
 
-    testImplementation 'io.neow3j:devpack-test:3.14.0-SNAPSHOT',
+    testImplementation 'io.neow3j:devpack-test:3.14.0',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 }
