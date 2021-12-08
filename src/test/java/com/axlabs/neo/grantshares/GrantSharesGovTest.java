@@ -29,8 +29,6 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.axlabs.neo.grantshares.TestConstants.ALICE;
 import static com.axlabs.neo.grantshares.TestConstants.BOB;
@@ -184,29 +182,59 @@ public class GrantSharesGovTest {
 
     @Test
     public void fail_creating_with_missing_linked_proposal() throws Throwable {
-        Hash160 targetContract = NeoToken.SCRIPT_HASH;
-        String targetMethod = "transfer";
-        Hash160 targetParam1 = contract.getScriptHash();
-        Hash160 targetParam2 = alice.getScriptHash();
-        int targetParam3 = 1;
-        ContractParameter intent = array(targetContract, targetMethod,
-                array(targetParam1, targetParam2, targetParam3));
-        String proposalDescription = "description of the proposal";
+        ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
+                array(contract.getScriptHash(), alice.getScriptHash(), 1));
+        byte[] descHash = hasher.digest("fail_creating_with_missing_linked_proposal"
+                .getBytes(UTF_8));
+        byte[] linkedProposal = Hash256.ZERO.toArray();
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        byteArray(hasher.digest(proposalDescription.getBytes(UTF_8))),
-                        byteArray(Hash256.ZERO.toArray()))
+                        byteArray(descHash),
+                        byteArray(linkedProposal))
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Linked proposal doesn't exist"));
     }
 
-    // TODO:
-    //  - fail_creating_with_bad_acceptance_rate
-    //  - fail_creating_with_bad_quorum
-    //  - Create proposal with weird intents
+    @Test
+    public void fail_creating_with_bad_quorum() throws Throwable {
+        ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
+                array(contract.getScriptHash(), alice.getScriptHash(), 1));
+        byte[] descHash = hasher.digest("fail_creating_with_bad_quorum".getBytes(UTF_8));
+
+        String exception = contract.invokeFunction(CREATE,
+                        hash160(alice.getScriptHash()),
+                        array(intent),
+                        byteArray(descHash),
+                        any(null), // linked proposal
+                        integer(MIN_ACCEPTANCE_RATE),
+                        integer(MIN_QUORUM - 1))
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("Quorum not allowed"));
+    }
+
+    @Test
+    public void fail_creating_with_bad_acceptance_rate() throws Throwable {
+        ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
+                array(contract.getScriptHash(), alice.getScriptHash(), 1));
+        byte[] descHash = hasher.digest("fail_creating_with_bad_acceptance_rate".getBytes(UTF_8));
+
+        String exception = contract.invokeFunction(CREATE,
+                        hash160(alice.getScriptHash()),
+                        array(intent),
+                        byteArray(descHash),
+                        any(null), // linked proposal
+                        integer(MIN_ACCEPTANCE_RATE - 1),
+                        integer(MIN_QUORUM))
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("Acceptance rate not allowed"));
+    }
 
     @Test
     public void succeed_endorsing_with_member() throws Throwable {
@@ -487,7 +515,16 @@ public class GrantSharesGovTest {
         assertThat(list.get(3).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
         assertThat(list.get(4).getInteger().intValue(), is(MIN_QUORUM));
 
-        // TODO: Test the intent events.
+        List<NeoApplicationLog.Execution.Notification> notifs = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0).getNotifications();
+        assertThat(notifs.size(), is(10)); // 1 proposal created and 9 proposal intents
+        assertThat(notifs.get(0).getEventName(), is(PROPOSAL_CREATED));
+        assertThat(notifs.get(7).getEventName(), is(PROPOSAL_INTENT));
+        List<StackItem> state = notifs.get(7).getState().getList();
+        assertThat(state.get(0).getHexString(), is(proposalHash));
+        List<StackItem> intents = state.get(1).getList();
+        assertThat(intents.size(), is(3));
+        assertThat(intents.get(2).getList().size(), is(6));
     }
 
     @Test
