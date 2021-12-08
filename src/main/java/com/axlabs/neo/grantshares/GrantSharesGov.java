@@ -86,12 +86,6 @@ public class GrantSharesGov {
         }
     }
 
-    // TODO: Is it possible to create collisions with different inputs?
-    //  In the open-zeppelin implementation the method abi.encode is called on the intents. This
-    //  encodes each value in the intents with 256-bit. Therefore, it is hard to find another
-    //  proposal with the same hash. But in our implementation, every value takes exactly the
-    //  amount of space that it needs. Creating a proposal with different intents but with the
-    //  same hash is easier.
     @Safe
     public static ByteString hashProposal(Intent[] intents, ByteString descriptionHash) {
         ByteString b = new ByteString("");
@@ -111,6 +105,8 @@ public class GrantSharesGov {
 
             // Pad and concatenate method parameters
             for (Object p : i.params) {
+                // TODO: Consider breaking compound stack items (e.g., list or map) down and
+                //  serializing their parts with a smaller padded byte array size.
                 byte[] paddedParam = new byte[MAX_SERIALIZED_INTENT_PARAM_LEN];
                 ByteString paramBytes = serialize(p);
                 assert paramBytes.length() <= MAX_SERIALIZED_INTENT_PARAM_LEN
