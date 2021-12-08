@@ -145,7 +145,7 @@ public class ProposalExecutionsTest {
         String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Proposal was not handled"));
+        assertThat(exception, containsString("Quorum not reache"));
     }
 
     @Test
@@ -220,4 +220,7 @@ public class ProposalExecutionsTest {
 
         return proposalHash;
     }
+
+    // TODO:
+    //  - succeed voting and executing proposal that has different quorum and acceptance rate.
 }

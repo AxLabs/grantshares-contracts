@@ -292,11 +292,11 @@ public class GrantSharesGov {
         ByteString proposalBytes = proposals.get(proposalHash);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         ByteString proposalPhasesBytes = proposalPhases.get(proposalHash);
-        assert proposalPhasesBytes != null : "GrantSharesGov: Proposal wasn't endorsed yet";
+        ByteString proposalVotesBytes = proposalVotes.get(proposalHash);
+        assert proposalPhasesBytes != null && proposalVotesBytes != null
+                : "GrantSharesGov: Proposal wasn't endorsed yet";
         ProposalPhases pp = (ProposalPhases) deserialize(proposalPhasesBytes);
         assert currentIndex() >= pp.queuedEnd : "GrantSharesGov: Proposal not in execution phase";
-        ByteString proposalVotesBytes = proposalVotes.get(proposalHash);
-        assert proposalVotesBytes != null : "GrantSharesGov: Proposal was not handled";
 
         ProposalVotes pv = (ProposalVotes) deserialize(proposalVotesBytes);
         Proposal p = (Proposal) deserialize(proposalBytes);
@@ -316,17 +316,18 @@ public class GrantSharesGov {
         return returnVals;
     }
 
+    public static void addMember()
+
     // TODO:
     //  - leave()
     //  - claimFunds() maybe add this to the treasury
 
+    // TODO: Consider adding specific setters for each DAO parameter.
     public static void changeParam(String paramKey, Object value) {
         assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
                 "GrantSharesGov: Method only callable by the DAO itself";
         parameters.put(paramKey, (byte[]) value);
     }
-
-    // TODO: Consider adding specific setters for each DAO parameter.
 
     // TODO:
     //  - Methods called by proposals
