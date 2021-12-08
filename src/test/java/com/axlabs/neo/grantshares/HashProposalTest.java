@@ -10,6 +10,7 @@ import io.neow3j.test.DeployConfiguration;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.utils.Numeric;
+import org.junit.Ignore;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -207,6 +208,8 @@ public class HashProposalTest {
     }
 
     @Test
+    @Ignore("Fails because neo-express is not uptodate with Neo 3.1.0 yet and therefore can't " +
+            "handle the new PACKMAP opcode.")
     public void fail_hashing_proposal_with_oversized_param() throws Throwable {
         String method = "balanceOf";
         String keyString =
