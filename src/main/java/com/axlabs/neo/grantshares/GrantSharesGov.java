@@ -14,6 +14,8 @@ import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
+import io.neow3j.devpack.contracts.LedgerContract;
+import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event5Args;
@@ -62,6 +64,14 @@ public class GrantSharesGov {
     static Event5Args<ByteString, Hash160, Integer, Integer, Integer> endorsed;
     @DisplayName("Voted")
     static Event3Args<ByteString, Hash160, Integer> voted;
+    @DisplayName("ProposalExecuted")
+    static Event1Arg<ByteString> executed;
+    @DisplayName("MemberAdded")
+    static Event1Arg<Hash160> memberAdded;
+    @DisplayName("MemberRemoved")
+    static Event1Arg<Hash160> memberRemoved;
+    @DisplayName("ParameterChanged")
+    static Event2Args<String, byte[]> paramChanged;
     //endregion EVENTS
 
     @OnDeployment
@@ -85,6 +95,7 @@ public class GrantSharesGov {
         }
     }
 
+    //region SAFE METHODS
     @Safe
     public static ByteString hashProposal(Intent[] intents, ByteString descriptionHash) {
         ByteString b = new ByteString("");
@@ -148,6 +159,7 @@ public class GrantSharesGov {
         }
         return (ProposalPhases) deserialize(proposalPhases.get(proposalHash));
     }
+    //endregion SAFE METHODS
 
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
@@ -313,23 +325,47 @@ public class GrantSharesGov {
             Intent t = intents[i];
             returnVals[i] = Contract.call(t.targetContract, t.method, CallFlags.All, t.params);
         }
+        executed.fire(proposalHash);
         return returnVals;
     }
-
-    public static void addMember()
 
     // TODO:
     //  - leave()
     //  - claimFunds() maybe add this to the treasury
 
+    //region PROPOSAL-INVOKED METHODS
     // TODO: Consider adding specific setters for each DAO parameter.
     public static void changeParam(String paramKey, Object value) {
-        assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
-                "GrantSharesGov: Method only callable by the DAO itself";
+        assertCallerIsSelf();
         parameters.put(paramKey, (byte[]) value);
+        paramChanged.fire(paramKey, (byte[]) value);
     }
 
-    // TODO:
-    //  - Methods called by proposals
+    // TODO: Test
+    public static void addMember(Hash160 member) {
+        assertCallerIsSelf();
+        assert Hash160.isValid(member) : "GrantSharesGov: Not a valid account hash";
+        ByteString blockIndexBytes = members.get(member.toByteString());
+        assert blockIndexBytes == null : "GrantSharesGov: Already a member";
+        members.put(member.toByteString(), LedgerContract.currentIndex());
+        memberAdded.fire(member);
+    }
+
+    // TODO: Test
+    public static void removeMember(Hash160 member) {
+        assertCallerIsSelf();
+        assert Hash160.isValid(member) : "GrantSharesGov: Not a valid account hash";
+        ByteString blockIndexBytes = members.get(member.toByteString());
+        assert blockIndexBytes != null : "GrantSharesGov: Not a member";
+        members.delete(member.toByteString());
+        memberRemoved.fire(member);
+    }
+    //endregion PROPOSAL-INVOKED METHODS
+
+    static void assertCallerIsSelf() {
+        assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
+                "GrantSharesGov: Method only callable by the contract itself";
+    }
+
 
 }

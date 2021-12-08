@@ -2,6 +2,7 @@ package com.axlabs.neo.grantshares;
 
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -31,6 +32,8 @@ import static com.axlabs.neo.grantshares.TestConstants.MIN_ACCEPTANCE_RATE;
 import static com.axlabs.neo.grantshares.TestConstants.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.TestConstants.MIN_QUORUM;
 import static com.axlabs.neo.grantshares.TestConstants.MIN_QUORUM_KEY;
+import static com.axlabs.neo.grantshares.TestConstants.PARAMETER_CHANGED;
+import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_EXECUTED;
 import static com.axlabs.neo.grantshares.TestConstants.QUEUED_LENGTH;
 import static com.axlabs.neo.grantshares.TestConstants.QUEUED_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.TestConstants.REVIEW_LENGTH;
@@ -172,9 +175,19 @@ public class ProposalExecutionsTest {
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
-        List<StackItem> returnVals = neow3j.getApplicationLog(tx).send().getApplicationLog()
-                .getExecutions().get(0).getStack().get(0).getList();
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        List<StackItem> returnVals = execution.getStack().get(0).getList();
         assertThat(returnVals.get(0).getValue(), is(nullValue()));
+        assertThat(execution.getNotifications().get(0).getEventName(), is(PARAMETER_CHANGED));
+        assertThat(execution.getNotifications().get(0).getContract(), is(contract.getScriptHash()));
+        List<StackItem> state = execution.getNotifications().get(0).getState().getList();
+        assertThat(state.get(0).getString(), is(MIN_ACCEPTANCE_RATE_KEY));
+        assertThat(state.get(1).getInteger().intValue(), is(newValue));
+        assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
+        assertThat(execution.getNotifications().get(1).getContract(), is(contract.getScriptHash()));
+        assertThat(execution.getNotifications().get(1).getState().getList().get(0).getHexString(),
+                is(proposalHash));
 
         int v = contract.callInvokeFunction("getParameter", asList(string(MIN_ACCEPTANCE_RATE_KEY)))
                 .getInvocationResult().getStack().get(0).getInteger().intValue();
@@ -223,4 +236,5 @@ public class ProposalExecutionsTest {
 
     // TODO:
     //  - succeed voting and executing proposal that has different quorum and acceptance rate.
+    //  - succeed executing proposal that has multiple intents.
 }

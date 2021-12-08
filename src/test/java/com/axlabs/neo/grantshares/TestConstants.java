@@ -1,5 +1,9 @@
 package com.axlabs.neo.grantshares;
 
+import io.neow3j.devpack.Hash160;
+import io.neow3j.devpack.annotations.DisplayName;
+import io.neow3j.devpack.events.Event1Arg;
+
 public class TestConstants {
 
     // Account names available in the neo-express config file.
@@ -23,7 +27,11 @@ public class TestConstants {
     static final String PROPOSAL_CREATED = "ProposalCreated";
     static final String PROPOSAL_INTENT = "ProposalIntent";
     static final String PROPOSAL_ENDORSED = "ProposalEndorsed";
+    static final String PROPOSAL_EXECUTED = "ProposalExecuted";
     static final String VOTED = "Voted";
+    static final String MEMBER_ADDED = "MemberAdded";
+    static final String MEMBER_REMOVED = "MemberRemoved";
+    static final String PARAMETER_CHANGED = "ParameterChanged";
 
     // governance parameters values
     static final int REVIEW_LENGTH = 5;
