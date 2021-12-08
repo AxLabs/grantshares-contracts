@@ -32,8 +32,7 @@ public class GrantSharesGov {
 
     //region CONTRACT VARIABLES
     // Constants
-    // TODO: Set these constants
-    static final int MAX_METHOD_LEN = 256;
+    static final int MAX_METHOD_LEN = 128;
     static final int MAX_SERIALIZED_INTENT_PARAM_LEN = 1024;
 
     // Storage, Keys, Prefixes

@@ -41,6 +41,6 @@ public class TestConstants {
     static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
 
     // Intent constants
-    static final int MAX_METHOD_LEN = 256;
+    static final int MAX_METHOD_LEN = 128;
     static final int MAX_SERIALIZED_INTENT_PARAM_LEN = 1024;
 }
