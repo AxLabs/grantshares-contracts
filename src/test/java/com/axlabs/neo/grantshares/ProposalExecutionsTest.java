@@ -139,7 +139,7 @@ public class ProposalExecutionsTest {
 
     @Test
     public void fail_executing_accepted_proposal_multiple_times() {
-        
+
     }
 
 
@@ -197,7 +197,7 @@ public class ProposalExecutionsTest {
                 asList(string(REVIEW_LENGTH_KEY), integer(100)),
                 AccountSigner.calledByEntry(alice)).getInvocationResult().getException();
 
-        assertThat(exception, containsString("Method only callable by the DAO itself"));
+        assertThat(exception, containsString("Method only callable by the contract itself"));
     }
     //endregion CHANGE PARAMETER
 
