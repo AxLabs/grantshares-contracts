@@ -12,6 +12,8 @@ public class Proposal {
     public int acceptanceRate;
     public int quorum;
 
+    public boolean executed;
+
     public Proposal(ByteString hash, Hash160 proposer, ByteString linkedProposal,
             int acceptanceRate, int quorum) {
 
@@ -20,5 +22,6 @@ public class Proposal {
         this.linkedProposal = linkedProposal;
         this.acceptanceRate = acceptanceRate;
         this.quorum = quorum;
+        this.executed = false;
     }
 }

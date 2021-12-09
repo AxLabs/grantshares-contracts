@@ -134,12 +134,37 @@ public class ProposalExecutionsTest {
         String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Quorum not reache"));
+        assertThat(exception, containsString("Quorum not reached"));
     }
 
     @Test
-    public void fail_executing_accepted_proposal_multiple_times() {
+    public void fail_executing_accepted_proposal_multiple_times() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), "changeParam",
+                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+        String desc = "fail_executing_accepted_proposal_multiple_times";
 
+        // 1. Create and endorse proposal, then skip till voting phase.
+        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        ext.fastForward(REVIEW_LENGTH);
+
+        // 2. Vote such that the proposal is accepted.
+        voteForProposal(contract, neow3j, proposalHash, alice);
+        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+
+        // 3. Call execute the first time
+        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
+        Hash256 tx = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+                .signers(AccountSigner.calledByEntry(bob))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        assertThat(neow3j.getApplicationLog(tx).send().getApplicationLog().getExecutions().get(0)
+                .getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
+
+        // 4. Call execute the second time and fail.
+        String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Proposal already executed"));
     }
 
 

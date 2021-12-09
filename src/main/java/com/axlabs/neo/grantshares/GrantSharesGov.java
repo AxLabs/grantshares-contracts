@@ -321,8 +321,10 @@ public class GrantSharesGov {
                 : "GrantSharesGov: Quorum not reached";
         assert pv.approve * 100 / participation >= p.acceptanceRate
                 : "GrantSharesGov: Proposal rejected";
-
         // TODO: Check if has abrogation proposal that was accepted.
+        assert !p.executed : "GrantSharesGov: Proposal already executed";
+        p.executed = true;
+        proposals.put(proposalHash, serialize(p));
 
         Object[] returnVals = new Object[intents.length];
         for (int i = 0; i < intents.length; i++) {
