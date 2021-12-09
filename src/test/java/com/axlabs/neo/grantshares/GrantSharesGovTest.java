@@ -30,30 +30,32 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.util.List;
 
-import static com.axlabs.neo.grantshares.TestConstants.ALICE;
-import static com.axlabs.neo.grantshares.TestConstants.BOB;
-import static com.axlabs.neo.grantshares.TestConstants.CHARLIE;
-import static com.axlabs.neo.grantshares.TestConstants.CREATE;
-import static com.axlabs.neo.grantshares.TestConstants.ENDORSE;
-import static com.axlabs.neo.grantshares.TestConstants.GET;
-import static com.axlabs.neo.grantshares.TestConstants.GET_PARAMETER;
-import static com.axlabs.neo.grantshares.TestConstants.GET_PHASES;
-import static com.axlabs.neo.grantshares.TestConstants.GET_VOTES;
-import static com.axlabs.neo.grantshares.TestConstants.MIN_ACCEPTANCE_RATE;
-import static com.axlabs.neo.grantshares.TestConstants.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.TestConstants.MIN_QUORUM;
-import static com.axlabs.neo.grantshares.TestConstants.MIN_QUORUM_KEY;
-import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_CREATED;
-import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_ENDORSED;
-import static com.axlabs.neo.grantshares.TestConstants.PROPOSAL_INTENT;
-import static com.axlabs.neo.grantshares.TestConstants.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestConstants.QUEUED_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.TestConstants.REVIEW_LENGTH;
-import static com.axlabs.neo.grantshares.TestConstants.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.TestConstants.VOTE;
-import static com.axlabs.neo.grantshares.TestConstants.VOTED;
-import static com.axlabs.neo.grantshares.TestConstants.VOTING_LENGTH;
-import static com.axlabs.neo.grantshares.TestConstants.VOTING_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.ALICE;
+import static com.axlabs.neo.grantshares.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.TestHelper.CREATE;
+import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
+import static com.axlabs.neo.grantshares.TestHelper.GET;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PARAMETER;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PHASES;
+import static com.axlabs.neo.grantshares.TestHelper.GET_VOTES;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_CREATED;
+import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
+import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_INTENT;
+import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.VOTE;
+import static com.axlabs.neo.grantshares.TestHelper.VOTED;
+import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.hasher;
+import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
@@ -81,22 +83,12 @@ public class GrantSharesGovTest {
     private static Account bob;
     private static Account charlie; // Set to be a DAO member.
     private static String defaultProposalHash;
-    private static MessageDigest hasher;
 
     @DeployConfig(GrantSharesGov.class)
     public static void deployConfig(DeployConfiguration config) throws Exception {
-        config.setDeployParam(array(
-                array(
-                        ext.getAccount(ALICE).getScriptHash(),
-                        ext.getAccount(CHARLIE).getScriptHash()),
-                array(
-                        REVIEW_LENGTH_KEY, REVIEW_LENGTH,
-                        VOTING_LENGTH_KEY, VOTING_LENGTH,
-                        QUEUED_LENGTH_KEY, QUEUED_LENGTH,
-                        MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
-                        MIN_QUORUM_KEY, MIN_QUORUM
-                )
-        ));
+        config.setDeployParam(prepareDeployParameter(
+                ext.getAccount(ALICE).getScriptHash(),
+                ext.getAccount(CHARLIE).getScriptHash()));
     }
 
     @BeforeAll
@@ -106,7 +98,6 @@ public class GrantSharesGovTest {
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
-        hasher = MessageDigest.getInstance("SHA-256");
 
         Hash256 creationTx = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                         array(array(NeoToken.SCRIPT_HASH, "balanceOf",

@@ -1,10 +1,14 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.annotations.DisplayName;
-import io.neow3j.devpack.events.Event1Arg;
+import io.neow3j.types.ContractParameter;
+import io.neow3j.types.Hash160;
 
-public class TestConstants {
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+
+import static io.neow3j.types.ContractParameter.array;
+
+public class TestHelper {
 
     // Account names available in the neo-express config file.
     static final String ALICE = "NM7Aky765FG8NhhwtxjXRx7jEL1cnw7PBP";
@@ -51,4 +55,27 @@ public class TestConstants {
     // Intent constants
     static final int MAX_METHOD_LEN = 128;
     static final int MAX_SERIALIZED_INTENT_PARAM_LEN = 1024;
+
+    static MessageDigest hasher;
+
+    static {
+        try {
+            hasher = MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        }
+    }
+
+    static ContractParameter prepareDeployParameter(Hash160... govMembers) throws Exception {
+        return array(
+                array(govMembers),
+                array(
+                        REVIEW_LENGTH_KEY, REVIEW_LENGTH,
+                        VOTING_LENGTH_KEY, VOTING_LENGTH,
+                        QUEUED_LENGTH_KEY, QUEUED_LENGTH,
+                        MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
+                        MIN_QUORUM_KEY, MIN_QUORUM
+                )
+        );
+    }
 }
