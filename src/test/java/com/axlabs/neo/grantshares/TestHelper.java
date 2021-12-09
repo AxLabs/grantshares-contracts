@@ -1,12 +1,25 @@
 package com.axlabs.neo.grantshares;
 
+import io.neow3j.contract.NeoToken;
+import io.neow3j.contract.SmartContract;
+import io.neow3j.protocol.Neow3j;
+import io.neow3j.transaction.AccountSigner;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
+import io.neow3j.types.Hash256;
+import io.neow3j.utils.Await;
+import io.neow3j.wallet.Account;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.byteArray;
+import static io.neow3j.types.ContractParameter.hash160;
+import static io.neow3j.types.ContractParameter.integer;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class TestHelper {
 
@@ -77,5 +90,53 @@ public class TestHelper {
                         MIN_QUORUM_KEY, MIN_QUORUM
                 )
         );
+    }
+
+    static Hash256 createSimpleProposal(SmartContract contract, Account proposer,
+            String description) throws Throwable {
+
+        return contract.invokeFunction(CREATE, hash160(proposer),
+                        array(
+                                array(
+                                        NeoToken.SCRIPT_HASH,
+                                        "balanceOf",
+                                        array(new Hash160(defaultAccountScriptHash()))
+                                )
+                        ),
+                        byteArray(hasher.digest(description.getBytes(UTF_8))),
+                        any(null))
+                .signers(AccountSigner.calledByEntry(proposer))
+                .sign().send().getSendRawTransaction().getHash();
+    }
+
+
+    static String createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+            Account endorserAndVoter, ContractParameter intents, String description) throws Throwable {
+
+        // 1. create proposal
+        Hash256 tx = contract.invokeFunction(CREATE, hash160(proposer),
+                        intents, byteArray(hasher.digest(description.getBytes(UTF_8))), any(null))
+                .signers(AccountSigner.calledByEntry(proposer))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
+                .getExecutions().get(0).getStack().get(0).getHexString();
+
+        // 2. endorse proposal
+        tx = contract.invokeFunction(ENDORSE, byteArray(proposalHash), hash160(endorserAndVoter))
+                .signers(AccountSigner.calledByEntry(endorserAndVoter))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        return proposalHash;
+    }
+
+    static void voteForProposal(SmartContract contract, Neow3j neow3j, String proposalHash,
+            Account endorserAndVoter) throws Throwable {
+        Hash256 tx = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(1),
+                        hash160(endorserAndVoter))
+                .signers(AccountSigner.calledByEntry(endorserAndVoter))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
     }
 }

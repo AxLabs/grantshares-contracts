@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.nio.ByteBuffer;
-import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -25,16 +24,6 @@ import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.HASH_PROPOSAL;
 import static com.axlabs.neo.grantshares.TestHelper.MAX_METHOD_LEN;
 import static com.axlabs.neo.grantshares.TestHelper.MAX_SERIALIZED_INTENT_PARAM_LEN;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.hasher;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;

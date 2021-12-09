@@ -27,7 +27,6 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
-import java.security.MessageDigest;
 import java.util.List;
 
 import static com.axlabs.neo.grantshares.TestHelper.ALICE;
@@ -40,20 +39,17 @@ import static com.axlabs.neo.grantshares.TestHelper.GET_PARAMETER;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PHASES;
 import static com.axlabs.neo.grantshares.TestHelper.GET_VOTES;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_CREATED;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_INTENT;
 import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.TestHelper.VOTED;
 import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.createSimpleProposal;
 import static com.axlabs.neo.grantshares.TestHelper.hasher;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
@@ -230,8 +226,7 @@ public class GrantSharesGovTest {
     @Test
     public void succeed_endorsing_with_member() throws Throwable {
         // 1. Create a proposal
-        Hash256 creationTx = sendCreateTestProposalTransaction(alice.getScriptHash(),
-                alice, "succeed_endorsing_with_member");
+        Hash256 creationTx = createSimpleProposal(contract, alice, "succeed_endorsing_with_member");
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
         String proposalHash = neow3j.getApplicationLog(creationTx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
@@ -298,8 +293,8 @@ public class GrantSharesGovTest {
     @Test
     public void fail_endorsing_already_endorsed_proposal() throws Throwable {
         // 1. Create a proposal
-        Hash256 creationTx = sendCreateTestProposalTransaction(alice.getScriptHash(),
-                alice, "fail_endorsing_already_endrosed");
+        Hash256 creationTx = createSimpleProposal(contract, alice,
+                "fail_endorsing_already_endrosed");
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
         String proposalHash = neow3j.getApplicationLog(creationTx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
@@ -329,8 +324,7 @@ public class GrantSharesGovTest {
     @Test
     public void succeed_voting() throws Throwable {
         // 1. Create proposal
-        Hash256 creationTx = sendCreateTestProposalTransaction(bob.getScriptHash(),
-                bob, "succeed_voting");
+        Hash256 creationTx = createSimpleProposal(contract, bob, "succeed_voting");
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
         String proposalHash = neow3j.getApplicationLog(creationTx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
@@ -372,8 +366,7 @@ public class GrantSharesGovTest {
 
     @Test
     public void fail_voting_in_review_and_queued_phase() throws Throwable {
-        Hash256 creationTx = sendCreateTestProposalTransaction(bob.getScriptHash(),
-                bob, "fail_voting_in_review_phase");
+        Hash256 creationTx = createSimpleProposal(contract, bob, "fail_voting_in_review_phase");
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
         String proposalHash = neow3j.getApplicationLog(creationTx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
@@ -413,7 +406,7 @@ public class GrantSharesGovTest {
     public void create_proposal_with_large_description() throws Throwable {
         String desc = Files.readString(new File(this.getClass().getClassLoader().getResource(
                 "proposal_description.txt").toURI()));
-        Hash256 tx = sendCreateTestProposalTransaction(bob.getScriptHash(), bob, desc);
+        Hash256 tx = createSimpleProposal(contract, bob, desc);
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
         String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
@@ -523,24 +516,6 @@ public class GrantSharesGovTest {
         assertThat(contract.callInvokeFunction(GET_PARAMETER, asList(string(REVIEW_LENGTH_KEY)))
                         .getInvocationResult().getStack().get(0).getInteger().intValue(),
                 is(REVIEW_LENGTH));
-    }
-
-    private Hash256 sendCreateTestProposalTransaction(Hash160 proposer,
-            Account signer, String description) throws Throwable {
-
-        return contract.invokeFunction(CREATE, hash160(proposer),
-                        array(
-                                array(
-                                        NeoToken.SCRIPT_HASH,
-                                        "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))
-                                )
-                        ),
-                        byteArray(hasher.digest(description.getBytes(UTF_8))),
-                        any(null))
-                .signers(AccountSigner.calledByEntry(signer))
-                .sign()
-                .send().getSendRawTransaction().getHash();
     }
 
 }

@@ -25,23 +25,19 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
-import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.PARAMETER_CHANGED;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
 import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.TestHelper.hasher;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
+import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
@@ -130,7 +126,7 @@ public class ProposalExecutionsTest {
         String desc = "fail_executing_proposal_without_votes";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
-        String proposalHash = createAndEndorseProposal(bob, alice, intents, desc);
+        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
         ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH + QUEUED_LENGTH);
 
         // 2. Call execute
@@ -141,36 +137,15 @@ public class ProposalExecutionsTest {
         assertThat(exception, containsString("Quorum not reache"));
     }
 
-    String createAndEndorseProposal(Account proposer, Account endorserAndVoter,
-            ContractParameter intents, String description) throws Throwable {
-
-        // 1. create proposal
-        Hash256 tx = contract.invokeFunction(CREATE, hash160(proposer),
-                        intents, byteArray(hasher.digest(description.getBytes(UTF_8))), any(null))
-                .signers(AccountSigner.calledByEntry(proposer))
-                .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
-        String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
-                .getExecutions().get(0).getStack().get(0).getHexString();
-
-        // 2. endorse proposal
-        tx = contract.invokeFunction(ENDORSE, byteArray(proposalHash), hash160(endorserAndVoter))
-                .signers(AccountSigner.calledByEntry(endorserAndVoter))
-                .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
-
-        return proposalHash;
+    @Test
+    public void fail_executing_accepted_proposal_multiple_times() {
+        
     }
 
-    private String voteForProposal(String proposalHash, Account endorserAndVoter) throws Throwable {
-        Hash256 tx = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(1),
-                        hash160(endorserAndVoter))
-                .signers(AccountSigner.calledByEntry(endorserAndVoter))
-                .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
-        return proposalHash;
-    }
+    // TODO:
+    //  - succeed voting and executing proposal that has different quorum and acceptance rate.
+    //  - succeed executing proposal that has multiple intents.
 
     //region CHANGE PARAMETER
     @Test
@@ -183,11 +158,11 @@ public class ProposalExecutionsTest {
         String desc = "execute_change_parameter";
 
         // 1. Create and endorse proposal
-        String proposalHash = createAndEndorseProposal(bob, alice, intents, desc);
+        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(REVIEW_LENGTH);
-        voteForProposal(proposalHash, alice);
+        voteForProposal(contract, neow3j, proposalHash, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
@@ -226,8 +201,4 @@ public class ProposalExecutionsTest {
     }
     //endregion CHANGE PARAMETER
 
-    // TODO:
-    //  - succeed voting and executing proposal that has different quorum and acceptance rate.
-    //  - succeed executing proposal that has multiple intents.
-    //  - fail executing an accepted proposal multiple times.
 }
