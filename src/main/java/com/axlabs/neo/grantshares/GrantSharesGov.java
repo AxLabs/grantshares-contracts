@@ -245,10 +245,14 @@ public class GrantSharesGov {
         int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
         int votingEnd = reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
         int queuedEnd = votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
+        // TODO: Consider adding the endroser on the proposal, which makes it more convenient for
+        //  the outside to get that information, instead of catching the event below.
         proposalPhases.put(proposalHash, serialize(
                 new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
 
         proposalVotes.put(proposalHash, serialize(new ProposalVotes()));
+        // TODO: Consider removing the phase ends from the event. They are fetchable from the
+        //  contract via getProposalPhases.
         endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
     }
 
