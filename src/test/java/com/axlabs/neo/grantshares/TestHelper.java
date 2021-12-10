@@ -30,15 +30,19 @@ public class TestHelper {
 
     // contract methods
     static final String CREATE = "createProposal";
-    static final String GET = "getProposal";
-    static final String ENDORSE = "endorseProposal";
+    static final String GET_PROPOSAL = "getProposal";
+    static final String GET_PROPOSALS = "getProposal";
     static final String GET_PHASES = "getProposalPhases";
     static final String GET_VOTES = "getProposalVotes";
+    static final String GET_PARAMETER = "getParameter";
+    static final String GET_MEMBERS = "getMembers";
+    static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";
     static final String EXECUTE = "execute";
     static final String HASH_PROPOSAL = "hashProposal";
-    static final String GET_PARAMETER = "getParameter";
     static final String CHANGE_PARAM = "changeParam";
+    static final String ADD_MEMBER = "addMember";
+    static final String REMOVE_MEMBER = "removeMember";
 
     // events
     static final String PROPOSAL_CREATED = "ProposalCreated";

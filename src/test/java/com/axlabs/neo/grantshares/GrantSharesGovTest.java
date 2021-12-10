@@ -34,7 +34,7 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
-import static com.axlabs.neo.grantshares.TestHelper.GET;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PARAMETER;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PHASES;
 import static com.axlabs.neo.grantshares.TestHelper.GET_VOTES;
@@ -131,7 +131,7 @@ public class GrantSharesGovTest {
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
 
         // 2. Test correct setup of the created proposal.
-        NeoInvokeFunction r = contract.callInvokeFunction(GET, asList(byteArray(proposalHash)));
+        NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL, asList(byteArray(proposalHash)));
         List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
         assertThat(list.get(0).getHexString(), is(proposalHash));
         assertThat(list.get(1).getAddress(), is(alice.getAddress()));
@@ -412,7 +412,7 @@ public class GrantSharesGovTest {
         String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
                 .getExecutions().get(0).getStack().get(0).getHexString();
 
-        NeoInvokeFunction r = contract.callInvokeFunction(GET, asList(byteArray(proposalHash)));
+        NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL, asList(byteArray(proposalHash)));
         List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
         assertThat(list.get(0).getHexString(), is(proposalHash));
 
@@ -491,7 +491,7 @@ public class GrantSharesGovTest {
         String proposalHash = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
 
-        NeoInvokeFunction r = contract.callInvokeFunction(GET, asList(byteArray(proposalHash)));
+        NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL, asList(byteArray(proposalHash)));
         List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
         assertThat(list.get(0).getHexString(), is(proposalHash));
         assertThat(list.get(1).getAddress(), is(bob.getAddress()));
@@ -517,5 +517,8 @@ public class GrantSharesGovTest {
                         .getInvocationResult().getStack().get(0).getInteger().intValue(),
                 is(REVIEW_LENGTH));
     }
+
+    // TODO:
+    //  - get_members()
 
 }
