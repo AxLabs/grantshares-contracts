@@ -522,6 +522,6 @@ public class GrantSharesGovTest {
     }
 
     // TODO:
-    //  - get_members()
+    //  - fail creating proposal that already exists (error message "Proposal already exists")
 
 }
