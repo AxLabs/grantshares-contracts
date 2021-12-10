@@ -15,14 +15,11 @@ import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
-import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.LedgerContract;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event5Args;
-
-import java.security.Key;
 
 import static io.neow3j.devpack.Helper.memcpy;
 import static io.neow3j.devpack.Runtime.checkWitness;
@@ -173,7 +170,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static List<Hash160> getMembers() {
-        Iterator<ByteString> it = Storage.find(ctx, 5, (byte)(KeysOnly | RemovePrefix));
+        Iterator<ByteString> it = Storage.find(ctx, 5, (byte) (KeysOnly | RemovePrefix));
         List<Hash160> members = new List<>();
         while (it.next()) {
             members.add(new Hash160(it.get()));
