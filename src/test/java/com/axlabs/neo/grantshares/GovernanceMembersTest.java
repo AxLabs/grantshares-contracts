@@ -159,6 +159,8 @@ public class GovernanceMembersTest {
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Already a member"));
     }
+
+    // TODO: execute add member with invalid script hash
     //region ADD MEMBER
 
     //region REMOVE MEMBER
@@ -238,6 +240,9 @@ public class GovernanceMembersTest {
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Not a member"));
     }
+
+    // TODO: execute remove member with invalid script hash
+
     //region REMOVE MEMBER
 
     @Test
@@ -247,5 +252,6 @@ public class GovernanceMembersTest {
                 .map(StackItem::getAddress).collect(Collectors.toList());
         assertThat(members, containsInAnyOrder(alice.getAddress(), charlie.getAddress()));
     }
+
 
 }

@@ -368,7 +368,6 @@ public class GrantSharesGov {
         paramChanged.fire(paramKey, (byte[]) value);
     }
 
-    // TODO: Test
     public static void addMember(Hash160 member) {
         assertCallerIsSelf();
         assert Hash160.isValid(member) : "GrantSharesGov: Not a valid account hash";
@@ -378,7 +377,6 @@ public class GrantSharesGov {
         memberAdded.fire(member);
     }
 
-    // TODO: Test
     public static void removeMember(Hash160 member) {
         assertCallerIsSelf();
         assert Hash160.isValid(member) : "GrantSharesGov: Not a valid account hash";
