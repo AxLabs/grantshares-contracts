@@ -1,5 +1,6 @@
 package com.axlabs.neo.grantshares;
 
+import io.neow3j.contract.GasToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
@@ -9,6 +10,7 @@ import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
+import io.neow3j.transaction.Signer;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
@@ -18,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.List;
 
 import static com.axlabs.neo.grantshares.TestHelper.ALICE;
@@ -50,6 +53,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
         batchFile = "setup.batch")
@@ -171,6 +175,53 @@ public class ProposalExecutionsTest {
     // TODO:
     //  - succeed voting and executing proposal that has different quorum and acceptance rate.
     //  - succeed executing proposal that has multiple intents.
+
+    @Test
+    public void execute_proposal_with_multiple_intents() throws Throwable {
+        ContractParameter intents = array(
+                array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
+                        bob.getScriptHash(), 1, any(null))),
+                array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
+                        bob.getScriptHash(), 1, any(null))));
+        String desc = "execute_proposal_with_multiple_intents";
+
+        // 1. Create and endorse proposal
+        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(REVIEW_LENGTH);
+        voteForProposal(contract, neow3j, proposalHash, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
+        Hash256 tx = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+                .signers(AccountSigner.calledByEntry(alice)
+                        .setAllowedContracts(GasToken.SCRIPT_HASH))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        assertTrue(execution.getStack().get(0).getList().get(0).getBoolean());
+        assertTrue(execution.getStack().get(0).getList().get(1).getBoolean());
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("Transfer"));
+        assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
+        assertThat(n.getState().getList().get(0).getAddress(), is(alice.getAddress()));
+        assertThat(n.getState().getList().get(1).getAddress(), is(bob.getAddress()));
+        assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.ONE));
+        n = execution.getNotifications().get(1);
+        assertThat(n.getEventName(), is("Transfer"));
+        assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
+        assertThat(n.getState().getList().get(0).getAddress(), is(alice.getAddress()));
+        assertThat(n.getState().getList().get(1).getAddress(), is(bob.getAddress()));
+        assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.ONE));
+        n = execution.getNotifications().get(2);
+        assertThat(n.getEventName(), is("ProposalExecuted"));
+        assertThat(n.getContract(), is(contract.getScriptHash()));
+        assertThat(n.getState().getList().get(0).getHexString(), is(proposalHash));
+    }
 
     //region CHANGE PARAMETER
     @Test
