@@ -64,7 +64,7 @@ public class GrantSharesGov {
     @DisplayName("ProposalIntent")
     static Event2Args<ByteString, Intent> intent;
     @DisplayName("ProposalEndorsed")
-    static Event5Args<ByteString, Hash160, Integer, Integer, Integer> endorsed;
+    static Event2Args<ByteString, Hash160> endorsed;
     @DisplayName("Voted")
     static Event3Args<ByteString, Hash160, Integer> voted;
     @DisplayName("ProposalExecuted")
@@ -272,9 +272,7 @@ public class GrantSharesGov {
                 new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
 
         proposalVotes.put(proposalHash, serialize(new ProposalVotes()));
-        // TODO: Consider removing the phase ends from the event. They are fetchable from the
-        //  contract via getProposalPhases.
-        endorsed.fire(proposalHash, endorser, reviewEnd, votingEnd, queuedEnd);
+        endorsed.fire(proposalHash, endorser);
     }
 
     /**
