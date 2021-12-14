@@ -48,14 +48,17 @@ public class GrantSharesGov {
     static final String MIN_QUORUM_KEY = "min_quorum";
     static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
     static final String NR_OF_MEMBERS_KEY = "#_members";
+    static final String NR_OF_PROPOSALS_KEY = "#_proposals";
 
     static final StorageContext ctx = Storage.getStorageContext();
     static final StorageMap proposals = ctx.createMap((byte) 1);
-    static final StorageMap proposalVotes = ctx.createMap(2);
-    static final StorageMap proposalPhases = ctx.createMap(3);
-    static final StorageMap parameters = ctx.createMap(4);
+    static final StorageMap proposalsEnumerated = ctx.createMap((byte) 2);
+    static final StorageMap proposalVotes = ctx.createMap((byte) 3);
+    static final StorageMap proposalPhases = ctx.createMap((byte) 4);
+    static final StorageMap parameters = ctx.createMap((byte) 5);
+    static final byte membersMapPrefix = 6;
     // Maps member hashes to the block index at which they became a member.
-    static final StorageMap members = ctx.createMap(5);
+    static final StorageMap members = ctx.createMap(membersMapPrefix);
     //endregion CONTRACT VARIABLES
 
     //region EVENTS
@@ -89,7 +92,7 @@ public class GrantSharesGov {
                 members.put(initialMembers.get(i).toByteString(), blockIdx);
             }
             Storage.put(ctx, NR_OF_MEMBERS_KEY, initialMembers.size());
-
+            Storage.put(ctx, NR_OF_PROPOSALS_KEY, 0);
             List<Object> params = (List<Object>) membersAndParams.get(1);
             for (int i = 0; i < params.size(); i += 2) {
                 parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
@@ -170,7 +173,8 @@ public class GrantSharesGov {
      */
     @Safe
     public static List<Hash160> getMembers() {
-        Iterator<ByteString> it = Storage.find(ctx, 5, (byte) (KeysOnly | RemovePrefix));
+        Iterator<ByteString> it = Storage.find(ctx, membersMapPrefix,
+                (byte) (KeysOnly | RemovePrefix));
         List<Hash160> members = new List<>();
         while (it.next()) {
             members.add(new Hash160(it.get()));
@@ -178,8 +182,59 @@ public class GrantSharesGov {
         return members;
     }
 
-    // TODO:
-    //  - getProposals
+    /**
+     * Gets the number of proposals created on this contract.
+     *
+     * @return the number of proposals.
+     */
+    @Safe
+    public static int getNrOfProposals() {
+        return Storage.getInteger(ctx, NR_OF_PROPOSALS_KEY);
+    }
+
+    /**
+     * Gets the proposals on the given page.
+     *
+     * @param page         The page.
+     * @param itemsPerPage The number of proposals per page.
+     * @return the chosen page, how many pages ther are with the given page size and the found
+     * proposals on the given page.
+     */
+    @Safe
+    public static Paginated getProposals(int page, int itemsPerPage) {
+        int n = Storage.getInteger(ctx, NR_OF_PROPOSALS_KEY);
+        int pages;
+        if (n < itemsPerPage) {
+            pages = 1;
+        } else if (n % itemsPerPage == 0) {
+            pages = n / itemsPerPage;
+        } else {
+            pages = (n / itemsPerPage) + 1;
+        }
+        assert page < pages : "GrantSharesGov: Page out of bounds";
+        int startAt = itemsPerPage * page;
+        int endAt = startAt + itemsPerPage;
+        if (startAt + itemsPerPage > n) {
+            endAt = n;
+        }
+        List<ByteString> list = new List<>();
+        for (int i = startAt; i < endAt; i++) {
+            list.add(proposalsEnumerated.get(i));
+        }
+        return new Paginated(page, pages, list);
+    }
+
+    static class Paginated {
+        public int page;
+        public int pages;
+        public List<ByteString> items;
+
+        public Paginated(int page, int pages, List<ByteString> items) {
+            this.page = page;
+            this.pages = pages;
+            this.items = items;
+        }
+    }
     //endregion SAFE METHODS
 
     /**
@@ -230,12 +285,13 @@ public class GrantSharesGov {
 
         ByteString proposalHash = hashProposal(intents, descriptionHash);
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
-        // TODO: Consider also checking the phase of an already existing proposal and allow
-        //  creation if the proposal if the existing one was executed.
         assert proposalBytes == null : "GrantSharesGov: Proposal already exists";
 
         proposals.put(proposalHash, serialize(new Proposal(proposalHash, proposer,
                 linkedProposal, acceptanceRate, quorum)));
+        int n = Storage.getInteger(ctx, NR_OF_PROPOSALS_KEY);
+        proposalsEnumerated.put(n, proposalHash);
+        Storage.put(ctx, NR_OF_PROPOSALS_KEY, n + 1);
 
         // An event cannot take a large amount of data, i.e., we should not pass the description,
         // since it might be too large. The max size of a state item is 1024 bytes.
@@ -243,7 +299,6 @@ public class GrantSharesGov {
         for (Intent i : intents) {
             intent.fire(proposalHash, i);
         }
-
         return proposalHash;
     }
 

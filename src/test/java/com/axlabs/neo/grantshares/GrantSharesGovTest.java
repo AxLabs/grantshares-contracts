@@ -34,9 +34,10 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
-import static com.axlabs.neo.grantshares.TestHelper.GET_PARAMETER;
+import static com.axlabs.neo.grantshares.TestHelper.GET_NR_OF_PROPOSALS;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PHASES;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
 import static com.axlabs.neo.grantshares.TestHelper.GET_VOTES;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
@@ -45,7 +46,6 @@ import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_INTENT;
 import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.TestHelper.VOTED;
 import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
@@ -58,13 +58,18 @@ import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
-import static io.neow3j.types.ContractParameter.string;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.emptyOrNullString;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.in;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNot.not;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
         batchFile = "setup.batch")
@@ -267,10 +272,6 @@ public class GrantSharesGovTest {
         List<StackItem> state = ntf.getState().getList();
         assertThat(state.get(0).getHexString(), is(proposalHash));
         assertThat(state.get(1).getAddress(), is(alice.getAddress()));
-        assertThat(state.get(2).getInteger().intValue(), is(n + REVIEW_LENGTH));
-        assertThat(state.get(3).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
-        assertThat(state.get(4).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
-                + QUEUED_LENGTH));
     }
 
     @Test
@@ -514,14 +515,32 @@ public class GrantSharesGovTest {
         assertThat(intents.get(2).getList().size(), is(6));
     }
 
-    @Test
-    public void get_parameters() throws IOException {
-        assertThat(contract.callInvokeFunction(GET_PARAMETER, asList(string(REVIEW_LENGTH_KEY)))
-                        .getInvocationResult().getStack().get(0).getInteger().intValue(),
-                is(REVIEW_LENGTH));
-    }
-
     // TODO:
     //  - fail creating proposal that already exists (error message "Proposal already exists")
 
+    @Test
+    public void get_proposals() throws Throwable {
+        ContractParameter intents = array(array(NeoToken.SCRIPT_HASH, "balanceOf",
+                array(new Hash160(defaultAccountScriptHash()))));
+        TestHelper.createAndEndorseProposal(contract, neow3j, bob, alice, intents, "some_proposal");
+        List<StackItem> p = contract.callInvokeFunction(GET_PROPOSALS, asList(integer(0),
+                integer(1))).getInvocationResult().getStack().get(0).getList();
+        assertThat(p.get(0).getInteger().intValue(), is(0));
+        assertThat(p.get(1).getInteger().intValue(), is(greaterThanOrEqualTo(1)));
+        assertThat(p.get(2).getList().get(0).getHexString(), is(defaultProposalHash));
+
+        p = contract.callInvokeFunction(GET_PROPOSALS, asList(integer(1), integer(1)))
+                .getInvocationResult().getStack().get(0).getList();
+        assertThat(p.get(0).getInteger().intValue(), is(1));
+        assertThat(p.get(1).getInteger().intValue(), is(greaterThanOrEqualTo(1)));
+        assertThat(p.get(2).getList().get(0).getHexString(), is(not(emptyOrNullString())));
+    }
+
+    @Test
+    public void get_number_of_proposals() throws IOException {
+        assertThat(contract.callInvokeFunction(GET_NR_OF_PROPOSALS)
+                        .getInvocationResult().getStack().get(0).getInteger().intValue(),
+                is(greaterThanOrEqualTo(1)));
+        // At least one because of the default proposal from the setup method.
+    }
 }

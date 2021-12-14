@@ -31,11 +31,13 @@ public class TestHelper {
     // contract methods
     static final String CREATE = "createProposal";
     static final String GET_PROPOSAL = "getProposal";
-    static final String GET_PROPOSALS = "getProposal";
+    static final String GET_PROPOSALS = "getProposals";
     static final String GET_PHASES = "getProposalPhases";
     static final String GET_VOTES = "getProposalVotes";
     static final String GET_PARAMETER = "getParameter";
     static final String GET_MEMBERS = "getMembers";
+    static final String GET_NR_OF_PROPOSALS = "getNrOfProposals";
+
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";
     static final String EXECUTE = "execute";
@@ -115,7 +117,7 @@ public class TestHelper {
 
 
     static String createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
-            Account endorserAndVoter, ContractParameter intents, String description) throws Throwable {
+            Account endorser, ContractParameter intents, String description) throws Throwable {
 
         // 1. create proposal
         Hash256 tx = contract.invokeFunction(CREATE, hash160(proposer),
@@ -127,8 +129,8 @@ public class TestHelper {
                 .getExecutions().get(0).getStack().get(0).getHexString();
 
         // 2. endorse proposal
-        tx = contract.invokeFunction(ENDORSE, byteArray(proposalHash), hash160(endorserAndVoter))
-                .signers(AccountSigner.calledByEntry(endorserAndVoter))
+        tx = contract.invokeFunction(ENDORSE, byteArray(proposalHash), hash160(endorser))
+                .signers(AccountSigner.calledByEntry(endorser))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
