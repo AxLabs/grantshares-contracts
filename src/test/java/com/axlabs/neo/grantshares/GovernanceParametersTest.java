@@ -84,6 +84,13 @@ public class GovernanceParametersTest {
         charlie = ext.getAccount(CHARLIE);
     }
 
+    @Test
+    public void get_parameters() throws IOException {
+        assertThat(contract.callInvokeFunction(GET_PARAMETER, asList(string(REVIEW_LENGTH_KEY)))
+                        .getInvocationResult().getStack().get(0).getInteger().intValue(),
+                is(REVIEW_LENGTH));
+    }
+
     //region CHANGE PARAMETER
     @Test
     public void execute_change_parameter() throws Throwable {

@@ -187,8 +187,6 @@ public class HashProposalTest {
     }
 
     @Test
-    @Disabled("Fails because neo-express is not uptodate with Neo 3.1.0 yet and therefore can't " +
-            "handle the new PACKMAP opcode.")
     public void fail_hashing_proposal_with_oversized_param() throws Throwable {
         String method = "balanceOf";
         String keyString =
