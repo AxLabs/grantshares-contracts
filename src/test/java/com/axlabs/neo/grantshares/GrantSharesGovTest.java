@@ -17,13 +17,11 @@ import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
 import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
-import io.neow3j.utils.Files;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
@@ -97,7 +95,7 @@ public class GrantSharesGovTest {
         Hash256 creationTx = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                         array(array(NeoToken.SCRIPT_HASH, "balanceOf",
                                 array(new Hash160(defaultAccountScriptHash())))),
-                        byteArray("default_proposal"),
+                        string("default_proposal"),
                         any(null))
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -120,7 +118,7 @@ public class GrantSharesGovTest {
         Hash256 proposalCreationTx = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        byteArray(proposalDescription),
+                        string(proposalDescription),
                         any(null)) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -187,12 +185,12 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_quorum() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        String descHash = "fail_creating_with_bad_quorum";
+        String desc = "fail_creating_with_bad_quorum";
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        byteArray(descHash),
+                        string(desc),
                         any(null), // linked proposal
                         integer(MIN_ACCEPTANCE_RATE),
                         integer(MIN_QUORUM - 1))
@@ -402,25 +400,22 @@ public class GrantSharesGovTest {
     //  - fail_voting_with_invalid_vote
 
     @Test
-    public void create_proposal_with_large_description() throws Throwable {
-        String desc = Files.readString(new File(this.getClass().getClassLoader().getResource(
-                "proposal_description.txt").toURI()));
-        Hash256 tx = createSimpleProposal(contract, bob, desc);
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
-
-        String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
-                .getExecutions().get(0).getStack().get(0).getHexString();
-
-        NeoInvokeFunction r =
-                contract.callInvokeFunction(GET_PROPOSAL, asList(byteArray(proposalHash)));
-        List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(list.get(0).getHexString(), is(proposalHash));
-
-        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(tx).send()
-                .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
-        assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
-        List<StackItem> state = ntf.getState().getList();
-        assertThat(state.get(2).getString(), is(desc));
+    public void create_proposal_with_too_large_description() throws Throwable {
+        String desc =
+                "aaabcababcababcababcabbcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcaabcabcabcabcabcabc";
+        String exception = contract.invokeFunction(CREATE,
+                hash160(bob),
+                array(
+                        array(
+                                NeoToken.SCRIPT_HASH,
+                                "balanceOf",
+                                array(alice.getScriptHash())
+                        )
+                ),
+                string(desc), any(null))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Description too long"));
     }
 
     @Test
@@ -539,4 +534,8 @@ public class GrantSharesGovTest {
                 is(greaterThanOrEqualTo(1)));
         // At least one because of the default proposal from the setup method.
     }
+
+    // TODO:
+    //  update gov contract
+    //  fail calling update method directly
 }

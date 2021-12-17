@@ -269,6 +269,7 @@ public class GrantSharesGov {
                 : "GrantSharesGov: Quorum not allowed";
         assert linkedProposal == null || proposals.get(linkedProposal) != null
                 : "GrantSharesGov: Linked proposal doesn't exist";
+        assert description.length() <= 1024 : "GrantSharesGov: Description too long";
 
         ByteString proposalHash = hashProposal(intents, sha256(new ByteString(description)));
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
