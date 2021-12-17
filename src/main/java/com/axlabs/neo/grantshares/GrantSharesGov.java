@@ -31,7 +31,6 @@ import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
 
-@ManifestExtra(key = "name", value = "GrantShares")
 @Permission(contract = "*", methods = "*")
 @SuppressWarnings("unchecked")
 public class GrantSharesGov {

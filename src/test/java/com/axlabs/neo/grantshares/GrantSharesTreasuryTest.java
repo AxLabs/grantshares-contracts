@@ -33,18 +33,22 @@ public class GrantSharesTreasuryTest {
     static Account charlie; // Set to be a DAO member.
 
     @DeployConfig(GrantSharesGov.class)
-    public static void deployConfigGov(DeployConfiguration config) throws Exception {
+    public static DeployConfiguration deployConfigGov() throws Exception {
+        DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
                 ext.getAccount(ALICE).getScriptHash(),
                 ext.getAccount(CHARLIE).getScriptHash()));
+        return config;
     }
 
     @DeployConfig(GrantSharesTreasury.class)
-    public static void deployConfigTreasury(DeployConfiguration config, DeployContext ctx) throws Exception {
+    public static DeployConfiguration deployConfigTreasury(DeployContext ctx) throws Exception {
+        DeployConfiguration config = new DeployConfiguration();
         SmartContract gov = ctx.getDeployedContract(GrantSharesGov.class);
         ContractParameter funders = array(ext.getAccount(ALICE).getScriptHash(),
                 ext.getAccount(CHARLIE).getScriptHash());
         config.setDeployParam(array(gov.getScriptHash(), funders));
+        return config;
     }
 
     @BeforeAll

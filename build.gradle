@@ -12,9 +12,9 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.14.0'
+    implementation 'io.neow3j:devpack:3.14.1'
 
-    testImplementation 'io.neow3j:devpack-test:3.14.0',
+    testImplementation 'io.neow3j:devpack-test:3.14.1',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 }

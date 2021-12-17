@@ -78,10 +78,12 @@ public class GrantSharesGovTest {
     private static String defaultProposalHash;
 
     @DeployConfig(GrantSharesGov.class)
-    public static void deployConfig(DeployConfiguration config) throws Exception {
+    public static DeployConfiguration deployConfig() throws Exception {
+        DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
                 ext.getAccount(ALICE).getScriptHash(),
                 ext.getAccount(CHARLIE).getScriptHash()));
+        return config;
     }
 
     @BeforeAll
