@@ -102,6 +102,16 @@ public class GrantSharesGov {
     }
 
     //region SAFE METHODS
+
+    /**
+     * Creates a hash for the given proposal intents and description hash. The hash is unique for
+     * given input, i.e., it is very hard to find intents and descriptionHash that would lead to
+     * a hash collision.
+     *
+     * @param intents         The proposal intents.
+     * @param descriptionHash The hash of the proposal's description.
+     * @return the hash.
+     */
     @Safe
     public static ByteString hashProposal(Intent[] intents, ByteString descriptionHash) {
         ByteString b = new ByteString("");
@@ -134,11 +144,23 @@ public class GrantSharesGov {
         return sha256(b.concat(descriptionHash));
     }
 
+    /**
+     * Gets the value of the parameter with {@code paramName}.
+     *
+     * @param paramName The name of the parameter, which is also its storage key.
+     * @return the parameter's value.
+     */
     @Safe
     public static Object getParameter(String paramName) {
         return parameters.get(paramName);
     }
 
+    /**
+     * Gets the proposal with {@code proposalHash}.
+     *
+     * @param proposalHash The proposal's hash.
+     * @return the proposal.
+     */
     @Safe
     public static Proposal getProposal(ByteString proposalHash) {
         ByteString bytes = proposals.get(proposalHash);
@@ -148,6 +170,12 @@ public class GrantSharesGov {
         return (Proposal) deserialize(proposals.get(proposalHash));
     }
 
+    /**
+     * Gets the votes of the proposal with {@code proposalHash}.
+     *
+     * @param proposalHash The proposal's hash.
+     * @return the votes.
+     */
     @Safe
     public static ProposalVotes getProposalVotes(ByteString proposalHash) {
         ByteString bytes = proposalVotes.get(proposalHash);
