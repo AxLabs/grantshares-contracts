@@ -192,40 +192,11 @@ public class GrantSharesGov {
      * proposals on the given page.
      */
     @Safe
-    public static Paginated getProposals(int page, int itemsPerPage) {
+    public static Paginator.Paginated getProposals(int page, int itemsPerPage) {
         int n = Storage.getInteger(ctx, NR_OF_PROPOSALS_KEY);
-        int pages;
-        if (n < itemsPerPage) {
-            pages = 1;
-        } else if (n % itemsPerPage == 0) {
-            pages = n / itemsPerPage;
-        } else {
-            pages = (n / itemsPerPage) + 1;
-        }
-        assert page < pages : "GrantSharesGov: Page out of bounds";
-        int startAt = itemsPerPage * page;
-        int endAt = startAt + itemsPerPage;
-        if (startAt + itemsPerPage > n) {
-            endAt = n;
-        }
-        List<ByteString> list = new List<>();
-        for (int i = startAt; i < endAt; i++) {
-            list.add(proposalsEnumerated.get(i));
-        }
-        return new Paginated(page, pages, list);
+        return Paginator.paginate(n, page, itemsPerPage, proposalsEnumerated);
     }
 
-    static class Paginated {
-        public int page;
-        public int pages;
-        public List<ByteString> items;
-
-        public Paginated(int page, int pages, List<ByteString> items) {
-            this.page = page;
-            this.pages = pages;
-            this.items = items;
-        }
-    }
     //endregion SAFE METHODS
 
     /**
