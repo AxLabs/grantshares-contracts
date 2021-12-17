@@ -157,15 +157,6 @@ public class GrantSharesGov {
         return (ProposalVotes) deserialize(proposalVotes.get(proposalHash));
     }
 
-    @Safe
-    public static ProposalPhases getProposalPhases(ByteString proposalHash) {
-        ByteString bytes = proposalPhases.get(proposalHash);
-        if (bytes == null) {
-            return null;
-        }
-        return (ProposalPhases) deserialize(proposalPhases.get(proposalHash));
-    }
-
     /**
      * Returns the hashes of the governance members.
      *
@@ -312,20 +303,17 @@ public class GrantSharesGov {
     public static void endorseProposal(ByteString proposalHash, Hash160 endorser) {
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
                 : "GrantSharesGov: Not authorised";
-        assert proposals.get(proposalHash) != null
-                : "GrantSharesGov: Proposal doesn't exist";
-        assert proposalPhases.get(proposalHash) == null
-                : "GrantSharesGov: Proposal already endorsed";
+        ByteString proposalBytes = proposals.get(proposalHash);
+        assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
+        Proposal proposal = (Proposal) deserialize(proposalBytes);
+        assert proposal.endorser == null : "GrantSharesGov: Proposal already endorsed";
 
+        proposal.endorser = endorser;
         // Add +1 because the current idx is the block before this execution happens.
-        int reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
-        int votingEnd = reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
-        int queuedEnd = votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
-        // TODO: Consider adding the endroser on the proposal, which makes it more convenient for
-        //  the outside to get that information, instead of catching the event below.
-        proposalPhases.put(proposalHash, serialize(
-                new ProposalPhases(reviewEnd, votingEnd, queuedEnd)));
-
+        proposal.reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
+        proposal.votingEnd = proposal.reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
+        proposal.queuedEnd = proposal.votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
+        proposals.put(proposalHash, serialize(proposal));
         proposalVotes.put(proposalHash, serialize(new ProposalVotes()));
         endorsed.fire(proposalHash, endorser);
     }
@@ -342,14 +330,15 @@ public class GrantSharesGov {
      *                   proposal does not exist or the proposal is not in its voting phase.
      */
     public static void vote(ByteString proposalHash, int vote, Hash160 voter) {
-        assert vote >= -1 && vote <= 1 : "GrantSharesGov: Illegal vote. Right to jail!";
+        assert vote >= -1 && vote <= 1 : "GrantSharesGov: Illegal vote";
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
                 : "GrantSharesGov: Not authorised";
-        ByteString ppBytes = proposalPhases.get(proposalHash);
-        assert ppBytes != null : "GrantSharesGov: Proposal doesn't exist or wasn't endorsed yet";
-        ProposalPhases pp = (ProposalPhases) deserialize(ppBytes);
+        ByteString proposalBytes = proposals.get(proposalHash);
+        assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
+        Proposal proposal = (Proposal) deserialize(proposalBytes);
+        assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed";
         int currentIdx = currentIndex();
-        assert currentIdx >= pp.reviewEnd && currentIdx < pp.votingEnd
+        assert currentIdx >= proposal.reviewEnd && currentIdx < proposal.votingEnd
                 : "GrantSharesGov: Proposal not active";
 
         // No need for null check. This map was created in the endorsement and we know the
@@ -381,24 +370,22 @@ public class GrantSharesGov {
         ByteString proposalHash = hashProposal(intents, descriptionHash);
         ByteString proposalBytes = proposals.get(proposalHash);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
-        ByteString proposalPhasesBytes = proposalPhases.get(proposalHash);
+        Proposal proposal = (Proposal) deserialize(proposalBytes);
+        assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed yet";
         ByteString proposalVotesBytes = proposalVotes.get(proposalHash);
-        assert proposalPhasesBytes != null && proposalVotesBytes != null
-                : "GrantSharesGov: Proposal wasn't endorsed yet";
-        ProposalPhases pp = (ProposalPhases) deserialize(proposalPhasesBytes);
-        assert currentIndex() >= pp.queuedEnd : "GrantSharesGov: Proposal not in execution phase";
+        assert currentIndex() >= proposal.queuedEnd
+                : "GrantSharesGov: Proposal not in execution phase";
 
-        ProposalVotes pv = (ProposalVotes) deserialize(proposalVotesBytes);
-        Proposal p = (Proposal) deserialize(proposalBytes);
-        int participation = pv.approve + pv.abstain + pv.reject;
-        assert participation * 100 / Storage.getInteger(ctx, NR_OF_MEMBERS_KEY) >= p.quorum
+        ProposalVotes votes = (ProposalVotes) deserialize(proposalVotesBytes);
+        int voteCount = votes.approve + votes.abstain + votes.reject;
+        assert voteCount * 100 / Storage.getInteger(ctx, NR_OF_MEMBERS_KEY) >= proposal.quorum
                 : "GrantSharesGov: Quorum not reached";
-        assert pv.approve * 100 / participation >= p.acceptanceRate
+        assert votes.approve * 100 / voteCount >= proposal.acceptanceRate
                 : "GrantSharesGov: Proposal rejected";
         // TODO: Check if has abrogation proposal that was accepted.
-        assert !p.executed : "GrantSharesGov: Proposal already executed";
-        p.executed = true;
-        proposals.put(proposalHash, serialize(p));
+        assert !proposal.executed : "GrantSharesGov: Proposal already executed";
+        proposal.executed = true;
+        proposals.put(proposalHash, serialize(proposal));
 
         Object[] returnVals = new Object[intents.length];
         for (int i = 0; i < intents.length; i++) {
@@ -408,10 +395,6 @@ public class GrantSharesGov {
         executed.fire(proposalHash);
         return returnVals;
     }
-
-    // TODO:
-    //  - leave()
-    //  - claimFunds() maybe add this to the treasury
 
     //region PROPOSAL-INVOKED METHODS
     // TODO: Consider adding specific setters for each DAO parameter.

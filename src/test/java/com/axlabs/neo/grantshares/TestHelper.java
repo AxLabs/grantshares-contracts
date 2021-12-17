@@ -32,7 +32,6 @@ public class TestHelper {
     static final String CREATE = "createProposal";
     static final String GET_PROPOSAL = "getProposal";
     static final String GET_PROPOSALS = "getProposals";
-    static final String GET_PHASES = "getProposalPhases";
     static final String GET_VOTES = "getProposalVotes";
     static final String GET_PARAMETER = "getParameter";
     static final String GET_MEMBERS = "getMembers";

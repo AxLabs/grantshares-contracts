@@ -35,7 +35,6 @@ import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
 import static com.axlabs.neo.grantshares.TestHelper.GET_NR_OF_PROPOSALS;
-import static com.axlabs.neo.grantshares.TestHelper.GET_PHASES;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
 import static com.axlabs.neo.grantshares.TestHelper.GET_VOTES;
@@ -237,9 +236,13 @@ public class GrantSharesGovTest {
         String proposalHash = neow3j.getApplicationLog(creationTx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
 
-        // 2. Test that proposal phases have not yet been setup.
-        assertThat(contract.callInvokeFunction(GET_PHASES, asList(byteArray(proposalHash)))
-                .getInvocationResult().getStack().get(0).getValue(), is(nullValue()));
+        // 2. Test that proposal endorser and phases have not yet been setup.
+        List<StackItem> proposal = contract.callInvokeFunction(GET_PROPOSAL,
+                asList(byteArray(proposalHash))).getInvocationResult().getStack().get(0).getList();
+        assertThat(proposal.get(5).getValue(), is(nullValue()));
+        assertThat(proposal.get(6).getInteger(), is(BigInteger.ZERO));
+        assertThat(proposal.get(7).getInteger(), is(BigInteger.ZERO));
+        assertThat(proposal.get(8).getInteger(), is(BigInteger.ZERO));
 
         // 3. Endorse
         Hash256 endorseTx = contract.invokeFunction(ENDORSE, byteArray(proposalHash),
@@ -249,13 +252,14 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 4. Test the right setup of the proposal phases
-        NeoInvokeFunction r = contract.callInvokeFunction(GET_PHASES,
+        NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL,
                 asList(byteArray(proposalHash)));
-        List<StackItem> list = r.getInvocationResult().getStack().get(0).getList();
+        proposal = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(proposal.get(5).getAddress(), is(alice.getAddress()));
         int n = neow3j.getTransactionHeight(endorseTx).send().getHeight().intValue();
-        assertThat(list.get(0).getInteger().intValue(), is(n + REVIEW_LENGTH));
-        assertThat(list.get(1).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
-        assertThat(list.get(2).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
+        assertThat(proposal.get(6).getInteger().intValue(), is(n + REVIEW_LENGTH));
+        assertThat(proposal.get(7).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
+        assertThat(proposal.get(8).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
                 + QUEUED_LENGTH));
 
         // 5. Test the right setup of the votes map
@@ -265,7 +269,7 @@ public class GrantSharesGovTest {
         assertThat(votes.get(1).getInteger(), is(BigInteger.ZERO));
         assertThat(votes.get(2).getInteger(), is(BigInteger.ZERO));
 
-        // 6. Test emitted "endrosed" event
+        // 6. Test emitted "endorsed" event
         NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(endorseTx).send()
                 .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_ENDORSED));
