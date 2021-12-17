@@ -69,7 +69,7 @@ public class GrantSharesTreasury {
         assert !isWhitelisted(funder) : "GrantSharesTreasury: Already a funder";
         int n = Storage.getInteger(ctx, FUNDER_COUNT_KEY);
         fundersEnumerated.put(n, funder);
-        Storage.put(ctx, FUNDER_COUNT_KEY, n+1);
+        Storage.put(ctx, FUNDER_COUNT_KEY, n + 1);
     }
 
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
@@ -93,7 +93,8 @@ public class GrantSharesTreasury {
     }
 
 //    @OnNEP11Payment
-//    public static void onNep11Payment(Hash160 sender, int amount, ByteString tokenId, Object data) {
+//    public static void onNep11Payment(Hash160 sender, int amount, ByteString tokenId, Object
+//    data) {
 //        assert isWhitelisted(sender) : "GrantSharesTreasury: Payment from non-whitelisted sender";
 //    }
 

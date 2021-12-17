@@ -1,6 +1,5 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.test.ContractTest;
@@ -11,19 +10,13 @@ import io.neow3j.test.DeployContext;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-
-import java.io.IOException;
 
 import static com.axlabs.neo.grantshares.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.hash160;
-import static io.neow3j.types.ContractParameter.integer;
-import static java.util.Arrays.asList;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
