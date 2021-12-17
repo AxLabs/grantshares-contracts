@@ -15,10 +15,19 @@ Clone this repo:
 git clone https://github.com/AxLabs/grantshares-contracts.git
 ```
 
-Compiling the smart contract (the .nef, .manifest, and .nefdbgnfo output files are at `./build/neow3j`):
+Compiling the GrantSharesGov smart contract (the .nef, .manifest, and .nefdbgnfo output files are 
+at `./build/neow3j`).
 
 ```shell
 ./gradlew clean neow3jCompile
+```
+
+Note, that this doesn't automatically compile the GrantSharesTreasury too. For that you have to 
+change the `className` value in the `neow3jCompiler` section of the build.gradle file.
+```groovy
+    neow3jCompiler {
+        className = "com.axlabs.neo.grantshares.GrantSharesTreasury"
+    }
 ```
 
 Running the tests:
@@ -33,8 +42,8 @@ Documents about proposals, flow, etc., are in the official documentation page fo
 
 ## Acknowledgement
 
-[AxLabs](https://axlabs.com) develops and maintains the GrantSharesDAO, with
-the support from the whole community.
+[AxLabs](https://axlabs.com) develops and maintains the GrantSharesDAO, with the support from the
+whole community.
 
 ## License
 
