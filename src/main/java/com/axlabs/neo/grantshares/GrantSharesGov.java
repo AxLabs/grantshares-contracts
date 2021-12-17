@@ -280,8 +280,8 @@ public class GrantSharesGov {
 
         // An event cannot take a large amount of data, i.e., we should not pass the description,
         // since it might be too large. The max size of a state item is 1024 bytes.
-        // TODO: Test if the description is actually allowed to be 1024 bytes long.
         created.fire(proposalHash, proposer, description, acceptanceRate, quorum);
+        // TODO: Fire a separate event with the description.
         for (Intent i : intents) {
             intent.fire(proposalHash, i);
         }
