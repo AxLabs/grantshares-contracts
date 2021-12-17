@@ -55,7 +55,6 @@ public class GrantSharesGov {
     static final StorageMap proposals = ctx.createMap((byte) 1);
     static final StorageMap proposalsEnumerated = ctx.createMap((byte) 2);
     static final StorageMap proposalVotes = ctx.createMap((byte) 3);
-    static final StorageMap proposalPhases = ctx.createMap((byte) 4);
     static final StorageMap parameters = ctx.createMap((byte) 5);
     static final byte membersMapPrefix = 6;
     // Maps member hashes to the block index at which they became a member.
@@ -89,7 +88,6 @@ public class GrantSharesGov {
             List<Hash160> initialMembers = (List<Hash160>) membersAndParams.get(0);
             int blockIdx = currentIndex();
             for (int i = 0; i < initialMembers.size(); i++) {
-                // TODO: Any information we should map the members to?
                 members.put(initialMembers.get(i).toByteString(), blockIdx);
             }
             Storage.put(ctx, NR_OF_MEMBERS_KEY, initialMembers.size());
@@ -98,7 +96,6 @@ public class GrantSharesGov {
             for (int i = 0; i < params.size(); i += 2) {
                 parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
             }
-            // TODO: Consider failing if not all parameters were set.
         }
     }
 
@@ -283,6 +280,7 @@ public class GrantSharesGov {
 
         // An event cannot take a large amount of data, i.e., we should not pass the description,
         // since it might be too large. The max size of a state item is 1024 bytes.
+        // TODO: Test if the description is actually allowed to be 1024 bytes long.
         created.fire(proposalHash, proposer, description, acceptanceRate, quorum);
         for (Intent i : intents) {
             intent.fire(proposalHash, i);
@@ -418,17 +416,15 @@ public class GrantSharesGov {
         memberRemoved.fire(member);
     }
 
-    // TODO: test
     public static void updateContract(ByteString nef, String manifest, Object data) {
         assertCallerIsSelf();
         ContractManagement.update(nef, manifest, data);
     }
     //endregion PROPOSAL-INVOKED METHODS
 
-    static void assertCallerIsSelf() {
+    private static void assertCallerIsSelf() {
         assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
                 "GrantSharesGov: Method only callable by the contract itself";
     }
-
 
 }
