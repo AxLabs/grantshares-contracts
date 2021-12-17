@@ -11,7 +11,6 @@ import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.utils.Numeric;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -30,6 +29,7 @@ import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.map;
+import static io.neow3j.types.ContractParameter.string;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -61,7 +61,7 @@ public class HashProposalTest {
     public void succeed_hashing_proposal() throws Throwable {
         String method = "balanceOf";
         Hash160 param = new Hash160(defaultAccountScriptHash());
-        byte[] descriptionHash = hasher.digest("succeed_hashing_proposal".getBytes(UTF_8));
+        String desc = "succeed_hashing_proposal";
 
         int size = 20 // target contract
                 + MAX_METHOD_LEN
@@ -81,7 +81,7 @@ public class HashProposalTest {
                 .put(NeoToken.SCRIPT_HASH.toLittleEndianArray())
                 .put(paddedMethod)
                 .put(paddedParam)
-                .put(descriptionHash)
+                .put(hasher.digest(desc.getBytes(UTF_8)))
                 .array();
 
         byte[] expectedIntentHash = hasher.digest(concatenatedIntent);
@@ -95,7 +95,7 @@ public class HashProposalTest {
                                                 array(param)
                                         )
                                 ),
-                                byteArray(descriptionHash))
+                                byteArray(hasher.digest(desc.getBytes(UTF_8))))
                         .callInvokeScript().getInvocationResult();
 
         byte[] intentHash = res.getStack().get(0).getByteArray();
@@ -107,8 +107,7 @@ public class HashProposalTest {
         ContractParameter targetContract = byteArray("00010203040506070809");
         String method = "balanceOf";
         Hash160 param = new Hash160(defaultAccountScriptHash());
-        byte[] descriptionHash =
-                hasher.digest("fail_hashing_proposal_with_oversized_method_name".getBytes(UTF_8));
+        String desc = "fail_hashing_proposal_with_oversized_method_name";
         String exception = contract.invokeFunction(HASH_PROPOSAL,
                         array(
                                 array(
@@ -117,7 +116,7 @@ public class HashProposalTest {
                                         array(param)
                                 )
                         ),
-                        byteArray(descriptionHash))
+                        string(desc))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Invalid target contract hash"));
     }
@@ -126,8 +125,7 @@ public class HashProposalTest {
     public void succeed_hashing_proposal_with_largest_possible_method_name() throws Throwable {
         String method = new String(new char[MAX_METHOD_LEN]);
         Hash160 param = new Hash160(defaultAccountScriptHash());
-        byte[] descriptionHash =
-                hasher.digest("fail_hashing_proposal_with_oversized_method_name".getBytes(UTF_8));
+        String desc = "fail_hashing_proposal_with_oversized_method_name";
         InvocationResult res = contract.invokeFunction(HASH_PROPOSAL,
                         array(
                                 array(
@@ -136,7 +134,7 @@ public class HashProposalTest {
                                         array(param)
                                 )
                         ),
-                        byteArray(descriptionHash))
+                        string(desc))
                 .callInvokeScript().getInvocationResult();
 
         assertThat(res.getException(), is(nullValue()));
@@ -148,8 +146,7 @@ public class HashProposalTest {
         String method =
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         Hash160 param = new Hash160(defaultAccountScriptHash());
-        byte[] descriptionHash =
-                hasher.digest("fail_hashing_proposal_with_oversized_method_name".getBytes(UTF_8));
+        String desc = "fail_hashing_proposal_with_oversized_method_name";
         String exception = contract.invokeFunction(HASH_PROPOSAL,
                         array(
                                 array(
@@ -158,7 +155,7 @@ public class HashProposalTest {
                                         array(param)
                                 )
                         ),
-                        byteArray(descriptionHash))
+                        string(desc))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Target method name too long"));
     }
@@ -169,8 +166,7 @@ public class HashProposalTest {
         byte[] param =
                 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
                         .getBytes(UTF_8);
-        byte[] descriptionHash =
-                hasher.digest("fail_hashing_proposal_with_oversized_method_name".getBytes(UTF_8));
+        String desc = "fail_hashing_proposal_with_oversized_method_name";
         InvocationResult res = contract.invokeFunction(HASH_PROPOSAL,
                         array(
                                 array(
@@ -179,7 +175,7 @@ public class HashProposalTest {
                                         array(param)
                                 )
                         ),
-                        byteArray(descriptionHash))
+                        string(desc))
                 .callInvokeScript().getInvocationResult();
 
         assertThat(res.getException(), is(nullValue()));
@@ -199,8 +195,7 @@ public class HashProposalTest {
         map.put(keyString + "2", valueString);
         map.put(keyString + "4", valueString);
         ContractParameter param = map(map);
-        byte[] descriptionHash =
-                hasher.digest("fail_hashing_proposal_with_oversized_method_name".getBytes(UTF_8));
+        String desc = "fail_hashing_proposal_with_oversized_method_name";
         String exception = contract.invokeFunction(HASH_PROPOSAL,
                         array(
                                 array(
@@ -209,7 +204,7 @@ public class HashProposalTest {
                                         array(param)
                                 )
                         ),
-                        byteArray(descriptionHash))
+                        string(desc))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Intent method parameter too big"));
     }
@@ -218,8 +213,7 @@ public class HashProposalTest {
     public void succeed_hashing_proposal_with_many_params() throws Throwable {
         String method = "balanceOf";
         byte[] param = "abcdefghijklmnopqrstuvwxzy".getBytes(UTF_8);
-        byte[] descriptionHash =
-                hasher.digest("fail_hashing_proposal_with_oversized_method_name".getBytes(UTF_8));
+        String desc = "fail_hashing_proposal_with_oversized_method_name";
         InvocationResult res = contract.invokeFunction(HASH_PROPOSAL,
                         array(
                                 array(
@@ -271,7 +265,7 @@ public class HashProposalTest {
                                                 param)
                                 )
                         ),
-                        byteArray(descriptionHash))
+                        string(desc))
                 .callInvokeScript().getInvocationResult();
 
         assertThat(res.getException(), is(nullValue()));

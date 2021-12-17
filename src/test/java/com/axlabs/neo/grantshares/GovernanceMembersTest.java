@@ -38,13 +38,11 @@ import static com.axlabs.neo.grantshares.TestHelper.REMOVE_MEMBER;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
-import static com.axlabs.neo.grantshares.TestHelper.hasher;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -114,8 +112,7 @@ public class GovernanceMembersTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -153,8 +150,7 @@ public class GovernanceMembersTest {
         voteForProposal(contract, neow3j, proposalHash, alice);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Already a member"));
@@ -195,8 +191,7 @@ public class GovernanceMembersTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -234,8 +229,7 @@ public class GovernanceMembersTest {
         voteForProposal(contract, neow3j, proposalHash, alice);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Not a member"));

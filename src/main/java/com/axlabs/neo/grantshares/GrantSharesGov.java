@@ -15,6 +15,7 @@ import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
+import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.LedgerContract;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -63,7 +64,7 @@ public class GrantSharesGov {
 
     //region EVENTS
     @DisplayName("ProposalCreated")
-    static Event5Args<ByteString, Hash160, ByteString, Integer, Integer> created;
+    static Event5Args<ByteString, Hash160, String, Integer, Integer> created;
     @DisplayName("ProposalIntent")
     static Event2Args<ByteString, Intent> intent;
     @DisplayName("ProposalEndorsed")
@@ -207,7 +208,7 @@ public class GrantSharesGov {
      * @return the number of proposals.
      */
     @Safe
-    public static int getNrOfProposals() {
+    public static int getProposalCount() {
         return Storage.getInteger(ctx, NR_OF_PROPOSALS_KEY);
     }
 
@@ -230,21 +231,17 @@ public class GrantSharesGov {
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
      *
-     * @param proposer        The account set as the proposer.
-     * @param intents         The intents to be executed when the proposal is accepted.
-     * @param descriptionHash A SHA-256 of the proposal's description.
+     * @param proposer    The account set as the proposer.
+     * @param intents     The intents to be executed when the proposal is accepted.
+     * @param description The proposal description. Must not be larger than 1024 bytes.
      * @return The hash of the proposal.
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
      */
-    public static ByteString createProposal(Hash160 proposer, Intent[] intents,
-            ByteString descriptionHash, ByteString linkedProposal) {
+    public static ByteString createProposal(Hash160 proposer, Intent[] intents, String description,
+            ByteString linkedProposal) {
 
-        return createProposal(
-                proposer,
-                intents,
-                descriptionHash,
-                linkedProposal,
+        return createProposal(proposer, intents, description, linkedProposal,
                 parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY),
                 parameters.getInteger(MIN_QUORUM_KEY));
     }
@@ -252,18 +249,18 @@ public class GrantSharesGov {
     /**
      * Creates a proposal.
      *
-     * @param proposer        The account set as the proposer.
-     * @param intents         The intents to be executed when the proposal is accepted.
-     * @param descriptionHash A SHA-256 of the proposal's description.
-     * @param linkedProposal  A proposal that preceded this one.
-     * @param acceptanceRate  The desired acceptance rate.
-     * @param quorum          The desired quorum.
+     * @param proposer       The account set as the proposer.
+     * @param intents        The intents to be executed when the proposal is accepted.
+     * @param description    The proposal description. Must not be larger than 1024 bytes.
+     * @param linkedProposal A proposal that preceded this one.
+     * @param acceptanceRate The desired acceptance rate.
+     * @param quorum         The desired quorum.
      * @return The hash of the proposal.
      * @throws Exception if proposal already exists; if the invoking transaction does not hold a
      *                   witness for the proposer.
      */
     public static ByteString createProposal(Hash160 proposer, Intent[] intents,
-            ByteString descriptionHash, ByteString linkedProposal, int acceptanceRate, int quorum) {
+            String description, ByteString linkedProposal, int acceptanceRate, int quorum) {
 
         assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
         assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY)
@@ -273,7 +270,7 @@ public class GrantSharesGov {
         assert linkedProposal == null || proposals.get(linkedProposal) != null
                 : "GrantSharesGov: Linked proposal doesn't exist";
 
-        ByteString proposalHash = hashProposal(intents, descriptionHash);
+        ByteString proposalHash = hashProposal(intents, sha256(new ByteString(description)));
         ByteString proposalBytes = proposals.get(proposalHash.toByteArray());
         assert proposalBytes == null : "GrantSharesGov: Proposal already exists";
 
@@ -285,7 +282,7 @@ public class GrantSharesGov {
 
         // An event cannot take a large amount of data, i.e., we should not pass the description,
         // since it might be too large. The max size of a state item is 1024 bytes.
-        created.fire(proposalHash, proposer, descriptionHash, acceptanceRate, quorum);
+        created.fire(proposalHash, proposer, description, acceptanceRate, quorum);
         for (Intent i : intents) {
             intent.fire(proposalHash, i);
         }
@@ -355,18 +352,18 @@ public class GrantSharesGov {
     }
 
     /**
-     * Executes the proposal with the given {@code intents} and {@code descriptionHash}. Anyone
+     * Executes the proposal with the given {@code intents} and {@code description}. Anyone
      * can execute a proposal.
      * <p>
      * Execution is only successful if the proposal is out of its queued phase, was accepted and
      * does not have a connected abrogation proposal that was accepted.
      *
-     * @param intents         The intents of the proposal.
-     * @param descriptionHash The hash of the proposal description.
+     * @param intents     The intents of the proposal.
+     * @param description The proposal's description.
      * @return the values returned the called intents.
      */
-    public static Object[] execute(Intent[] intents, ByteString descriptionHash) {
-        ByteString proposalHash = hashProposal(intents, descriptionHash);
+    public static Object[] execute(Intent[] intents, String description) {
+        ByteString proposalHash = hashProposal(intents, sha256(new ByteString(description)));
         ByteString proposalBytes = proposals.get(proposalHash);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
@@ -396,7 +393,6 @@ public class GrantSharesGov {
     }
 
     //region PROPOSAL-INVOKED METHODS
-    // TODO: Consider adding specific setters for each DAO parameter.
     public static void changeParam(String paramKey, Object value) {
         assertCallerIsSelf();
         parameters.put(paramKey, (byte[]) value);
@@ -419,6 +415,12 @@ public class GrantSharesGov {
         assert blockIndexBytes != null : "GrantSharesGov: Not a member";
         members.delete(member.toByteString());
         memberRemoved.fire(member);
+    }
+
+    // TODO: test
+    public static void updateContract(ByteString nef, String manifest, Object data) {
+        assertCallerIsSelf();
+        ContractManagement.update(nef, manifest, data);
     }
     //endregion PROPOSAL-INVOKED METHODS
 

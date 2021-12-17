@@ -19,7 +19,7 @@ import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.neow3j.types.ContractParameter.string;
 
 public class TestHelper {
 
@@ -35,7 +35,7 @@ public class TestHelper {
     static final String GET_VOTES = "getProposalVotes";
     static final String GET_PARAMETER = "getParameter";
     static final String GET_MEMBERS = "getMembers";
-    static final String GET_NR_OF_PROPOSALS = "getNrOfProposals";
+    static final String GET_PROPOSAL_COUNT = "getProposalCount";
 
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";
@@ -68,7 +68,6 @@ public class TestHelper {
     static final String QUEUED_LENGTH_KEY = "queued_len";
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     static final String MIN_QUORUM_KEY = "min_quorum";
-    static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
 
     // Intent constants
     static final int MAX_METHOD_LEN = 128;
@@ -108,7 +107,7 @@ public class TestHelper {
                                         array(new Hash160(defaultAccountScriptHash()))
                                 )
                         ),
-                        byteArray(hasher.digest(description.getBytes(UTF_8))),
+                        string(description),
                         any(null))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
@@ -120,7 +119,7 @@ public class TestHelper {
 
         // 1. create proposal
         Hash256 tx = contract.invokeFunction(CREATE, hash160(proposer),
-                        intents, byteArray(hasher.digest(description.getBytes(UTF_8))), any(null))
+                        intents, string(description), any(null))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);

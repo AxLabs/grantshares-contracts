@@ -18,7 +18,6 @@ import io.neow3j.types.Hash256;
 import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
 import io.neow3j.utils.Files;
-import io.neow3j.utils.Numeric;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,9 +33,9 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
-import static com.axlabs.neo.grantshares.TestHelper.GET_NR_OF_PROPOSALS;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL_COUNT;
 import static com.axlabs.neo.grantshares.TestHelper.GET_VOTES;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
@@ -49,7 +48,6 @@ import static com.axlabs.neo.grantshares.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.TestHelper.VOTED;
 import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createSimpleProposal;
-import static com.axlabs.neo.grantshares.TestHelper.hasher;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.any;
@@ -57,15 +55,12 @@ import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.emptyOrNullString;
-import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
-import static org.hamcrest.Matchers.in;
-import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
@@ -102,7 +97,7 @@ public class GrantSharesGovTest {
         Hash256 creationTx = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                         array(array(NeoToken.SCRIPT_HASH, "balanceOf",
                                 array(new Hash160(defaultAccountScriptHash())))),
-                        byteArray(hasher.digest("default_proposal".getBytes(UTF_8))),
+                        byteArray("default_proposal"),
                         any(null))
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -125,7 +120,7 @@ public class GrantSharesGovTest {
         Hash256 proposalCreationTx = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        byteArray(hasher.digest(proposalDescription.getBytes(UTF_8))),
+                        byteArray(proposalDescription),
                         any(null)) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -154,8 +149,7 @@ public class GrantSharesGovTest {
         List<StackItem> state = ntf.getState().getList();
         assertThat(state.get(0).getHexString(), is(proposalHash));
         assertThat(state.get(1).getAddress(), is(alice.getAddress()));
-        assertThat(state.get(2).getHexString(),
-                is(Numeric.toHexStringNoPrefix(hasher.digest(proposalDescription.getBytes(UTF_8)))));
+        assertThat(state.get(2).getString(), is(proposalDescription));
         assertThat(state.get(3).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
         assertThat(state.get(4).getInteger().intValue(), is(MIN_QUORUM));
 
@@ -176,14 +170,13 @@ public class GrantSharesGovTest {
     public void fail_creating_with_missing_linked_proposal() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        byte[] descHash = hasher.digest("fail_creating_with_missing_linked_proposal"
-                .getBytes(UTF_8));
+        String description = "fail_creating_with_missing_linked_proposal";
         byte[] linkedProposal = Hash256.ZERO.toArray();
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        byteArray(descHash),
+                        string(description),
                         byteArray(linkedProposal))
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
@@ -194,7 +187,7 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_quorum() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        byte[] descHash = hasher.digest("fail_creating_with_bad_quorum".getBytes(UTF_8));
+        String descHash = "fail_creating_with_bad_quorum";
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
@@ -213,12 +206,12 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_acceptance_rate() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        byte[] descHash = hasher.digest("fail_creating_with_bad_acceptance_rate".getBytes(UTF_8));
+        String desc = "fail_creating_with_bad_acceptance_rate";
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        byteArray(descHash),
+                        string(desc),
                         any(null), // linked proposal
                         integer(MIN_ACCEPTANCE_RATE - 1),
                         integer(MIN_QUORUM))
@@ -427,8 +420,7 @@ public class GrantSharesGovTest {
                 .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
         List<StackItem> state = ntf.getState().getList();
-        assertThat(state.get(2).getHexString(),
-                is(Numeric.toHexStringNoPrefix(hasher.digest(desc.getBytes(UTF_8)))));
+        assertThat(state.get(2).getString(), is(desc));
     }
 
     @Test
@@ -489,7 +481,7 @@ public class GrantSharesGovTest {
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
                                         ))
                         ),
-                        byteArray(hasher.digest("create_proposal_with_large_intents".getBytes(UTF_8))),
+                        string("create_proposal_with_large_intents"),
                         any(null))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -542,7 +534,7 @@ public class GrantSharesGovTest {
 
     @Test
     public void get_number_of_proposals() throws IOException {
-        assertThat(contract.callInvokeFunction(GET_NR_OF_PROPOSALS)
+        assertThat(contract.callInvokeFunction(GET_PROPOSAL_COUNT)
                         .getInvocationResult().getStack().get(0).getInteger().intValue(),
                 is(greaterThanOrEqualTo(1)));
         // At least one because of the default proposal from the setup method.

@@ -33,14 +33,12 @@ import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
-import static com.axlabs.neo.grantshares.TestHelper.hasher;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
@@ -85,9 +83,8 @@ public class ProposalExecutionsTest {
                         array(MIN_ACCEPTANCE_RATE, 60)
                 )
         );
-        ContractParameter descHash =
-                byteArray(hasher.digest("fail_executing_non_existent_proposal".getBytes(UTF_8)));
-        String exception = contract.callInvokeFunction(EXECUTE, asList(intents, descHash))
+        ContractParameter desc = string("fail_executing_non_existent_proposal");
+        String exception = contract.callInvokeFunction(EXECUTE, asList(intents, desc))
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Proposal doesn't exist"));
     }
@@ -99,16 +96,14 @@ public class ProposalExecutionsTest {
         String desc = "fail_executing_proposal_that_wasnt_endorsed";
 
         // 1. Create proposal then skip till after the queued phase without endorsing.
-        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob),
-                        intents, byteArray(hasher.digest(desc.getBytes(UTF_8))), any(null))
+        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob), intents, string(desc), any(null))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
         ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH + QUEUED_LENGTH);
 
         // 2. Call execute
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Proposal wasn't endorsed yet"));
@@ -126,8 +121,7 @@ public class ProposalExecutionsTest {
         ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH + QUEUED_LENGTH);
 
         // 2. Call execute
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Quorum not reached"));
@@ -148,8 +142,7 @@ public class ProposalExecutionsTest {
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
 
         // 3. Call execute the first time
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -157,7 +150,7 @@ public class ProposalExecutionsTest {
                 .getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
         // 4. Call execute the second time and fail.
-        String exception = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Proposal already executed"));
@@ -186,8 +179,7 @@ public class ProposalExecutionsTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        byte[] descHash = hasher.digest(desc.getBytes(UTF_8));
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, byteArray(descHash))
+        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
                 .signers(AccountSigner.calledByEntry(alice)
                         .setAllowedContracts(GasToken.SCRIPT_HASH))
                 .sign().send().getSendRawTransaction().getHash();
