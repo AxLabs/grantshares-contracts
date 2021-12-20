@@ -6,6 +6,7 @@ import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoInvokeFunction;
+import io.neow3j.protocol.core.stackitem.ByteStringStackItem;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -25,6 +26,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 
 import static com.axlabs.neo.grantshares.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.TestHelper.BOB;
@@ -348,10 +350,14 @@ public class GrantSharesGovTest {
         // 5. Test the right setting of the votes
         NeoInvokeFunction r =
                 contract.callInvokeFunction(GET_VOTES, asList(byteArray(proposalHash)));
-        List<StackItem> votes = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(votes.get(0).getInteger(), is(BigInteger.ZERO));
-        assertThat(votes.get(1).getInteger(), is(BigInteger.ONE));
-        assertThat(votes.get(2).getInteger(), is(BigInteger.ZERO));
+        List<StackItem> votesStruct = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(votesStruct.get(0).getInteger(), is(BigInteger.ZERO));
+        assertThat(votesStruct.get(1).getInteger(), is(BigInteger.ONE));
+        assertThat(votesStruct.get(2).getInteger(), is(BigInteger.ZERO));
+        Map<StackItem, StackItem> votes = votesStruct.get(3).getMap();
+        assertThat(votes.size(), is(1));
+        assertThat(votes.get(new ByteStringStackItem(charlie.getScriptHash().toLittleEndianArray()))
+                .getInteger().intValue(), is(-1));
 
         // 6. Test the emitted vote event
         NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(voteTx).send()
@@ -395,11 +401,88 @@ public class GrantSharesGovTest {
         assertThat(exception, containsString("Proposal not active"));
     }
 
-    // TODO:
-    //  - fail_voting_with_non_member
-    //  - fail_voting_on_non_existent_proposal
-    //  - fail_voting_on_not_endorsed_proposal
-    //  - fail_voting_with_invalid_vote
+    @Test
+    public void fail_voting_multiple_times() throws Throwable {
+        Hash256 creationTx = createSimpleProposal(contract, bob, "fail_voting_multiple_times");
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        String proposalHash = neow3j.getApplicationLog(creationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getHexString();
+
+        // 2. Endorse
+        Hash256 endorseTx = contract.invokeFunction(ENDORSE, byteArray(proposalHash),
+                        hash160(alice.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
+
+        // 3. Fast-forward to the voting phase.
+        ext.fastForward(REVIEW_LENGTH);
+
+        // 4. Vote the first time
+        Hash256 voteTx = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(-1),
+                        hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(voteTx, neow3j);
+
+        // 5. Vote the second time
+        String exception = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(1),
+                        hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Already voted on this proposal"));
+
+        // 6. Check votes struct
+        NeoInvokeFunction r =
+                contract.callInvokeFunction(GET_VOTES, asList(byteArray(proposalHash)));
+        List<StackItem> votesStruct = r.getInvocationResult().getStack().get(0).getList();
+        assertThat(votesStruct.get(0).getInteger(), is(BigInteger.ZERO));
+        assertThat(votesStruct.get(1).getInteger(), is(BigInteger.ONE));
+        assertThat(votesStruct.get(2).getInteger(), is(BigInteger.ZERO));
+        Map<StackItem, StackItem> votes = votesStruct.get(3).getMap();
+        assertThat(votes.size(), is(1));
+        assertThat(votes.get(new ByteStringStackItem(charlie.getScriptHash().toLittleEndianArray()))
+                .getInteger().intValue(), is(-1));
+    }
+
+    @Test
+    public void fail_voting_with_non_member() throws IOException {
+        // Vote on the default proposal. Doesn't matter in what phase it is.
+        String exception = contract.invokeFunction(VOTE, byteArray(defaultProposalHash),
+                        integer(-1), hash160(bob.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(bob)).callInvokeScript().getInvocationResult()
+                .getException();
+        assertThat(exception, containsString("Not authorised"));
+    }
+
+    @Test
+    public void fail_voting_on_non_existent_proposal() throws IOException {
+        String exception = contract.invokeFunction(VOTE, byteArray("0102030405"),
+                        integer(-1), hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie)).callInvokeScript().getInvocationResult()
+                .getException();
+        assertThat(exception, containsString("Proposal doesn't exist"));
+    }
+
+    @Test
+    public void fail_voting_on_not_enorsed_proposal() throws IOException {
+        // Vote on the default proposal. Doesn't matter in what phase it is.
+        String exception = contract.invokeFunction(VOTE, byteArray(defaultProposalHash),
+                        integer(-1), hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie)).callInvokeScript().getInvocationResult()
+                .getException();
+        assertThat(exception, containsString("Proposal wasn't endorsed"));
+    }
+
+    @Test
+    public void fail_voting_with_invalid_vote() throws IOException {
+        // Vote on the default proposal. Doesn't matter in what phase it is.
+        String exception = contract.invokeFunction(VOTE, byteArray(defaultProposalHash),
+                        integer(2), hash160(charlie.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(charlie)).callInvokeScript().getInvocationResult()
+                .getException();
+        assertThat(exception, containsString("Invalid vote"));
+    }
 
     @Test
     public void create_proposal_with_too_large_description() throws Throwable {

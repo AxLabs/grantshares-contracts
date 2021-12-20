@@ -33,6 +33,7 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 
 @Permission(contract = "*", methods = "*")
 @SuppressWarnings("unchecked")
+@DisplayName("ConcealedContractV1")
 public class GrantSharesGov {
 
     //region CONTRACT VARIABLES
@@ -324,7 +325,7 @@ public class GrantSharesGov {
      *                   proposal does not exist or the proposal is not in its voting phase.
      */
     public static void vote(ByteString proposalHash, int vote, Hash160 voter) {
-        assert vote >= -1 && vote <= 1 : "GrantSharesGov: Illegal vote";
+        assert vote >= -1 && vote <= 1 : "GrantSharesGov: Invalid vote";
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
                 : "GrantSharesGov: Not authorised";
         ByteString proposalBytes = proposals.get(proposalHash);
@@ -335,9 +336,11 @@ public class GrantSharesGov {
         assert currentIdx >= proposal.reviewEnd && currentIdx < proposal.votingEnd
                 : "GrantSharesGov: Proposal not active";
 
-        // No need for null check. This map was created in the endorsement and we know the
+        // No need for null check. This map was created in the endorsement, and we know the
         // endorsement happened because the proposal phases were set.
         ProposalVotes pv = (ProposalVotes) deserialize(proposalVotes.get(proposalHash));
+        assert !pv.votes.containsKey(voter) : "GrantSharesGov: Already voted on this proposal";
+        pv.votes.put(voter, vote);
         if (vote < 0) {
             pv.reject += 1;
         } else if (vote > 0) {
