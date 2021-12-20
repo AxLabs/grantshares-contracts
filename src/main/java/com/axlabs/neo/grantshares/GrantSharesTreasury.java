@@ -82,7 +82,6 @@ public class GrantSharesTreasury {
                 + " from " + tokenContract.toByteString().toString();
     }
 
-
     public static void update(ByteString nef, String manifest, Object data) {
         assertCallerIsOwner();
         ContractManagement.update(nef, manifest, data);

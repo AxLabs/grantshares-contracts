@@ -10,7 +10,6 @@ import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.DisplayName;
-import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
@@ -353,8 +352,8 @@ public class GrantSharesGov {
     }
 
     /**
-     * Executes the proposal with the given {@code intents} and {@code description}. Anyone
-     * can execute a proposal.
+     * Executes the proposal with the given {@code intents} and {@code description}. Anyone can
+     * execute a proposal.
      * <p>
      * Execution is only successful if the proposal is out of its queued phase, was accepted and
      * does not have a connected abrogation proposal that was accepted.
