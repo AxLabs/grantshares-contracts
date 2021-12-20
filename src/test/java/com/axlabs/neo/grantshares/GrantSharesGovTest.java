@@ -591,8 +591,17 @@ public class GrantSharesGovTest {
         assertThat(intents.get(2).getList().size(), is(6));
     }
 
-    // TODO:
-    //  - fail creating proposal that already exists (error message "Proposal already exists")
+    @Test
+    public void fail_creating_proposal_that_exists() throws IOException {
+        // Recreate default proposal
+        String exception = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
+                        array(array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                array(new Hash160(defaultAccountScriptHash())))),
+                        string("default_proposal"),
+                        any(null)).signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Proposal already exists"));
+    }
 
     @Test
     public void get_proposals() throws Throwable {
@@ -619,6 +628,8 @@ public class GrantSharesGovTest {
                 is(greaterThanOrEqualTo(1)));
         // At least one because of the default proposal from the setup method.
     }
+
+
 
     // TODO:
     //  update gov contract
