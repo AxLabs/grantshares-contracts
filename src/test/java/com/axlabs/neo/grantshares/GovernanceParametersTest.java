@@ -94,15 +94,15 @@ public class GovernanceParametersTest {
         String desc = "execute_change_parameter";
 
         // 1. Create and endorse proposal
-        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(REVIEW_LENGTH);
-        voteForProposal(contract, neow3j, proposalHash, alice);
+        voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
+        Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -118,8 +118,8 @@ public class GovernanceParametersTest {
         assertThat(state.get(1).getInteger().intValue(), is(newValue));
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
         assertThat(execution.getNotifications().get(1).getContract(), is(contract.getScriptHash()));
-        assertThat(execution.getNotifications().get(1).getState().getList().get(0).getHexString(),
-                is(proposalHash));
+        assertThat(execution.getNotifications().get(1).getState().getList().get(0)
+                        .getInteger().intValue(), is(id));
 
         int v = contract.callInvokeFunction(GET_PARAMETER,
                         asList(string(MIN_ACCEPTANCE_RATE_KEY)))

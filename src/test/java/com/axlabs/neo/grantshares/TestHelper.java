@@ -3,6 +3,7 @@ package com.axlabs.neo.grantshares;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
@@ -12,11 +13,12 @@ import io.neow3j.wallet.Account;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
-import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
@@ -32,7 +34,6 @@ public class TestHelper {
     static final String CREATE = "createProposal";
     static final String GET_PROPOSAL = "getProposal";
     static final String GET_PROPOSALS = "getProposals";
-    static final String GET_VOTES = "getProposalVotes";
     static final String GET_PARAMETER = "getParameter";
     static final String GET_MEMBERS = "getMembers";
     static final String GET_PROPOSAL_COUNT = "getProposalCount";
@@ -108,39 +109,117 @@ public class TestHelper {
                                 )
                         ),
                         string(description),
-                        any(null))
+                        integer(-1))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
     }
 
 
-    static String createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+    static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
             Account endorser, ContractParameter intents, String description) throws Throwable {
 
         // 1. create proposal
         Hash256 tx = contract.invokeFunction(CREATE, hash160(proposer),
-                        intents, string(description), any(null))
+                        intents, string(description), integer(-1))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
-        String proposalHash = neow3j.getApplicationLog(tx).send().getApplicationLog()
-                .getExecutions().get(0).getStack().get(0).getHexString();
+        int id = neow3j.getApplicationLog(tx).send().getApplicationLog()
+                .getExecutions().get(0).getStack().get(0).getInteger().intValue();
 
         // 2. endorse proposal
-        tx = contract.invokeFunction(ENDORSE, byteArray(proposalHash), hash160(endorser))
+        tx = contract.invokeFunction(ENDORSE, integer(id), hash160(endorser))
                 .signers(AccountSigner.calledByEntry(endorser))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
-        return proposalHash;
+        return id;
     }
 
-    static void voteForProposal(SmartContract contract, Neow3j neow3j, String proposalHash,
+    static void voteForProposal(SmartContract contract, Neow3j neow3j, int id,
             Account endorserAndVoter) throws Throwable {
-        Hash256 tx = contract.invokeFunction(VOTE, byteArray(proposalHash), integer(1),
+        Hash256 tx = contract.invokeFunction(VOTE, integer(id), integer(1),
                         hash160(endorserAndVoter))
                 .signers(AccountSigner.calledByEntry(endorserAndVoter))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
+    }
+
+    static Proposal convert(List<StackItem> list) {
+        return new Proposal(
+                list.get(0).getInteger().intValue(),
+                Hash160.fromAddress(list.get(1).getAddress()),
+                list.get(2).getInteger().intValue(),
+                list.get(3).getInteger().intValue(),
+                list.get(4).getInteger().intValue(),
+                list.get(5).getValue() ==
+                        null ? null : Hash160.fromAddress(list.get(5).getAddress()),
+                list.get(6).getInteger().intValue(),
+                list.get(7).getInteger().intValue(),
+                list.get(8).getInteger().intValue(),
+                list.get(9).getBoolean(),
+                list.get(10).getList().stream().map(i -> {
+                    List<StackItem> intent = i.getList();
+                    return new Proposal.Intent(Hash160.fromAddress(intent.get(0).getAddress()),
+                            intent.get(1).getString(), intent.get(2).getList());
+                }).collect(Collectors.toList()),
+                list.get(11).getString(),
+                list.get(12).getInteger().intValue(),
+                list.get(13).getInteger().intValue(),
+                list.get(14).getInteger().intValue(),
+                list.get(15).getMap()); // voters
+    }
+
+    static class Proposal {
+        int id;
+        Hash160 proposer;
+        int linkedProposal;
+        int acceptanceRate;
+        int quorum;
+        Hash160 endorser;
+        int reviewEnd;
+        int votingEnd;
+        int queuedEnd;
+        boolean executed;
+        List<Intent> intents;
+        String desc;
+        int approve;
+        int reject;
+        int abstain;
+        Map<StackItem, StackItem> voters;
+
+        public Proposal(int id, Hash160 proposer, int linkedProposal,
+                int acceptanceRate, int quorum, Hash160 endorser, int reviewEnd, int votingEnd,
+                int queuedEnd, boolean executed, List<Intent> intents, String desc, int approve,
+                int reject, int abstain, Map<StackItem, StackItem> voters) {
+            this.id = id;
+            this.proposer = proposer;
+            this.linkedProposal = linkedProposal;
+            this.acceptanceRate = acceptanceRate;
+            this.quorum = quorum;
+            this.endorser = endorser;
+            this.reviewEnd = reviewEnd;
+            this.votingEnd = votingEnd;
+            this.queuedEnd = queuedEnd;
+            this.executed = executed;
+            this.intents = intents;
+            this.desc = desc;
+            this.approve = approve;
+            this.reject = reject;
+            this.abstain = abstain;
+            this.voters = voters;
+        }
+
+        static class Intent {
+            public Hash160 targetContract;
+            public String method;
+            public List<StackItem> params;
+
+            public Intent(Hash160 targetContract, String method, List<StackItem> params) {
+                this.targetContract = targetContract;
+                this.method = method;
+                this.params = params;
+            }
+        }
     }
 }

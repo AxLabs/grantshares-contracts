@@ -9,13 +9,13 @@ public class ProposalVotes {
     public int reject;
     public int abstain;
 
-    public Map<Hash160, Integer> votes;
+    public Map<Hash160, Integer> voters;
 
     public ProposalVotes() {
         approve = 0;
         reject = 0;
         abstain = 0;
-        votes = new Map<>();
+        voters = new Map<>();
     }
 
 }

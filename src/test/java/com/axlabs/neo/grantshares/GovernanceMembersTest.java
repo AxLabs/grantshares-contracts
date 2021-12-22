@@ -42,7 +42,7 @@ import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.hash160;
-import static io.neow3j.types.ContractParameter.string;
+import static io.neow3j.types.ContractParameter.integer;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -106,15 +106,15 @@ public class GovernanceMembersTest {
         String desc = "execute_add_member";
 
         // 1. Create and endorse proposal
-        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(REVIEW_LENGTH);
-        voteForProposal(contract, neow3j, proposalHash, alice);
+        voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
+        Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -146,13 +146,13 @@ public class GovernanceMembersTest {
         String desc = "fail_execute_add_member_with_already_member";
 
         // 1. Create and endorse proposal
-        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
         // 2. Skip to voting phase and vote
         ext.fastForward(REVIEW_LENGTH);
-        voteForProposal(contract, neow3j, proposalHash, alice);
+        voteForProposal(contract, neow3j, id, alice);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Already a member"));
@@ -185,15 +185,15 @@ public class GovernanceMembersTest {
         String desc = "execute_remove_member";
 
         // 1. Create and endorse proposal
-        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(REVIEW_LENGTH);
-        voteForProposal(contract, neow3j, proposalHash, alice);
+        voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        Hash256 tx = contract.invokeFunction(EXECUTE, intents, string(desc))
+        Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -225,13 +225,13 @@ public class GovernanceMembersTest {
         String desc = "fail_execute_remove_member_with_non_member";
 
         // 1. Create and endorse proposal
-        String proposalHash = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
         // 2. Skip to voting phase and vote
         ext.fastForward(REVIEW_LENGTH);
-        voteForProposal(contract, neow3j, proposalHash, alice);
+        voteForProposal(contract, neow3j, id, alice);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
-        String exception = contract.invokeFunction(EXECUTE, intents, string(desc))
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Not a member"));

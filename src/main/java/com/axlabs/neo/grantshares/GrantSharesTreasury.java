@@ -4,6 +4,7 @@ import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Iterator;
+import io.neow3j.devpack.List;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
@@ -61,7 +62,12 @@ public class GrantSharesTreasury {
     @Safe
     public static Paginator.Paginated getFunders(int page, int itemsPerPage) {
         int n = Storage.getInteger(ctx, FUNDER_COUNT_KEY);
-        return Paginator.paginate(n, page, itemsPerPage, fundersEnumerated);
+        int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
+        List<Object> list = new List<>();
+        for (int i = pagination[0]; i < pagination[1]; i++) {
+            list.add(fundersEnumerated.get(i));
+        }
+        return new Paginator.Paginated(page, pagination[2], list);
     }
 
     public static void addFunder(Hash160 funder) {

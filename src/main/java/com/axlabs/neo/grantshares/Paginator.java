@@ -5,7 +5,7 @@ import io.neow3j.devpack.StorageMap;
 
 public class Paginator {
 
-    public static Paginated paginate(int n, int page, int itemsPerPage, StorageMap enumerated) {
+    static int[] calcPagination(int n, int page, int itemsPerPage) {
         int pages;
         if (n < itemsPerPage) {
             pages = 1;
@@ -20,12 +20,9 @@ public class Paginator {
         if (startAt + itemsPerPage > n) {
             endAt = n;
         }
-        List<Object> list = new List<>();
-        for (int i = startAt; i < endAt; i++) {
-            list.add(enumerated.get(i));
-        }
-        return new Paginated(page, pages, list);
+        return new int[]{startAt, endAt, pages};
     }
+
 
     static class Paginated {
         public int page;
