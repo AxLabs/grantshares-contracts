@@ -20,7 +20,6 @@ import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event4Args;
-import io.neow3j.devpack.events.Event5Args;
 
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
@@ -35,14 +34,11 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 public class GrantSharesGov {
 
     //region CONTRACT VARIABLES
-    // Constants
-    static final int MAX_METHOD_LEN = 128;
-    static final int MAX_SERIALIZED_INTENT_PARAM_LEN = 1024;
 
     // Storage, Keys, Prefixes
-    static final String REVIEW_LENGTH_KEY = "review_len";
-    static final String VOTING_LENGTH_KEY = "voting_len";
-    static final String QUEUED_LENGTH_KEY = "queued_len";
+    static final String REVIEW_LENGTH_KEY = "review_len"; // in milliseconds
+    static final String VOTING_LENGTH_KEY = "voting_len"; // in milliseconds
+    static final String QUEUED_LENGTH_KEY = "queued_len"; // in milliseconds
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     static final String MIN_QUORUM_KEY = "min_quorum";
     static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
@@ -264,7 +260,10 @@ public class GrantSharesGov {
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser == null : "GrantSharesGov: Proposal already endorsed";
         proposal.endorser = endorser;
-        // Add +1 because the current idx is the block before this execution happens.
+
+        // TODO: When deploying the contract, `currentIndex()+1` has to be replaced with getTime().
+        //  For testing purposes we're using the block number for the phase length but in production
+        //  the contract should use the actual time.
         proposal.reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
         proposal.queuedEnd = proposal.votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
@@ -289,8 +288,9 @@ public class GrantSharesGov {
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed";
-        int currentIdx = currentIndex();
-        assert currentIdx >= proposal.reviewEnd && currentIdx < proposal.votingEnd
+        // TODO: `currentIndex` has to be replaced with `getTime`
+        int time = currentIndex();
+        assert time >= proposal.reviewEnd && time < proposal.votingEnd
                 : "GrantSharesGov: Proposal not active";
 
         // No need for null check. This map was created in the endorsement, and we know the
@@ -323,8 +323,8 @@ public class GrantSharesGov {
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed yet";
-        assert currentIndex() >= proposal.queuedEnd
-                : "GrantSharesGov: Proposal not in execution phase";
+        // TODO: `currentIndex` has to be replaced with `getTime`
+        assert currentIndex() >= proposal.queuedEnd : "GrantSharesGov: Proposal not in execution phase";
         assert !proposal.executed : "GrantSharesGov: Proposal already executed";
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));

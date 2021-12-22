@@ -33,18 +33,17 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL_COUNT;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_CREATED;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.TestHelper.VOTED;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createSimpleProposal;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
@@ -243,10 +242,11 @@ public class GrantSharesGovTest {
         proposal = r.getInvocationResult().getStack().get(0).getList();
         assertThat(proposal.get(5).getAddress(), is(alice.getAddress()));
         int n = neow3j.getTransactionHeight(endorseTx).send().getHeight().intValue();
-        assertThat(proposal.get(6).getInteger().intValue(), is(n + REVIEW_LENGTH));
-        assertThat(proposal.get(7).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH));
-        assertThat(proposal.get(8).getInteger().intValue(), is(n + REVIEW_LENGTH + VOTING_LENGTH
-                + QUEUED_LENGTH));
+//        long time = neow3j.getBlock(BigInteger.valueOf(n), false).send().getBlock().getTime();
+        assertThat(proposal.get(6).getInteger().intValue(), is(n + PHASE_LENGTH));
+        assertThat(proposal.get(7).getInteger().intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH));
+        assertThat(proposal.get(8).getInteger().intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH
+                + PHASE_LENGTH));
 
         // 5. Test the right setup of the votes map
         r = contract.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
@@ -329,7 +329,7 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Wait till review phase ends.
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
 
         // 4. Vote
         Hash256 voteTx = contract.invokeFunction(VOTE, integer(id), integer(-1),
@@ -381,7 +381,7 @@ public class GrantSharesGovTest {
         assertThat(exception, containsString("Proposal not active"));
 
         // 5. Fast-forward till after the voting phase.
-        ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
 
         // 4. Vote in queued or later phase
         exception = contract.invokeFunction(VOTE, integer(id), integer(-1),
@@ -406,7 +406,7 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Fast-forward to the voting phase.
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
 
         // 4. Vote the first time
         Hash256 voteTx = contract.invokeFunction(VOTE, integer(id), integer(-1),

@@ -25,14 +25,13 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PARAMETER;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.PARAMETER_CHANGED;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
@@ -80,7 +79,7 @@ public class GovernanceParametersTest {
     public void get_parameters() throws IOException {
         assertThat(contract.callInvokeFunction(GET_PARAMETER, asList(string(REVIEW_LENGTH_KEY)))
                         .getInvocationResult().getStack().get(0).getInteger().intValue(),
-                is(REVIEW_LENGTH));
+                is(PHASE_LENGTH));
     }
 
     //region CHANGE PARAMETER
@@ -97,11 +96,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -119,7 +118,7 @@ public class GovernanceParametersTest {
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
         assertThat(execution.getNotifications().get(1).getContract(), is(contract.getScriptHash()));
         assertThat(execution.getNotifications().get(1).getState().getList().get(0)
-                        .getInteger().intValue(), is(id));
+                .getInteger().intValue(), is(id));
 
         int v = contract.callInvokeFunction(GET_PARAMETER,
                         asList(string(MIN_ACCEPTANCE_RATE_KEY)))

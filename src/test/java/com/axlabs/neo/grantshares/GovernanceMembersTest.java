@@ -29,14 +29,13 @@ import static com.axlabs.neo.grantshares.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.GET_MEMBERS;
 import static com.axlabs.neo.grantshares.TestHelper.MEMBER_ADDED;
 import static com.axlabs.neo.grantshares.TestHelper.MEMBER_REMOVED;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REMOVE_MEMBER;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
@@ -109,11 +108,11 @@ public class GovernanceMembersTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
@@ -148,10 +147,10 @@ public class GovernanceMembersTest {
         // 1. Create and endorse proposal
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
         // 2. Skip to voting phase and vote
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
@@ -188,11 +187,11 @@ public class GovernanceMembersTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
@@ -227,10 +226,10 @@ public class GovernanceMembersTest {
         // 1. Create and endorse proposal
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
         // 2. Skip to voting phase and vote
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();

@@ -26,11 +26,10 @@ import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
-import static com.axlabs.neo.grantshares.TestHelper.QUEUED_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.REVIEW_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.VOTING_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
@@ -95,7 +94,7 @@ public class ProposalExecutionsTest {
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
-        ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
         int id = neow3j.getApplicationLog(tx).send().getApplicationLog().getExecutions().get(0)
                 .getStack().get(0).getInteger().intValue();
 
@@ -115,7 +114,7 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
-        ext.fastForward(REVIEW_LENGTH + VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
         String exception = contract.invokeFunction(EXECUTE, integer(id))
@@ -132,11 +131,11 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, alice);
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute the first time
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
@@ -171,11 +170,11 @@ public class ProposalExecutionsTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(REVIEW_LENGTH);
+        ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(VOTING_LENGTH + QUEUED_LENGTH);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(alice)
                         .setAllowedContracts(GasToken.SCRIPT_HASH))

@@ -48,7 +48,6 @@ public class TestHelper {
 
     // events
     static final String PROPOSAL_CREATED = "ProposalCreated";
-    static final String PROPOSAL_INTENT = "ProposalIntent";
     static final String PROPOSAL_ENDORSED = "ProposalEndorsed";
     static final String PROPOSAL_EXECUTED = "ProposalExecuted";
     static final String VOTED = "Voted";
@@ -57,9 +56,7 @@ public class TestHelper {
     static final String PARAMETER_CHANGED = "ParameterChanged";
 
     // governance parameters values
-    static final int REVIEW_LENGTH = 5;
-    static final int VOTING_LENGTH = 5;
-    static final int QUEUED_LENGTH = 5;
+    static final int PHASE_LENGTH = 10; // blocks instead of time for testing
     static final int MIN_ACCEPTANCE_RATE = 50;
     static final int MIN_QUORUM = 25;
 
@@ -88,9 +85,9 @@ public class TestHelper {
         return array(
                 array(govMembers),
                 array(
-                        REVIEW_LENGTH_KEY, REVIEW_LENGTH,
-                        VOTING_LENGTH_KEY, VOTING_LENGTH,
-                        QUEUED_LENGTH_KEY, QUEUED_LENGTH,
+                        REVIEW_LENGTH_KEY, PHASE_LENGTH,
+                        VOTING_LENGTH_KEY, PHASE_LENGTH,
+                        QUEUED_LENGTH_KEY, PHASE_LENGTH,
                         MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
                         MIN_QUORUM_KEY, MIN_QUORUM
                 )
