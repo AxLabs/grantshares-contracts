@@ -1,7 +1,9 @@
 package com.axlabs.neo.grantshares;
 
+import io.neow3j.devpack.Account;
 import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
+import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.List;
@@ -9,21 +11,21 @@ import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
+import io.neow3j.devpack.StringLiteralHelper;
 import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.contracts.ContractManagement;
-import io.neow3j.devpack.contracts.LedgerContract;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event4Args;
 
+import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
-import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
-import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
+import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
@@ -35,24 +37,26 @@ public class GrantSharesGov {
 
     //region CONTRACT VARIABLES
 
-    // Storage, Keys, Prefixes
-    static final String REVIEW_LENGTH_KEY = "review_len"; // in milliseconds
-    static final String VOTING_LENGTH_KEY = "voting_len"; // in milliseconds
-    static final String QUEUED_LENGTH_KEY = "queued_len"; // in milliseconds
-    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
-    static final String MIN_QUORUM_KEY = "min_quorum";
+    // Parameter keys
+    static final String REVIEW_LENGTH_KEY = "review_len"; // milliseconds
+    static final String VOTING_LENGTH_KEY = "voting_len"; // milliseconds
+    static final String QUEUED_LENGTH_KEY = "queued_len"; // milliseconds
+    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate"; // percentage
+    static final String MIN_QUORUM_KEY = "min_quorum"; // percentage
+    static final String MULTI_SIG_THRESHOLD_KEY = "threshold"; // percentage
     static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
-    static final String MEMBERS_COUNT_KEY = "#_members";
-    static final String PROPOSALS_COUNT_KEY = "#_proposals";
+
+    static final String PROPOSALS_COUNT_KEY = "#_proposals"; //int
+    static final String PAUSED_KEY = "paused"; // boolean
+    static final String MEMBERS_COUNT_KEY = "#_members"; // int
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap proposals = ctx.createMap((byte) 1);
-    static final StorageMap proposalData = ctx.createMap((byte) 2);
-    static final StorageMap proposalVotes = ctx.createMap((byte) 3);
-    static final StorageMap parameters = ctx.createMap((byte) 5);
-    static final byte membersMapPrefix = 6;
-    // Maps member hashes to the block index at which they became a member.
-    static final StorageMap members = ctx.createMap(membersMapPrefix);
+    static final StorageMap proposals = ctx.createMap((byte) 1); // [id, Proposal]
+    static final StorageMap proposalData = ctx.createMap((byte) 2); // [id, ProposalData]
+    static final StorageMap proposalVotes = ctx.createMap((byte) 3); // [id, ProposalVotes]
+    static final StorageMap parameters = ctx.createMap((byte) 4); // [param_key, param_value]
+    static final byte MEMBERS_MAP_PREFIX = 5;
+    static final StorageMap members = ctx.createMap(MEMBERS_MAP_PREFIX); // [Hash160, ECPoint]
     //endregion CONTRACT VARIABLES
 
     //region EVENTS
@@ -74,20 +78,23 @@ public class GrantSharesGov {
 
     @OnDeployment
     @SuppressWarnings("unchecked")
-    public static void deploy(Object data, boolean update) throws Exception {
+    public static void deploy(Object data, boolean update) {
         if (!update) {
             List<Object> membersAndParams = (List<Object>) data;
-            List<Hash160> initialMembers = (List<Hash160>) membersAndParams.get(0);
-            int blockIdx = currentIndex();
-            for (int i = 0; i < initialMembers.size(); i++) {
-                members.put(initialMembers.get(i).toByteString(), blockIdx);
-            }
-            Storage.put(ctx, MEMBERS_COUNT_KEY, initialMembers.size());
-            Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
+            // Set parameters
             List<Object> params = (List<Object>) membersAndParams.get(1);
             for (int i = 0; i < params.size(); i += 2) {
                 parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
             }
+
+            // Set members
+            ECPoint[] pubKeys = (ECPoint[]) membersAndParams.get(0);
+            for (ECPoint pubKey : pubKeys) {
+                members.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
+            }
+            Storage.put(ctx, MEMBERS_COUNT_KEY, pubKeys.length);
+            Storage.put(ctx, PAUSED_KEY, 0);
+            Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
         }
     }
 
@@ -147,17 +154,18 @@ public class GrantSharesGov {
     }
 
     /**
-     * Returns the hashes of the governance members.
+     * Returns the public keys of the governance members.
+     * <p>
+     * The ordering of the returned list can change for consecutive calls.
      *
      * @return the members.
      */
     @Safe
-    public static List<Hash160> getMembers() {
-        Iterator<ByteString> it = Storage.find(ctx, membersMapPrefix,
-                (byte) (KeysOnly | RemovePrefix));
-        List<Hash160> members = new List<>();
+    public static List<ECPoint> getMembers() {
+        Iterator<ByteString> it = Storage.find(ctx, MEMBERS_MAP_PREFIX, ValuesOnly);
+        List<ECPoint> members = new List<>();
         while (it.next()) {
-            members.add(new Hash160(it.get()));
+            members.add(new ECPoint(it.get()));
         }
         return members;
     }
@@ -189,6 +197,36 @@ public class GrantSharesGov {
             list.add(getProposal(i));
         }
         return new Paginator.Paginated(page, pagination[2], list);
+    }
+
+    /**
+     * Checks if the contract is paused, i.e., if the corresponding value in the contract storage is
+     * set to true.
+     *
+     * @return true if the contract is paused. False otherwise.
+     */
+    @Safe
+    public static boolean isPaused() {
+        return Storage.get(ctx, PAUSED_KEY) == StringLiteralHelper.hexToBytes("01");
+    }
+
+    /**
+     * Calculates the hash of the multi-sig account made up of the governance members. The signing
+     * threshold is calculated from the value of the
+     * {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
+     *
+     * @return The multi-sig account hash.
+     */
+    @Safe
+    public static Hash160 calcMembersMultiSigAccount() {
+        int count = Storage.getInteger(ctx, MEMBERS_COUNT_KEY);
+        int thresholdRatio = parameters.getInteger(MULTI_SIG_THRESHOLD_KEY);
+        int thresholdTimes100 = count * thresholdRatio;
+        int threshold = thresholdTimes100 / 100;
+        if (thresholdTimes100 % 100 != 0) {
+            threshold += 1; // Always round up.
+        }
+        return Account.createMultiSigAccount(threshold, getMembers().toArray());
     }
 
     //endregion SAFE METHODS
@@ -324,7 +362,8 @@ public class GrantSharesGov {
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed yet";
         // TODO: `currentIndex` has to be replaced with `getTime`
-        assert currentIndex() >= proposal.queuedEnd : "GrantSharesGov: Proposal not in execution phase";
+        assert currentIndex() >= proposal.queuedEnd
+                : "GrantSharesGov: Proposal not in execution phase";
         assert !proposal.executed : "GrantSharesGov: Proposal already executed";
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
@@ -348,39 +387,80 @@ public class GrantSharesGov {
     }
 
     //region PROPOSAL-INVOKED METHODS
+
+    /**
+     * Changes the value of the parameter with {@code paramKey} to {@code value}.
+     * <p>
+     * This method can only be called by the contract itself.
+     *
+     * @param paramKey The parameter's storage key.
+     * @param value    The new parameter value.
+     */
     public static void changeParam(String paramKey, Object value) {
         assertCallerIsSelf();
         parameters.put(paramKey, (byte[]) value);
         paramChanged.fire(paramKey, (byte[]) value);
     }
 
-    public static void addMember(Hash160 member) {
+    /**
+     * Adds the account with the given public key as a new member.
+     * <p>
+     * This method can only be called by the contract itself.
+     *
+     * @param memberPubKey The new member's public key.
+     */
+    public static void addMember(ECPoint memberPubKey) {
         assertCallerIsSelf();
-        assert Hash160.isValid(member) : "GrantSharesGov: Not a valid account hash";
-        ByteString blockIndexBytes = members.get(member.toByteString());
-        assert blockIndexBytes == null : "GrantSharesGov: Already a member";
-        members.put(member.toByteString(), LedgerContract.currentIndex());
-        memberAdded.fire(member);
+        Hash160 memberHash = createStandardAccount(memberPubKey);
+        assert members.get(memberHash.toByteString()) == null : "GrantSharesGov: Already a member";
+        members.put(memberHash.toByteString(), memberPubKey.toByteString());
+        memberAdded.fire(memberHash);
     }
 
-    public static void removeMember(Hash160 member) {
+    /**
+     * Removes the account with the given public key from the list of members.
+     * <p>
+     * This method can only be called by the contract itself.
+     *
+     * @param memberPubKey The member to remove.
+     */
+    public static void removeMember(ECPoint memberPubKey) {
         assertCallerIsSelf();
-        assert Hash160.isValid(member) : "GrantSharesGov: Not a valid account hash";
-        ByteString blockIndexBytes = members.get(member.toByteString());
-        assert blockIndexBytes != null : "GrantSharesGov: Not a member";
-        members.delete(member.toByteString());
-        memberRemoved.fire(member);
+        Hash160 memberHash = createStandardAccount(memberPubKey);
+        assert members.get(memberHash.toByteString()) != null : "GrantSharesGov: Not a member";
+        members.delete(memberHash.toByteString());
+        memberRemoved.fire(memberHash);
     }
 
+    /**
+     * Updates the contract to the new NEF and manifest.
+     * <p>
+     * This method can only be called by the contract itself.
+     *
+     * @param nef      The new contract NEF.
+     * @param manifest The new contract manifest.
+     * @param data     Optional data passed to the update (_deploy) method.
+     */
     public static void updateContract(ByteString nef, String manifest, Object data) {
         assertCallerIsSelf();
         ContractManagement.update(nef, manifest, data);
     }
     //endregion PROPOSAL-INVOKED METHODS
 
+    public static void pause() {
+        assert checkWitness(calcMembersMultiSigAccount()) : "GrantSharesGov: Not authorized";
+        Storage.put(ctx, PAUSED_KEY, 1);
+    }
+
+    public static void unpause() {
+        assert checkWitness(calcMembersMultiSigAccount()) : "GrantSharesGov: Not authorized";
+        Storage.put(ctx, PAUSED_KEY, 0);
+    }
+
     private static void assertCallerIsSelf() {
         assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
                 "GrantSharesGov: Method only callable by the contract itself";
     }
+
 
 }

@@ -36,8 +36,7 @@ public class GrantSharesTreasuryTest {
     public static DeployConfiguration deployConfigGov() throws Exception {
         DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
-                ext.getAccount(ALICE).getScriptHash(),
-                ext.getAccount(CHARLIE).getScriptHash()));
+                ext.getAccount(ALICE), ext.getAccount(CHARLIE)));
         return config;
     }
 

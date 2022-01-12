@@ -13,6 +13,7 @@ import io.neow3j.wallet.Account;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -21,6 +22,7 @@ import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
+import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.types.ContractParameter.string;
 
 public class TestHelper {
@@ -29,6 +31,7 @@ public class TestHelper {
     static final String ALICE = "NM7Aky765FG8NhhwtxjXRx7jEL1cnw7PBP";
     static final String BOB = "NZpsgXn9VQQoLexpuXJsrX8BsoyAhKUyiX";
     static final String CHARLIE = "NdbtgSku2qLuwsBBzLx3FLtmmMdm32Ktor";
+    static final String DENISE = "NerDv9t8exrQRrP11jjvZKXzSXvTnmfDTo";
 
     // contract methods
     static final String CREATE = "createProposal";
@@ -37,11 +40,14 @@ public class TestHelper {
     static final String GET_PARAMETER = "getParameter";
     static final String GET_MEMBERS = "getMembers";
     static final String GET_PROPOSAL_COUNT = "getProposalCount";
+    static final String PAUSE = "pause";
+    static final String UNPAUSE = "unpause";
+    static final String IS_PAUSED = "isPaused";
+    static final String CALC_MEMBER_MULTI_SIG_ACC = "calcMembersMultiSigAccount";
 
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";
     static final String EXECUTE = "execute";
-    static final String HASH_PROPOSAL = "hashProposal";
     static final String CHANGE_PARAM = "changeParam";
     static final String ADD_MEMBER = "addMember";
     static final String REMOVE_MEMBER = "removeMember";
@@ -59,6 +65,7 @@ public class TestHelper {
     static final int PHASE_LENGTH = 10; // blocks instead of time for testing
     static final int MIN_ACCEPTANCE_RATE = 50;
     static final int MIN_QUORUM = 25;
+    static final int MULTI_SIG_THRESHOLD_RATIO = 50;
 
     // parameter names
     static final String REVIEW_LENGTH_KEY = "review_len";
@@ -66,10 +73,7 @@ public class TestHelper {
     static final String QUEUED_LENGTH_KEY = "queued_len";
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     static final String MIN_QUORUM_KEY = "min_quorum";
-
-    // Intent constants
-    static final int MAX_METHOD_LEN = 128;
-    static final int MAX_SERIALIZED_INTENT_PARAM_LEN = 1024;
+    static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
     static MessageDigest hasher;
 
@@ -81,15 +85,18 @@ public class TestHelper {
         }
     }
 
-    static ContractParameter prepareDeployParameter(Hash160... govMembers) throws Exception {
+    static ContractParameter prepareDeployParameter(Account... members) {
         return array(
-                array(govMembers),
+                array(Arrays.stream(members)
+                        .map(m -> publicKey(m.getECKeyPair().getPublicKey().getEncoded(true)))
+                        .collect(Collectors.toList())),
                 array(
                         REVIEW_LENGTH_KEY, PHASE_LENGTH,
                         VOTING_LENGTH_KEY, PHASE_LENGTH,
                         QUEUED_LENGTH_KEY, PHASE_LENGTH,
                         MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
-                        MIN_QUORUM_KEY, MIN_QUORUM
+                        MIN_QUORUM_KEY, MIN_QUORUM,
+                        MULTI_SIG_THRESHOLD_KEY, MULTI_SIG_THRESHOLD_RATIO
                 )
         );
     }

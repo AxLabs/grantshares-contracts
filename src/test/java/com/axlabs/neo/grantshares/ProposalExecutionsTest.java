@@ -61,8 +61,7 @@ public class ProposalExecutionsTest {
     public static DeployConfiguration deployConfig() throws Exception {
         DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
-                ext.getAccount(ALICE).getScriptHash(),
-                ext.getAccount(CHARLIE).getScriptHash()));
+                ext.getAccount(ALICE), ext.getAccount(CHARLIE)));
         return config;
     }
 

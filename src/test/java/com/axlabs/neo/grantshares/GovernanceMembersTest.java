@@ -1,6 +1,7 @@
 package com.axlabs.neo.grantshares;
 
 import io.neow3j.contract.SmartContract;
+import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.stackitem.StackItem;
@@ -27,9 +28,10 @@ import java.util.stream.Collectors;
 import static com.axlabs.neo.grantshares.TestHelper.ADD_MEMBER;
 import static com.axlabs.neo.grantshares.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.TestHelper.CALC_MEMBER_MULTI_SIG_ACC;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.TestHelper.DENISE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.GET_MEMBERS;
 import static com.axlabs.neo.grantshares.TestHelper.MEMBER_ADDED;
 import static com.axlabs.neo.grantshares.TestHelper.MEMBER_REMOVED;
@@ -42,8 +44,10 @@ import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
+import static io.neow3j.types.ContractParameter.publicKey;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.nullValue;
@@ -62,13 +66,13 @@ public class GovernanceMembersTest {
     static Account alice; // Set to be a DAO member.
     static Account bob;
     static Account charlie; // Set to be a DAO member.
+    static Account denise; // Set to be a DAO member.
 
     @DeployConfig(GrantSharesGov.class)
     public static DeployConfiguration deployConfig() throws Exception {
         DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
-                ext.getAccount(ALICE).getScriptHash(),
-                ext.getAccount(CHARLIE).getScriptHash()));
+                ext.getAccount(ALICE), ext.getAccount(CHARLIE), ext.getAccount(DENISE)));
         return config;
     }
 
@@ -79,6 +83,7 @@ public class GovernanceMembersTest {
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
+        denise = ext.getAccount(DENISE);
     }
 
     //region ADD MEMBER
@@ -94,14 +99,14 @@ public class GovernanceMembersTest {
     @Order(1) // Is executed before the execute_remove_member test which removes bob from members.
     @Test
     public void execute_add_member() throws Throwable {
-        List<String> initMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
+        List<byte[]> initMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
-                .map(StackItem::getAddress).collect(Collectors.toList());
+                .map(StackItem::getByteArray).collect(Collectors.toList());
 
         ContractParameter intents = array(array(
                 contract.getScriptHash(),
                 ADD_MEMBER,
-                array(bob.getScriptHash())));
+                array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true)))));
         String desc = "execute_add_member";
 
         // 1. Create and endorse proposal
@@ -128,12 +133,15 @@ public class GovernanceMembersTest {
                 is(bob.getAddress()));
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
-        List<String> newMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
+        List<byte[]> newMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
-                .map(StackItem::getAddress).collect(Collectors.toList());
+                .map(StackItem::getByteArray).collect(Collectors.toList());
         assertThat(newMembers.size(), is(initMembers.size() + 1));
-        assertThat(newMembers, containsInAnyOrder(bob.getAddress(), charlie.getAddress(),
-                alice.getAddress()));
+        assertThat(newMembers, containsInAnyOrder(
+                bob.getECKeyPair().getPublicKey().getEncoded(true),
+                charlie.getECKeyPair().getPublicKey().getEncoded(true),
+                alice.getECKeyPair().getPublicKey().getEncoded(true),
+                denise.getECKeyPair().getPublicKey().getEncoded(true)));
     }
 
     @Test
@@ -141,7 +149,7 @@ public class GovernanceMembersTest {
         ContractParameter intents = array(array(
                 contract.getScriptHash(),
                 ADD_MEMBER,
-                array(alice.getScriptHash())));
+                array(publicKey(alice.getECKeyPair().getPublicKey().getEncoded(true)))));
         String desc = "fail_execute_add_member_with_already_member";
 
         // 1. Create and endorse proposal
@@ -158,7 +166,7 @@ public class GovernanceMembersTest {
     }
 
     // TODO: execute add member with invalid script hash
-    //region ADD MEMBER
+    //endregion ADD MEMBER
 
     //region REMOVE MEMBER
     @Test
@@ -173,14 +181,14 @@ public class GovernanceMembersTest {
     @Order(2) // Is executed right after the execute_add_member test to remove bob from members
     @Test
     public void execute_remove_member() throws Throwable {
-        List<String> initMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
+        List<byte[]> initMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
-                .map(StackItem::getAddress).collect(Collectors.toList());
+                .map(StackItem::getByteArray).collect(Collectors.toList());
 
         ContractParameter intents = array(array(
                 contract.getScriptHash(),
                 REMOVE_MEMBER,
-                array(bob.getScriptHash())));
+                array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true)))));
         String desc = "execute_remove_member";
 
         // 1. Create and endorse proposal
@@ -207,11 +215,14 @@ public class GovernanceMembersTest {
                 is(bob.getAddress()));
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
-        List<String> newMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
+        List<byte[]> newMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
-                .map(StackItem::getAddress).collect(Collectors.toList());
+                .map(StackItem::getByteArray).collect(Collectors.toList());
         assertThat(newMembers.size(), is(initMembers.size() - 1));
-        assertThat(newMembers, containsInAnyOrder(charlie.getAddress(), alice.getAddress()));
+        assertThat(newMembers, containsInAnyOrder(
+                charlie.getECKeyPair().getPublicKey().getEncoded(true),
+                alice.getECKeyPair().getPublicKey().getEncoded(true),
+                denise.getECKeyPair().getPublicKey().getEncoded(true)));
     }
 
     @Test
@@ -220,7 +231,7 @@ public class GovernanceMembersTest {
         ContractParameter intents = array(array(
                 contract.getScriptHash(),
                 REMOVE_MEMBER,
-                array(acc.getScriptHash())));
+                array(publicKey(acc.getECKeyPair().getPublicKey().getEncoded(true)))));
         String desc = "fail_execute_remove_member_with_non_member";
 
         // 1. Create and endorse proposal
@@ -238,15 +249,35 @@ public class GovernanceMembersTest {
 
     // TODO: execute remove member with invalid script hash
 
-    //region REMOVE MEMBER
+    //endregion REMOVE MEMBER
 
     @Test
     public void get_members() throws IOException {
-        List<String> members = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
+        List<byte[]> members = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
-                .map(StackItem::getAddress).collect(Collectors.toList());
-        assertThat(members, containsInAnyOrder(alice.getAddress(), charlie.getAddress()));
+                .map(StackItem::getByteArray).collect(Collectors.toList());
+        assertThat(members, contains(
+                alice.getECKeyPair().getPublicKey().getEncoded(true),
+                charlie.getECKeyPair().getPublicKey().getEncoded(true),
+                denise.getECKeyPair().getPublicKey().getEncoded(true)));
     }
 
+    @Test
+    public void calc_members_multisig_account() throws IOException {
+        List<ECKeyPair.ECPublicKey> keys = asList(alice.getECKeyPair().getPublicKey(),
+                charlie.getECKeyPair().getPublicKey(),
+                denise.getECKeyPair().getPublicKey());
+        keys.sort((a, b) -> {
+            if (a.equals(b)) return 0;
+            int result = a.getECPoint().getXCoord().toBigInteger()
+                    .compareTo(b.getECPoint().getXCoord().toBigInteger());
+            if (result != 0) return result;
+            return a.getECPoint().getYCoord().toBigInteger().compareTo(b.getECPoint().getYCoord().toBigInteger());
+        });
+
+        Account membersAccount = Account.createMultiSigAccount(keys, 2);
+        assertThat(contract.callInvokeFunction(CALC_MEMBER_MULTI_SIG_ACC).getInvocationResult()
+                .getStack().get(0).getAddress(), is(membersAccount.getAddress()));
+    }
 
 }
