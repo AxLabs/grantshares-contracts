@@ -13,6 +13,8 @@ import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
+import io.neow3j.transaction.Transaction;
+import io.neow3j.transaction.Witness;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
@@ -20,7 +22,10 @@ import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
@@ -28,22 +33,31 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+import static com.axlabs.neo.grantshares.TestHelper.ADD_MEMBER;
 import static com.axlabs.neo.grantshares.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
 import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL_COUNT;
+import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
+import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
 import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_CREATED;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
+import static com.axlabs.neo.grantshares.TestHelper.REMOVE_MEMBER;
+import static com.axlabs.neo.grantshares.TestHelper.UNPAUSE;
+import static com.axlabs.neo.grantshares.TestHelper.UPDATE_CONTRACT;
 import static com.axlabs.neo.grantshares.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.TestHelper.VOTED;
+import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.TestHelper.createSimpleProposal;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
@@ -52,6 +66,7 @@ import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
+import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -61,9 +76,12 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
         batchFile = "setup.batch")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GrantSharesGovTest {
 
     @RegisterExtension
@@ -591,12 +609,144 @@ public class GrantSharesGovTest {
 
     @Test
     public void get_number_of_proposals() throws IOException {
-        assertThat(contract.callInvokeFunction(GET_PROPOSAL_COUNT)
-                        .getInvocationResult().getStack().get(0).getInteger().intValue(),
-                is(greaterThanOrEqualTo(1)));
+        int result = contract.callInvokeFunction(GET_PROPOSAL_COUNT)
+                .getInvocationResult().getStack().get(0).getInteger().intValue();
         // At least one because of the default proposal from the setup method.
+        assertThat(result, is(greaterThanOrEqualTo(1)));
     }
 
+    // Is executed as the first test of series of test that require the contract to be paused.
+    @Order(1)
+    @Test
+    public void succeed_pausing_contract() throws Throwable {
+        assertFalse(contract.callInvokeFunction(IS_PAUSED).getInvocationResult()
+                .getStack().get(0).getBoolean());
+
+        Account membersAccount = createMultiSigAccount(1, alice, charlie);
+        Transaction tx = contract.invokeFunction(PAUSE)
+                .signers(AccountSigner.none(bob), AccountSigner.calledByEntry(membersAccount))
+                .getUnsignedTransaction();
+        Hash256 txHash = tx
+                .addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair()))
+                .addMultiSigWitness(membersAccount.getVerificationScript(), alice)
+                .send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(txHash, neow3j);
+
+        assertTrue(contract.callInvokeFunction(IS_PAUSED).getInvocationResult()
+                .getStack().get(0).getBoolean());
+    }
+
+    @Order(2)
+    @Test
+    public void fail_creating_proposal_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(CREATE, asList(
+                        hash160(alice.getScriptHash()),
+                        array(array(NeoToken.SCRIPT_HASH, "balanceOf",
+                                array(new Hash160(defaultAccountScriptHash())))),
+                        string("default_proposal"),
+                        integer(-1)))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(3)
+    @Test
+    public void fail_endorsing_proposal_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(ENDORSE,
+                        asList(integer(defaultProposalId), hash160(alice.getScriptHash())))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(4)
+    @Test
+    public void fail_voting_on_proposal_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(VOTE, asList(
+                        integer(defaultProposalId), integer(1), hash160(charlie.getScriptHash())))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(5)
+    @Test
+    public void fail_executing_proposal_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(EXECUTE, asList(integer(defaultProposalId)))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(6)
+    @Test
+    public void fail_change_param_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(CHANGE_PARAM,
+                        asList(string(MIN_ACCEPTANCE_RATE_KEY), integer(50)))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(7)
+    @Test
+    public void fail_add_member_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(ADD_MEMBER,
+                        asList(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(8)
+    @Test
+    public void fail_remove_member_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(REMOVE_MEMBER,
+                        asList(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(9)
+    @Test
+    public void fail_update_contract_on_paused_contract() throws Throwable {
+        String exception = contract.callInvokeFunction(UPDATE_CONTRACT,
+                        asList(byteArray(new byte[]{1, 2, 3}), string("manifest"), any(null)))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    // Must be executed after all tests orderd after the test that pauses the contract.
+    @Order(10)
+    @Test
+    public void succeed_unpausing_contract() throws Throwable {
+        assertTrue(contract.callInvokeFunction(IS_PAUSED).getInvocationResult()
+                .getStack().get(0).getBoolean());
+
+        Account membersAccount = createMultiSigAccount(1, alice, charlie);
+        Transaction tx = contract.invokeFunction(UNPAUSE)
+                .signers(AccountSigner.none(bob), AccountSigner.calledByEntry(membersAccount))
+                .getUnsignedTransaction();
+        Hash256 txHash = tx
+                .addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair()))
+                .addMultiSigWitness(membersAccount.getVerificationScript(), alice)
+                .send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(txHash, neow3j);
+
+        assertFalse(contract.callInvokeFunction(IS_PAUSED).getInvocationResult()
+                .getStack().get(0).getBoolean());
+    }
+
+    @Test
+    public void fail_pausing_contract_without_members_account() throws Throwable {
+        String exception = contract.invokeFunction(PAUSE)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Not authorized"));
+    }
+
+    @Test
+    public void fail_unpausing_contract_without_members_account() throws Throwable {
+        String exception = contract.invokeFunction(UNPAUSE)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Not authorized"));
+    }
 
     // TODO:
     //  update gov contract

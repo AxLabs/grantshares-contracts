@@ -2,6 +2,7 @@ package com.axlabs.neo.grantshares;
 
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
+import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.AccountSigner;
@@ -24,6 +25,7 @@ import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.types.ContractParameter.string;
+import static java.util.Arrays.asList;
 
 public class TestHelper {
 
@@ -52,6 +54,7 @@ public class TestHelper {
     static final String CHANGE_PARAM = "changeParam";
     static final String ADD_MEMBER = "addMember";
     static final String REMOVE_MEMBER = "removeMember";
+    static final String UPDATE_CONTRACT = "updateContract";
 
     // events
     static final String PROPOSAL_CREATED = "ProposalCreated";
@@ -148,6 +151,13 @@ public class TestHelper {
                 .signers(AccountSigner.calledByEntry(endorserAndVoter))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
+    }
+
+    static Account createMultiSigAccount(int threshold, Account... accounts) {
+        List<ECKeyPair.ECPublicKey> pubKeys = Arrays.stream(accounts)
+                .map(a -> a.getECKeyPair().getPublicKey())
+                .collect(Collectors.toList());
+        return Account.createMultiSigAccount(pubKeys, threshold);
     }
 
     static Proposal convert(List<StackItem> list) {

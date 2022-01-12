@@ -40,6 +40,7 @@ import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
 import static com.axlabs.neo.grantshares.TestHelper.REMOVE_MEMBER;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
+import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
@@ -294,18 +295,7 @@ public class GovernanceMembersTest {
 
     @Test
     public void calc_members_multisig_account() throws IOException {
-        List<ECKeyPair.ECPublicKey> keys = asList(alice.getECKeyPair().getPublicKey(),
-                charlie.getECKeyPair().getPublicKey(),
-                denise.getECKeyPair().getPublicKey());
-        keys.sort((a, b) -> {
-            if (a.equals(b)) return 0;
-            int result = a.getECPoint().getXCoord().toBigInteger()
-                    .compareTo(b.getECPoint().getXCoord().toBigInteger());
-            if (result != 0) return result;
-            return a.getECPoint().getYCoord().toBigInteger().compareTo(b.getECPoint().getYCoord().toBigInteger());
-        });
-
-        Account membersAccount = Account.createMultiSigAccount(keys, 2);
+        Account membersAccount = createMultiSigAccount(2, alice, charlie, denise);
         assertThat(contract.callInvokeFunction(CALC_MEMBER_MULTI_SIG_ACC).getInvocationResult()
                 .getStack().get(0).getAddress(), is(membersAccount.getAddress()));
     }
