@@ -33,6 +33,7 @@ import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.DENISE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.TestHelper.GET_MEMBERS;
+import static com.axlabs.neo.grantshares.TestHelper.GET_MEMBERS_COUNT;
 import static com.axlabs.neo.grantshares.TestHelper.MEMBER_ADDED;
 import static com.axlabs.neo.grantshares.TestHelper.MEMBER_REMOVED;
 import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
@@ -99,6 +100,8 @@ public class GovernanceMembersTest {
     @Order(1) // Is executed before the execute_remove_member test which removes bob from members.
     @Test
     public void execute_add_member() throws Throwable {
+        assertThat(contract.callInvokeFunction(GET_MEMBERS_COUNT).getInvocationResult().getStack()
+                .get(0).getInteger().intValue(), is(3));
         List<byte[]> initMembers = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
                 .map(StackItem::getByteArray).collect(Collectors.toList());
@@ -115,6 +118,7 @@ public class GovernanceMembersTest {
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
@@ -142,6 +146,9 @@ public class GovernanceMembersTest {
                 charlie.getECKeyPair().getPublicKey().getEncoded(true),
                 alice.getECKeyPair().getPublicKey().getEncoded(true),
                 denise.getECKeyPair().getPublicKey().getEncoded(true)));
+
+        assertThat(contract.callInvokeFunction(GET_MEMBERS_COUNT).getInvocationResult().getStack()
+                .get(0).getInteger().intValue(), is(4));
     }
 
     @Test
@@ -157,6 +164,7 @@ public class GovernanceMembersTest {
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.invokeFunction(EXECUTE, integer(id))
@@ -165,7 +173,29 @@ public class GovernanceMembersTest {
         assertThat(exception, containsString("GrantSharesGov: Already a member"));
     }
 
-    // TODO: execute add member with invalid script hash
+    @Test
+    public void fail_execute_add_member_with_invalid_public_key() throws Throwable {
+        // first byte is '04' instead of '03'
+        String invalidPubKey = "043a4d051b04b7fc0230d2b1aaedfd5a84be279a5361a7358db665ad7857787f1b";
+        ContractParameter intents = array(array(
+                contract.getScriptHash(),
+                ADD_MEMBER,
+                array(publicKey(invalidPubKey))));
+        String desc = "fail_execute_add_member_with_invalid_public_key";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Incorrect length"));
+    }
     //endregion ADD MEMBER
 
     //region REMOVE MEMBER
@@ -197,6 +227,7 @@ public class GovernanceMembersTest {
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
@@ -239,6 +270,7 @@ public class GovernanceMembersTest {
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.invokeFunction(EXECUTE, integer(id))
@@ -246,8 +278,6 @@ public class GovernanceMembersTest {
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesGov: Not a member"));
     }
-
-    // TODO: execute remove member with invalid script hash
 
     //endregion REMOVE MEMBER
 

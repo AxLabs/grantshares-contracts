@@ -39,6 +39,7 @@ public class TestHelper {
     static final String GET_PROPOSALS = "getProposals";
     static final String GET_PARAMETER = "getParameter";
     static final String GET_MEMBERS = "getMembers";
+    static final String GET_MEMBERS_COUNT = "getMembersCount";
     static final String GET_PROPOSAL_COUNT = "getProposalCount";
     static final String PAUSE = "pause";
     static final String UNPAUSE = "unpause";
@@ -64,7 +65,7 @@ public class TestHelper {
     // governance parameters values
     static final int PHASE_LENGTH = 10; // blocks instead of time for testing
     static final int MIN_ACCEPTANCE_RATE = 50;
-    static final int MIN_QUORUM = 25;
+    static final int MIN_QUORUM = 50;
     static final int MULTI_SIG_THRESHOLD_RATIO = 50;
 
     // parameter names
