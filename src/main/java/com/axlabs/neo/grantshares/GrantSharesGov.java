@@ -177,7 +177,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int getMembersCount() {
-        return Storage.getInteger(ctx, MEMBERS_COUNT_KEY);
+        return Storage.getInt(ctx, MEMBERS_COUNT_KEY);
     }
 
     /**
@@ -187,7 +187,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int getProposalCount() {
-        return Storage.getInteger(ctx, PROPOSALS_COUNT_KEY);
+        return Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
     }
 
     /**
@@ -200,7 +200,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static Paginator.Paginated getProposals(int page, int itemsPerPage) {
-        int n = Storage.getInteger(ctx, PROPOSALS_COUNT_KEY);
+        int n = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
         int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
         List<Object> list = new List<>();
         for (int i = pagination[0]; i < pagination[1]; i++) {
@@ -220,6 +220,7 @@ public class GrantSharesGov {
         return Storage.get(ctx, PAUSED_KEY) == StringLiteralHelper.hexToBytes("01");
     }
 
+
     /**
      * Calculates the hash of the multi-sig account made up of the governance members. The signing
      * threshold is calculated from the value of the
@@ -229,8 +230,8 @@ public class GrantSharesGov {
      */
     @Safe
     public static Hash160 calcMembersMultiSigAccount() {
-        int count = Storage.getInteger(ctx, MEMBERS_COUNT_KEY);
-        int thresholdRatio = parameters.getInteger(MULTI_SIG_THRESHOLD_KEY);
+        int count = Storage.getInt(ctx, MEMBERS_COUNT_KEY);
+        int thresholdRatio = parameters.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
         if (thresholdTimes100 % 100 != 0) {
@@ -240,6 +241,8 @@ public class GrantSharesGov {
     }
 
     //endregion SAFE METHODS
+
+    // region GOVERNANCE PROCESS METHODS
 
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
@@ -253,8 +256,8 @@ public class GrantSharesGov {
             int linkedProposal) {
 
         return createProposal(proposer, intents, description, linkedProposal,
-                parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY),
-                parameters.getInteger(MIN_QUORUM_KEY));
+                parameters.getInt(MIN_ACCEPTANCE_RATE_KEY),
+                parameters.getInt(MIN_QUORUM_KEY));
     }
 
     /**
@@ -273,15 +276,16 @@ public class GrantSharesGov {
 
         // TODO: Check for targetContract validity and if they target only the Governance and
         //  Treasury contracts.
+        assertNotPaused();
         assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
-        assert acceptanceRate >= parameters.getInteger(MIN_ACCEPTANCE_RATE_KEY)
+        assert acceptanceRate >= parameters.getInt(MIN_ACCEPTANCE_RATE_KEY)
                 : "GrantSharesGov: Acceptance rate not allowed";
-        assert quorum >= parameters.getInteger(MIN_QUORUM_KEY)
+        assert quorum >= parameters.getInt(MIN_QUORUM_KEY)
                 : "GrantSharesGov: Quorum not allowed";
         assert linkedProposal < 0 || proposals.get(linkedProposal) != null
                 : "GrantSharesGov: Linked proposal doesn't exist";
 
-        int id = Storage.getInteger(ctx, PROPOSALS_COUNT_KEY);
+        int id = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
         proposals.put(id, serialize(new Proposal(id)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
                 quorum, intents, description)));
@@ -301,6 +305,7 @@ public class GrantSharesGov {
      * @param endorser The script hash of the endorsing DAO member.
      */
     public static void endorseProposal(int id, Hash160 endorser) {
+        assertNotPaused();
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
                 : "GrantSharesGov: Not authorised";
         ByteString proposalBytes = proposals.get(id);
@@ -312,9 +317,9 @@ public class GrantSharesGov {
         // TODO: When deploying the contract, `currentIndex()+1` has to be replaced with getTime().
         //  For testing purposes we're using the block number for the phase length but in production
         //  the contract should use the actual time.
-        proposal.reviewEnd = currentIndex() + 1 + parameters.getInteger(REVIEW_LENGTH_KEY);
-        proposal.votingEnd = proposal.reviewEnd + parameters.getInteger(VOTING_LENGTH_KEY);
-        proposal.queuedEnd = proposal.votingEnd + parameters.getInteger(QUEUED_LENGTH_KEY);
+        proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
+        proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
+        proposal.queuedEnd = proposal.votingEnd + parameters.getInt(QUEUED_LENGTH_KEY);
         proposals.put(id, serialize(proposal));
         endorsed.fire(id, endorser);
     }
@@ -329,6 +334,7 @@ public class GrantSharesGov {
      *              invoking script must hold a witness of the voter.
      */
     public static void vote(int id, int vote, Hash160 voter) {
+        assertNotPaused();
         assert vote >= -1 && vote <= 1 : "GrantSharesGov: Invalid vote";
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
                 : "GrantSharesGov: Not authorised";
@@ -367,6 +373,7 @@ public class GrantSharesGov {
      * @return the values returned by the proposal's intents.
      */
     public static Object[] execute(int id) {
+        assertNotPaused();
         ByteString proposalBytes = proposals.get(id);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
@@ -378,7 +385,7 @@ public class GrantSharesGov {
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
-        assert voteCount * 100 / Storage.getInteger(ctx, MEMBERS_COUNT_KEY) >= data.quorum
+        assert voteCount * 100 / Storage.getInt(ctx, MEMBERS_COUNT_KEY) >= data.quorum
                 : "GrantSharesGov: Quorum not reached";
         assert votes.approve * 100 / voteCount >= data.acceptanceRate
                 : "GrantSharesGov: Proposal rejected";
@@ -395,6 +402,7 @@ public class GrantSharesGov {
         executed.fire(id);
         return returnVals;
     }
+    // endregion GOVERNANCE PROCESS METHODS
 
     //region PROPOSAL-INVOKED METHODS
 
@@ -407,6 +415,7 @@ public class GrantSharesGov {
      * @param value    The new parameter value.
      */
     public static void changeParam(String paramKey, Object value) {
+        assertNotPaused();
         assertCallerIsSelf();
         parameters.put(paramKey, (byte[]) value);
         paramChanged.fire(paramKey, (byte[]) value);
@@ -420,11 +429,12 @@ public class GrantSharesGov {
      * @param memberPubKey The new member's public key.
      */
     public static void addMember(ECPoint memberPubKey) {
+        assertNotPaused();
         assertCallerIsSelf();
         Hash160 memberHash = createStandardAccount(memberPubKey);
         assert members.get(memberHash.toByteString()) == null : "GrantSharesGov: Already a member";
         members.put(memberHash.toByteString(), memberPubKey.toByteString());
-        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInteger(ctx, MEMBERS_COUNT_KEY) + 1);
+        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(ctx, MEMBERS_COUNT_KEY) + 1);
         memberAdded.fire(memberHash);
     }
 
@@ -436,11 +446,12 @@ public class GrantSharesGov {
      * @param memberPubKey The member to remove.
      */
     public static void removeMember(ECPoint memberPubKey) {
+        assertNotPaused();
         assertCallerIsSelf();
         Hash160 memberHash = createStandardAccount(memberPubKey);
         assert members.get(memberHash.toByteString()) != null : "GrantSharesGov: Not a member";
         members.delete(memberHash.toByteString());
-        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInteger(ctx, MEMBERS_COUNT_KEY) - 1);
+        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(ctx, MEMBERS_COUNT_KEY) - 1);
         memberRemoved.fire(memberHash);
     }
 
@@ -454,6 +465,7 @@ public class GrantSharesGov {
      * @param data     Optional data passed to the update (_deploy) method.
      */
     public static void updateContract(ByteString nef, String manifest, Object data) {
+        assertNotPaused();
         assertCallerIsSelf();
         ContractManagement.update(nef, manifest, data);
     }
@@ -474,5 +486,8 @@ public class GrantSharesGov {
                 "GrantSharesGov: Method only callable by the contract itself";
     }
 
+    private static void assertNotPaused() {
+        assert !isPaused() : "GrantSharesGov: Contract is paused";
+    }
 
 }

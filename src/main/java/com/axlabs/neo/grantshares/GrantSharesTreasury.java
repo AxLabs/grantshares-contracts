@@ -61,7 +61,7 @@ public class GrantSharesTreasury {
 
     @Safe
     public static Paginator.Paginated getFunders(int page, int itemsPerPage) {
-        int n = Storage.getInteger(ctx, FUNDER_COUNT_KEY);
+        int n = Storage.getInt(ctx, FUNDER_COUNT_KEY);
         int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
         List<Object> list = new List<>();
         for (int i = pagination[0]; i < pagination[1]; i++) {
@@ -73,7 +73,7 @@ public class GrantSharesTreasury {
     public static void addFunder(Hash160 funder) {
         assertCallerIsOwner();
         assert !isWhitelisted(funder) : "GrantSharesTreasury: Already a funder";
-        int n = Storage.getInteger(ctx, FUNDER_COUNT_KEY);
+        int n = Storage.getInt(ctx, FUNDER_COUNT_KEY);
         fundersEnumerated.put(n, funder);
         Storage.put(ctx, FUNDER_COUNT_KEY, n + 1);
     }
@@ -96,19 +96,5 @@ public class GrantSharesTreasury {
     private static void assertCallerIsOwner() {
         assert Runtime.getCallingScriptHash().toByteString() == Storage.get(ctx, OWNER_KEY);
     }
-
-//    @OnNEP11Payment
-//    public static void onNep11Payment(Hash160 sender, int amount, ByteString tokenId, Object
-//    data) {
-//        assert isWhitelisted(sender) : "GrantSharesTreasury: Payment from non-whitelisted sender";
-//    }
-
-//    public static void releaseNFT(Hash160 tokenContract, Hash160 to, ByteString tokenId) {
-//        assertCallerIsOwner();
-//        Object[] params = new Object[]{to, tokenId, new Object[]{}};
-//        boolean result = (boolean) Contract.call(tokenContract, "transfer",
-//                (byte) (CallFlags.States | CallFlags.AllowNotify), params);
-//        assert result : "GrantSharesTreasury: Releasing NFT failed";
-//    }
 
 }
