@@ -171,6 +171,16 @@ public class GrantSharesGov {
     }
 
     /**
+     * Gets the number of members.
+     *
+     * @return the number of members.
+     */
+    @Safe
+    public static int getMembersCount() {
+        return Storage.getInteger(ctx, MEMBERS_COUNT_KEY);
+    }
+
+    /**
      * Gets the number of proposals created on this contract.
      *
      * @return the number of proposals.
@@ -414,6 +424,7 @@ public class GrantSharesGov {
         Hash160 memberHash = createStandardAccount(memberPubKey);
         assert members.get(memberHash.toByteString()) == null : "GrantSharesGov: Already a member";
         members.put(memberHash.toByteString(), memberPubKey.toByteString());
+        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInteger(ctx, MEMBERS_COUNT_KEY) + 1);
         memberAdded.fire(memberHash);
     }
 
@@ -429,6 +440,7 @@ public class GrantSharesGov {
         Hash160 memberHash = createStandardAccount(memberPubKey);
         assert members.get(memberHash.toByteString()) != null : "GrantSharesGov: Not a member";
         members.delete(memberHash.toByteString());
+        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInteger(ctx, MEMBERS_COUNT_KEY) - 1);
         memberRemoved.fire(memberHash);
     }
 
