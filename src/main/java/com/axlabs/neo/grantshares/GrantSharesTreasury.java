@@ -2,6 +2,7 @@ package com.axlabs.neo.grantshares;
 
 import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
+import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.List;
@@ -9,6 +10,7 @@ import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
+import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.OnNEP17Payment;
 import io.neow3j.devpack.annotations.Permission;
@@ -17,65 +19,71 @@ import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
+import io.neow3j.devpack.events.Event1Arg;
+
+import static io.neow3j.devpack.Account.createStandardAccount;
+import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
 @Permission(contract = "*", methods = "transfer")
+@SuppressWarnings("unchecked")
 public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";
     static final String FUNDERS_PREFIX = "funders";
     static final String FUNDER_COUNT_KEY = "funderCount";
+
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap fundersEnumerated = ctx.createMap(FUNDERS_PREFIX);
+    static final StorageMap funders = ctx.createMap(FUNDERS_PREFIX);
+
+    @DisplayName("FunderAdded")
+    static Event1Arg<Hash160> funderAdded;
 
     @OnDeployment
     public static void deploy(Object data, boolean update) {
         if (!update) {
-            Object[] ownerAndDonors = (Object[]) data;
-            Storage.put(ctx, OWNER_KEY, (Hash160) ownerAndDonors[0]);
-            int count = 0;
-            for (Hash160 donor : (Hash160[]) ownerAndDonors[1]) {
-                fundersEnumerated.put(count, donor);
-                count++;
+            Object[] ownerAndFunders = (Object[]) data;
+
+            // Set owner
+            Storage.put(ctx, OWNER_KEY, (Hash160) ownerAndFunders[0]);
+
+            // Set initial funders.
+            ECPoint[] pubKeys = (ECPoint[]) ownerAndFunders[1];
+            for (ECPoint pubKey : pubKeys) {
+                funders.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
             }
-            Storage.put(ctx, FUNDER_COUNT_KEY, count);
+            Storage.put(ctx, FUNDER_COUNT_KEY, pubKeys.length);
         }
     }
 
     @Safe
     @OnNEP17Payment
     public static void onNep17Payment(Hash160 sender, int amount, Object data) {
-        assert isWhitelisted(sender) : "GrantSharesTreasury: Payment from non-whitelisted sender";
-    }
-
-    private static boolean isWhitelisted(Hash160 sender) {
-        // TODO: Consider adding a second StorageMap with the funder hash as keys for easier
-        //  existence checks.
-        Iterator<Hash160> it = Storage.find(ctx, FUNDERS_PREFIX, FindOptions.ValuesOnly);
-        while (it.next()) {
-            if (sender == it.get()) {
-                return true;
-            }
-        }
-        return false;
+        assert funders.get(sender.toByteString()) != null :
+                "GrantSharesTreasury: Payment from non-whitelisted sender";
     }
 
     @Safe
-    public static Paginator.Paginated getFunders(int page, int itemsPerPage) {
-        int n = Storage.getInt(ctx, FUNDER_COUNT_KEY);
-        int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
-        List<Object> list = new List<>();
-        for (int i = pagination[0]; i < pagination[1]; i++) {
-            list.add(fundersEnumerated.get(i));
-        }
-        return new Paginator.Paginated(page, pagination[2], list);
+    public static int getFundersCount() {
+        return Storage.getInt(ctx, FUNDER_COUNT_KEY);
     }
 
-    public static void addFunder(Hash160 funder) {
+    @Safe
+    public static List<ECPoint> getFunders() {
+        Iterator<ByteString> it = Storage.find(ctx, FUNDERS_PREFIX, ValuesOnly);
+        List<ECPoint> funders = new List<>();
+        while (it.next()) {
+            funders.add(new ECPoint(it.get()));
+        }
+        return funders;
+    }
+
+    public static void addFunder(ECPoint funderKey) {
         assertCallerIsOwner();
-        assert !isWhitelisted(funder) : "GrantSharesTreasury: Already a funder";
-        int n = Storage.getInt(ctx, FUNDER_COUNT_KEY);
-        fundersEnumerated.put(n, funder);
-        Storage.put(ctx, FUNDER_COUNT_KEY, n + 1);
+        Hash160 funderHash = createStandardAccount(funderKey);
+        assert funders.get(funderHash.toByteString()) == null: "GrantSharesTreasury: Already a funder";
+        funders.put(funderHash.toByteString(), funderKey.toByteString());
+        Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) + 1);
+        funderAdded.fire(funderHash);
     }
 
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
