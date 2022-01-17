@@ -35,7 +35,7 @@ public class TestHelper {
     static final String CHARLIE = "NdbtgSku2qLuwsBBzLx3FLtmmMdm32Ktor";
     static final String DENISE = "NerDv9t8exrQRrP11jjvZKXzSXvTnmfDTo";
 
-    // contract methods
+    // GrantSharesGov contract methods
     static final String CREATE = "createProposal";
     static final String GET_PROPOSAL = "getProposal";
     static final String GET_PROPOSALS = "getProposals";
@@ -47,6 +47,9 @@ public class TestHelper {
     static final String UNPAUSE = "unpause";
     static final String IS_PAUSED = "isPaused";
     static final String CALC_MEMBER_MULTI_SIG_ACC = "calcMembersMultiSigAccount";
+
+    // GrantSharesTreasury contract methods
+    static final String GET_FUNDERS = "getFunders";
 
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";

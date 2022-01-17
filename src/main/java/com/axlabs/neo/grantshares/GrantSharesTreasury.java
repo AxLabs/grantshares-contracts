@@ -6,6 +6,7 @@ import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.List;
+import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
@@ -31,9 +32,11 @@ public class GrantSharesTreasury {
     static final String OWNER_KEY = "owner";
     static final String FUNDERS_PREFIX = "funders";
     static final String FUNDER_COUNT_KEY = "funderCount";
+    static final String WHITELISTED_TOKENS_PREFIX = "whitelistedTokens";
 
     static final StorageContext ctx = Storage.getStorageContext();
     static final StorageMap funders = ctx.createMap(FUNDERS_PREFIX);
+    static final StorageMap whitelistedTokens = ctx.createMap(WHITELISTED_TOKENS_PREFIX);
 
     @DisplayName("FunderAdded")
     static Event1Arg<Hash160> funderAdded;
@@ -41,17 +44,24 @@ public class GrantSharesTreasury {
     @OnDeployment
     public static void deploy(Object data, boolean update) {
         if (!update) {
-            Object[] ownerAndFunders = (Object[]) data;
-
+            Object[] ownerFundersTokens = (Object[]) data;
             // Set owner
-            Storage.put(ctx, OWNER_KEY, (Hash160) ownerAndFunders[0]);
+            Storage.put(ctx, OWNER_KEY, (Hash160) ownerFundersTokens[0]);
 
             // Set initial funders.
-            ECPoint[] pubKeys = (ECPoint[]) ownerAndFunders[1];
+            ECPoint[] pubKeys = (ECPoint[]) ownerFundersTokens[1];
             for (ECPoint pubKey : pubKeys) {
                 funders.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
             }
             Storage.put(ctx, FUNDER_COUNT_KEY, pubKeys.length);
+
+            // Set whitelisted tokens
+            Map<Hash160, Integer> tokens = (Map<Hash160, Integer>) ownerFundersTokens[2];
+            Hash160[] hashes = tokens.keys();
+            Integer[] maxes = tokens.values();
+            for (int i = 0; i < hashes.length; i++) {
+                whitelistedTokens.put(hashes[i].toByteString(), maxes[i]);
+            }
         }
     }
 
