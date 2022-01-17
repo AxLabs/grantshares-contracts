@@ -44,7 +44,6 @@ public class GrantSharesGov {
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate"; // percentage
     static final String MIN_QUORUM_KEY = "min_quorum"; // percentage
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold"; // percentage
-    static final String MAX_FUNDING_AMOUNT_KEY = "max_funding";
 
     static final String PROPOSALS_COUNT_KEY = "#_proposals"; //int
     static final String PAUSED_KEY = "paused"; // boolean
@@ -389,8 +388,6 @@ public class GrantSharesGov {
                 : "GrantSharesGov: Quorum not reached";
         assert votes.approve * 100 / voteCount >= data.acceptanceRate
                 : "GrantSharesGov: Proposal rejected";
-
-        // TODO: Check if has abrogation proposal that was accepted.
 
         proposal.executed = true;
         Object[] returnVals = new Object[data.intents.length];
