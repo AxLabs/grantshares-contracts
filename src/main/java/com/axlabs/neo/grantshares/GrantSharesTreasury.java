@@ -123,7 +123,7 @@ public class GrantSharesTreasury {
     }
 
     private static void assertCallerIsOwner() {
-        assert Runtime.getCallingScriptHash().toByteString() == Storage.get(ctx, OWNER_KEY);
+        assert Runtime.getCallingScriptHash().toByteString() == Storage.get(ctx, OWNER_KEY) : "GrantSharesTreasury: Not authorised";
     }
 
 }

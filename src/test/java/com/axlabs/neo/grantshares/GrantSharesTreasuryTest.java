@@ -99,7 +99,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
-    public void removedFunders() throws Throwable {
+    public void execute_proposal_with_remove_founder() throws Throwable {
 
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_FUNDER,
@@ -116,8 +116,7 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(alice)
-                        .setAllowedContracts(treasury.getScriptHash()))
+                .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
@@ -125,15 +124,26 @@ public class GrantSharesTreasuryTest {
                 .getApplicationLog().getExecutions().get(0);
         NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderRemoved"));
+
+        List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
+                .getStack().get(0).getList();
+
+        assertThat(funders.size(), is(1));
     }
 
     @Test
     public void fail_execution_remove_funder() throws Throwable {
 
+        String exception = treasury.invokeFunction(REMOVE_FUNDER,
+                ContractParameter.publicKey(ext.getAccount(CHARLIE).getECKeyPair().getPublicKey().getEncoded(true)))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
+
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_FUNDER,
                         array(publicKey(ext.getAccount(CHARLIE).getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "execute_proposal_with_remove_founder";
+        String desc = "fail_execution_remove_funder";
 
         // 1. Create and endorse proposal
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
@@ -144,9 +154,8 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(alice)
-                        .setAllowedContracts(treasury.getScriptHash()))
+        exception = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesTreasury: Not a funder"));
     }
