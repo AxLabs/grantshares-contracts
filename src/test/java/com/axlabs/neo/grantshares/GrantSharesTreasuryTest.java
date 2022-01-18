@@ -4,14 +4,18 @@ import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.test.DeployContext;
+import io.neow3j.transaction.AccountSigner;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
+import io.neow3j.types.Hash256;
+import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,17 +27,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.axlabs.neo.grantshares.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.TestHelper.GET_FUNDERS;
-import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
-import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.map;
+import static com.axlabs.neo.grantshares.TestHelper.*;
+import static io.neow3j.types.ContractParameter.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.*;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.Matchers.containsInAnyOrder;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
@@ -98,6 +96,59 @@ public class GrantSharesTreasuryTest {
                 .collect(Collectors.toList());
         assertThat(pubKeys, containsInAnyOrder(bob.getECKeyPair().getPublicKey().getEncoded(true),
                 denise.getECKeyPair().getPublicKey().getEncoded(true)));
+    }
+
+    @Test
+    public void removedFunders() throws Throwable {
+
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), REMOVE_FUNDER,
+                        array(publicKey(ext.getAccount(BOB).getECKeyPair().getPublicKey().getEncoded(true)))));
+        String desc = "execute_proposal_with_remove_founder";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice)
+                        .setAllowedContracts(treasury.getScriptHash()))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("FunderRemoved"));
+    }
+
+    @Test
+    public void fail_execution_remove_funder() throws Throwable {
+
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), REMOVE_FUNDER,
+                        array(publicKey(ext.getAccount(CHARLIE).getECKeyPair().getPublicKey().getEncoded(true)))));
+        String desc = "execute_proposal_with_remove_founder";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice)
+                        .setAllowedContracts(treasury.getScriptHash()))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("GrantSharesTreasury: Not a funder"));
     }
 
 }

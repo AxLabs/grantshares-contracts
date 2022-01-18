@@ -17,7 +17,6 @@ import io.neow3j.devpack.annotations.OnNEP17Payment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
-import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
@@ -40,6 +39,9 @@ public class GrantSharesTreasury {
 
     @DisplayName("FunderAdded")
     static Event1Arg<Hash160> funderAdded;
+
+    @DisplayName("FunderRemoved")
+    static Event1Arg<Hash160> funderRemoved;
 
     @OnDeployment
     public static void deploy(Object data, boolean update) {
@@ -94,6 +96,15 @@ public class GrantSharesTreasury {
         funders.put(funderHash.toByteString(), funderKey.toByteString());
         Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) + 1);
         funderAdded.fire(funderHash);
+    }
+
+    public static void removeFunder(ECPoint funderKey) {
+        assertCallerIsOwner();
+        Hash160 funderHash = createStandardAccount(funderKey);
+        assert funders.get(funderHash.toByteString()) != null: "GrantSharesTreasury: Not a funder";
+        funders.delete(funderHash.toByteString());
+        Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) - 1);
+        funderRemoved.fire(funderHash);
     }
 
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
