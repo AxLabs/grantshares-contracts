@@ -17,8 +17,7 @@ import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
@@ -35,6 +34,7 @@ import static org.hamcrest.core.Is.is;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GrantSharesTreasuryTest {
 
     @RegisterExtension
@@ -87,6 +87,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(1)
     public void getFunders() throws IOException {
         List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
                 .getStack().get(0).getList();
@@ -99,6 +100,72 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(2)
+    public void execute_proposal_with_add_founder() throws Throwable {
+
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), ADD_FUNDER,
+                        array(publicKey(ext.getAccount(ALICE).getECKeyPair().getPublicKey().getEncoded(true)))));
+        String desc = "execute_proposal_with_add_founder";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, charlie);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("FunderAdded"));
+
+        List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
+                .getStack().get(0).getList();
+
+        assertThat(funders.size(), is(3));
+    }
+
+    @Test
+    @Order(2)
+    public void fail_execution_add_funder() throws Throwable {
+
+        String exception = treasury.invokeFunction(ADD_FUNDER,
+                        ContractParameter.publicKey(ext.getAccount(ALICE).getECKeyPair().getPublicKey().getEncoded(true)))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
+
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), ADD_FUNDER,
+                        array(publicKey(ext.getAccount(DENISE).getECKeyPair().getPublicKey().getEncoded(true)))));
+        String desc = "fail_execution_add_funder";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        exception = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("GrantSharesTreasury: Already a funder"));
+    }
+
+
+    @Test
+    @Order(3)
     public void execute_proposal_with_remove_founder() throws Throwable {
 
         ContractParameter intents = array(
@@ -128,10 +195,11 @@ public class GrantSharesTreasuryTest {
         List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
                 .getStack().get(0).getList();
 
-        assertThat(funders.size(), is(1));
+        assertThat(funders.size(), is(2));
     }
 
     @Test
+    @Order(3)
     public void fail_execution_remove_funder() throws Throwable {
 
         String exception = treasury.invokeFunction(REMOVE_FUNDER,
