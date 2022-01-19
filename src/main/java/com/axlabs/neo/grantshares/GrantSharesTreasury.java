@@ -22,6 +22,7 @@ import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
+import io.neow3j.devpack.events.Event2Args;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
@@ -44,6 +45,12 @@ public class GrantSharesTreasury {
 
     @DisplayName("FunderRemoved")
     static Event1Arg<Hash160> funderRemoved;
+
+    @DisplayName("WhitelistedTokenAdded")
+    static Event2Args<Hash160, Integer> whitelistedTokenAdded;
+
+    @DisplayName("WhitelistedTokenRemoved")
+    static Event1Arg<Hash160> whitelistedTokenRemoved;
 
     @OnDeployment
     public static void deploy(Object data, boolean update) {
@@ -124,11 +131,17 @@ public class GrantSharesTreasury {
     }
 
     public static void addWhitelistedToken(Hash160 token, int maxAmount) throws Exception {
-        throw new Exception("Not implemented");
+        assertCallerIsOwner();
+        whitelistedTokens.put(token.toByteString(), maxAmount);
+        whitelistedTokenAdded.fire(token, maxAmount);
     }
 
     public static void removeWhitelistedToken(Hash160 token) throws Exception {
-        throw new Exception("Not implemented");
+        assertCallerIsOwner();
+        assert whitelistedTokens.get(token.toByteString()) != null :
+                "GrantSharesTreasury: Non-whitelisted token";
+        whitelistedTokens.delete(token.toByteString());
+        whitelistedTokenRemoved.fire(token);
     }
 
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {

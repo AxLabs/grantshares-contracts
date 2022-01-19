@@ -53,6 +53,8 @@ public class TestHelper {
     static final String GET_WHITELISTED_TOKENS = "getWhitelistedTokens";
     static final String ADD_FUNDER = "addFunder";
     static final String REMOVE_FUNDER = "removeFunder";
+    static final String ADD_WHITELISTED_TOKENS = "addWhitelistedToken";
+    static final String REMOVE_WHITELISTED_TOKENS = "removeWhitelistedToken";
 
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";
