@@ -52,6 +52,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
@@ -223,6 +224,41 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(5)
+    public void execute_proposal_with_remove_whitelisted_token() {
+        // TODO: Remove NEO or GAS from the whitelisted tokens.
+        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    }
+    @Test
+    @Order(6)
+    public void execute_proposal_with_add_whitelisted_token() {
+        // TODO: Add previously removed token to the whitelisted tokens. But with different max
+        //  than it had before.
+        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    }
+
+    @Test
+    @Order(7)
+    public void execute_proposal_with_change_whitelisted_token_max_amount() {
+        // TODO: Rectify the token amount of the previously readded token (NEO or GAS) to match
+        //  the initial value in MAX_NEO/GAS_amount.
+        //  Maybe this test is obsolete and already covered by the one above.
+        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    }
+
+    @Test
+    public void fail_calling_add_whitelisted_token_directly() {
+        // TODO
+        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    }
+
+    @Test
+    public void fail_calling_remove_whitelisted_token_directly() {
+        // TODO
+        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    }
+
+    @Test
     public void fail_calling_add_funder_directly() throws Exception {
         String exception = treasury.invokeFunction(ADD_FUNDER, ContractParameter.publicKey(
                         alice.getECKeyPair().getPublicKey().getEncoded(true)))
@@ -264,5 +300,21 @@ public class GrantSharesTreasuryTest {
                 .map(si -> si.getInteger().intValue()).collect(Collectors.toSet());
         assertThat(tokenMaxes, containsInAnyOrder(NEO_MAX_AMOUNT, GAS_MAX_AMOUNT));
     }
+
+    @Test
+    public void fail_funding_treasury_with_non_funder() {
+        // TODO
+    }
+
+    @Test
+    public void fail_funding_treasury_with_non_whitelisted_token() {
+        // TODO
+    }
+
+    @Test
+    public void funding_treasury_with_whitelisted_token_and_funder() {
+        // TODO
+    }
+
 
 }

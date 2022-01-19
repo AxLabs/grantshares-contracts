@@ -123,6 +123,14 @@ public class GrantSharesTreasury {
         funderRemoved.fire(funderHash);
     }
 
+    public static void addWhitelistedToken(Hash160 token, int maxAmount) throws Exception {
+        throw new Exception("Not implemented");
+    }
+
+    public static void removeWhitelistedToken(Hash160 token) throws Exception {
+        throw new Exception("Not implemented");
+    }
+
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
         assertCallerIsOwner();
         Object[] params = new Object[]{
