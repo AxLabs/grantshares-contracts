@@ -50,6 +50,7 @@ public class TestHelper {
 
     // GrantSharesTreasury contract methods
     static final String GET_FUNDERS = "getFunders";
+    static final String GET_WHITELISTED_TOKENS = "getWhitelistedTokens";
     static final String ADD_FUNDER = "addFunder";
     static final String REMOVE_FUNDER = "removeFunder";
 

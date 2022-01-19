@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static com.axlabs.neo.grantshares.TestHelper.ADD_FUNDER;
@@ -37,6 +38,7 @@ import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.DENISE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.TestHelper.GET_FUNDERS;
+import static com.axlabs.neo.grantshares.TestHelper.GET_WHITELISTED_TOKENS;
 import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.REMOVE_FUNDER;
 import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
@@ -55,6 +57,9 @@ import static org.hamcrest.core.Is.is;
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GrantSharesTreasuryTest {
+
+    private static final int NEO_MAX_AMOUNT = 100;
+    private static final int GAS_MAX_AMOUNT = 10000;
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
@@ -86,8 +91,8 @@ public class GrantSharesTreasuryTest {
                 ext.getAccount(DENISE).getECKeyPair().getPublicKey().getEncoded(true));
         // whitelisted tokens
         Map<Hash160, Integer> tokens = new HashMap<>();
-        tokens.put(NeoToken.SCRIPT_HASH, 100);
-        tokens.put(GasToken.SCRIPT_HASH, 10000);
+        tokens.put(NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT);
+        tokens.put(GasToken.SCRIPT_HASH, GAS_MAX_AMOUNT);
         ContractParameter tokensParam = map(tokens);
 
         config.setDeployParam(array(gov.getScriptHash(), funders, tokensParam));
@@ -243,6 +248,21 @@ public class GrantSharesTreasuryTest {
                 .collect(Collectors.toList());
         assertThat(pubKeys, containsInAnyOrder(bob.getECKeyPair().getPublicKey().getEncoded(true),
                 denise.getECKeyPair().getPublicKey().getEncoded(true)));
+    }
+
+    @Test
+    public void getWhitelistedTokens() throws IOException {
+        Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
+                .getInvocationResult().getStack().get(0).getMap();
+        assertThat(tokens.size(), is(2));
+        Set<String> tokenAddresses = tokens.keySet().stream()
+                .map(StackItem::getAddress).collect(Collectors.toSet());
+        assertThat(tokenAddresses, containsInAnyOrder(NeoToken.SCRIPT_HASH.toAddress(),
+                GasToken.SCRIPT_HASH.toAddress()));
+
+        Set<Integer> tokenMaxes = tokens.values().stream()
+                .map(si -> si.getInteger().intValue()).collect(Collectors.toSet());
+        assertThat(tokenMaxes, containsInAnyOrder(NEO_MAX_AMOUNT, GAS_MAX_AMOUNT));
     }
 
 }

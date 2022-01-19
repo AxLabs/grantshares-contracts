@@ -5,6 +5,7 @@ import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Iterator;
+import io.neow3j.devpack.Iterator.Struct;
 import io.neow3j.devpack.List;
 import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
@@ -17,6 +18,7 @@ import io.neow3j.devpack.annotations.OnNEP17Payment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
+import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
@@ -71,7 +73,9 @@ public class GrantSharesTreasury {
     @OnNEP17Payment
     public static void onNep17Payment(Hash160 sender, int amount, Object data) {
         assert funders.get(sender.toByteString()) != null :
-                "GrantSharesTreasury: Payment from non-whitelisted sender";
+                "GrantSharesTreasury: Non-whitelisted sender";
+        assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null :
+                "GrantSharesTreasury: Non-whitelisted token";
     }
 
     @Safe
@@ -87,6 +91,18 @@ public class GrantSharesTreasury {
             funders.add(new ECPoint(it.get()));
         }
         return funders;
+    }
+
+    @Safe
+    public static Map<Hash160, Integer> getWhitelistedTokens() {
+        Iterator<Struct<Hash160, Integer>> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX,
+                FindOptions.RemovePrefix);
+        Map<Hash160, Integer> tokens = new Map<>();
+        while (it.next()) {
+            Struct<Hash160, Integer> i = it.get();
+            tokens.put(i.key, i.value);
+        }
+        return tokens;
     }
 
     public static void addFunder(ECPoint funderKey) {
