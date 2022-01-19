@@ -1,3 +1,5 @@
 transfer 1000 GAS genesis Alice
+transfer 1000 NEO genesis Alice
 transfer 1000 GAS genesis Bob
+transfer 1000 NEO genesis Bob
 transfer 1000 GAS genesis Charlie
