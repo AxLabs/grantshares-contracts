@@ -25,6 +25,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,7 +53,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
@@ -229,8 +229,24 @@ public class GrantSharesTreasuryTest {
         // TODO: Remove NEO or GAS from the whitelisted tokens.
         // https://github.com/AxLabs/grantshares-contracts/issues/8
     }
+
     @Test
     @Order(6)
+    public void fail_funding_treasury_with_non_whitelisted_token() throws IOException {
+        // TODO: This test requires that NEO is first removed from the whitelisted tokens. See
+        //  test above.
+        // https://github.com/AxLabs/grantshares-contracts/issues/8
+
+//        NeoToken neo = new NeoToken(neow3j);
+//        String exception = neo.transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+//                .signers(AccountSigner.calledByEntry(bob))
+//                .callInvokeScript().getInvocationResult().getException();
+//        assertThat(exception, is("Non-whitelisted token"));
+    }
+
+
+    @Test
+    @Order(7)
     public void execute_proposal_with_add_whitelisted_token() {
         // TODO: Add previously removed token to the whitelisted tokens. But with different max
         //  than it had before.
@@ -238,7 +254,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
-    @Order(7)
+    @Order(8)
     public void execute_proposal_with_change_whitelisted_token_max_amount() {
         // TODO: Rectify the token amount of the previously readded token (NEO or GAS) to match
         //  the initial value in MAX_NEO/GAS_amount.
@@ -302,18 +318,22 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
-    public void fail_funding_treasury_with_non_funder() {
-        // TODO
+    public void fail_funding_treasury_with_non_funder() throws IOException {
+        NeoToken neo = new NeoToken(neow3j);
+        String exception = neo.transfer(alice, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Non-whitelisted sender"));
     }
 
     @Test
-    public void fail_funding_treasury_with_non_whitelisted_token() {
-        // TODO
-    }
-
-    @Test
-    public void funding_treasury_with_whitelisted_token_and_funder() {
-        // TODO
+    public void funding_treasury_with_whitelisted_token_and_funder() throws Throwable {
+        NeoToken neo = new NeoToken(neow3j);
+        Hash256 tx = neo.transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(bob))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        assertThat(neo.getBalanceOf(treasury.getScriptHash()).intValue(), is(10));
     }
 
 
