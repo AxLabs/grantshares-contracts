@@ -393,8 +393,8 @@ public class GrantSharesTreasuryTest {
     @Test
     @Order(8)
     public void fail_funding_treasury_with_non_whitelisted_token() throws Throwable {
-        String exception = new NeoToken(neow3j).transfer(alice, treasury.getScriptHash(), BigInteger.valueOf(10))
-                .signers(AccountSigner.calledByEntry(alice))
+        String exception = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted token"));
     }
