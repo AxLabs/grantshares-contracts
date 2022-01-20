@@ -23,6 +23,7 @@ import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
+import io.neow3j.devpack.events.Event3Args;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
@@ -42,13 +43,10 @@ public class GrantSharesTreasury {
 
     @DisplayName("FunderAdded")
     static Event1Arg<Hash160> funderAdded;
-
     @DisplayName("FunderRemoved")
     static Event1Arg<Hash160> funderRemoved;
-
     @DisplayName("WhitelistedTokenAdded")
     static Event2Args<Hash160, Integer> whitelistedTokenAdded;
-
     @DisplayName("WhitelistedTokenRemoved")
     static Event1Arg<Hash160> whitelistedTokenRemoved;
 
@@ -230,12 +228,14 @@ public class GrantSharesTreasury {
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
         assertNotPaused();
         assertCallerIsOwner();
+        int maxFundingAmount = whitelistedTokens.getIntOrZero(tokenContract.toByteString());
+        assert maxFundingAmount > 0 : "GrantSharesTreasury: Token not whitelisted";
+        assert amount <= maxFundingAmount : "GrantSharesTreasury: Above token's max funding amount";
         Object[] params = new Object[]{
                 Runtime.getExecutingScriptHash(), to, amount, new Object[]{}};
-        boolean result = (boolean) Contract.call(tokenContract, "transfer",
-                (byte) (CallFlags.States | CallFlags.AllowNotify), params);
-        assert result : "GrantSharesTreasury: Releasing tokens failed: " + StdLib.itoa(amount, 10)
-                + " from " + tokenContract.toByteString().toString();
+        boolean result = (boolean) Contract.call(tokenContract, "transfer", CallFlags.All, params);
+        assert result : "GrantSharesTreasury: Failed releasing " + StdLib.itoa(amount, 10)
+                + " tokens. Token contract: " + StdLib.base64Encode(tokenContract.toByteString());
     }
 
     /**
