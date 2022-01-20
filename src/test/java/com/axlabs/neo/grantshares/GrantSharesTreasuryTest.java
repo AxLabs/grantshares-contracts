@@ -32,19 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.axlabs.neo.grantshares.TestHelper.ADD_FUNDER;
-import static com.axlabs.neo.grantshares.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.TestHelper.GET_FUNDERS;
-import static com.axlabs.neo.grantshares.TestHelper.GET_WHITELISTED_TOKENS;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.REMOVE_FUNDER;
-import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
-import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
-import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
+import static com.axlabs.neo.grantshares.TestHelper.*;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.map;
@@ -61,6 +49,9 @@ public class GrantSharesTreasuryTest {
 
     private static final int NEO_MAX_AMOUNT = 100;
     private static final int GAS_MAX_AMOUNT = 10000;
+    private static final int GAS_MAX_NEW_AMOUNT = 111111;
+    private static final Hash160 FLM_TOKEN = new Hash160("0xf0151f528127558851b39c2cd8aa47da7418ab28");
+    private static final int FLM_MAX_AMOUNT = 10000;
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
@@ -109,6 +100,35 @@ public class GrantSharesTreasuryTest {
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
         denise = ext.getAccount(DENISE);
+    }
+
+    @Test
+    @Order(0)
+    public void getFunders() throws IOException {
+        List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
+                .getStack().get(0).getList();
+        assertThat(funders.size(), is(2));
+        List<byte[]> pubKeys = funders.stream()
+                .map(StackItem::getByteArray)
+                .collect(Collectors.toList());
+        assertThat(pubKeys, containsInAnyOrder(bob.getECKeyPair().getPublicKey().getEncoded(true),
+                denise.getECKeyPair().getPublicKey().getEncoded(true)));
+    }
+
+    @Test
+    @Order(0)
+    public void getWhitelistedTokens() throws IOException {
+        Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
+                .getInvocationResult().getStack().get(0).getMap();
+        assertThat(tokens.size(), is(2));
+        Set<String> tokenAddresses = tokens.keySet().stream()
+                .map(StackItem::getAddress).collect(Collectors.toSet());
+        assertThat(tokenAddresses, containsInAnyOrder(NeoToken.SCRIPT_HASH.toAddress(),
+                GasToken.SCRIPT_HASH.toAddress()));
+
+        Set<Integer> tokenMaxes = tokens.values().stream()
+                .map(si -> si.getInteger().intValue()).collect(Collectors.toSet());
+        assertThat(tokenMaxes, containsInAnyOrder(NEO_MAX_AMOUNT, GAS_MAX_AMOUNT));
     }
 
     @Test
@@ -225,53 +245,121 @@ public class GrantSharesTreasuryTest {
 
     @Test
     @Order(5)
-    public void execute_proposal_with_remove_whitelisted_token() {
-        // TODO: Remove NEO or GAS from the whitelisted tokens.
-        // https://github.com/AxLabs/grantshares-contracts/issues/8
-    }
+    public void execute_proposal_with_remove_whitelisted_token() throws Throwable {
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), REMOVE_WHITELISTED_TOKEN, array(NeoToken.SCRIPT_HASH)));
+        String desc = "execute_proposal_with_remove_whitelisted_token";
 
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("WhitelistedTokenRemoved"));
+
+        Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
+                .getInvocationResult().getStack().get(0).getMap();
+        assertThat(tokens.size(), is(1));
+    }
     @Test
     @Order(6)
-    public void fail_funding_treasury_with_non_whitelisted_token() throws IOException {
-        // TODO: This test requires that NEO is first removed from the whitelisted tokens. See
-        //  test above.
-        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    public void execute_proposal_with_add_whitelisted_token() throws Throwable {
 
-//        NeoToken neo = new NeoToken(neow3j);
-//        String exception = neo.transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
-//                .signers(AccountSigner.calledByEntry(bob))
-//                .callInvokeScript().getInvocationResult().getException();
-//        assertThat(exception, is("Non-whitelisted token"));
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN, array(FLM_TOKEN, FLM_MAX_AMOUNT)));
+        String desc = "execute_proposal_with_add_whitelisted_token";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("WhitelistedTokenAdded"));
+
+        Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
+                .getInvocationResult().getStack().get(0).getMap();
+        assertThat(tokens.size(), is(2));
+        Set<String> tokenAddresses = tokens.keySet().stream()
+                .map(StackItem::getAddress).collect(Collectors.toSet());
+        assertThat(tokenAddresses, containsInAnyOrder(FLM_TOKEN.toAddress(), GasToken.SCRIPT_HASH.toAddress()));
     }
-
 
     @Test
     @Order(7)
-    public void execute_proposal_with_add_whitelisted_token() {
-        // TODO: Add previously removed token to the whitelisted tokens. But with different max
-        //  than it had before.
-        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    public void execute_proposal_with_change_whitelisted_token_max_amount() throws Throwable {
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN, array(GasToken.SCRIPT_HASH, GAS_MAX_NEW_AMOUNT)));
+        String desc = "execute_proposal_with_change_whitelisted_token_max_amount";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("WhitelistedTokenAdded"));
+
+        Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
+                .getInvocationResult().getStack().get(0).getMap();
+        assertThat(tokens.size(), is(2));
+        Set<String> tokenAddresses = tokens.keySet().stream()
+                .map(StackItem::getAddress).collect(Collectors.toSet());
+        assertThat(tokenAddresses, containsInAnyOrder(GasToken.SCRIPT_HASH.toAddress(),
+                FLM_TOKEN.toAddress()));
+
+        Set<Integer> tokenMaxes = tokens.values().stream()
+                .map(si -> si.getInteger().intValue()).collect(Collectors.toSet());
+        assertThat(tokenMaxes, containsInAnyOrder(GAS_MAX_NEW_AMOUNT, FLM_MAX_AMOUNT));
     }
 
     @Test
-    @Order(8)
-    public void execute_proposal_with_change_whitelisted_token_max_amount() {
-        // TODO: Rectify the token amount of the previously readded token (NEO or GAS) to match
-        //  the initial value in MAX_NEO/GAS_amount.
-        //  Maybe this test is obsolete and already covered by the one above.
-        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    public void fail_calling_add_whitelisted_token_directly() throws IOException {
+        String exception = treasury.invokeFunction(ADD_WHITELISTED_TOKEN, ContractParameter.hash160(GasToken.SCRIPT_HASH),
+                        ContractParameter.integer(1))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
     }
 
     @Test
-    public void fail_calling_add_whitelisted_token_directly() {
-        // TODO
-        // https://github.com/AxLabs/grantshares-contracts/issues/8
-    }
-
-    @Test
-    public void fail_calling_remove_whitelisted_token_directly() {
-        // TODO
-        // https://github.com/AxLabs/grantshares-contracts/issues/8
+    public void fail_calling_remove_whitelisted_token_directly() throws IOException {
+        String exception = treasury.invokeFunction(REMOVE_WHITELISTED_TOKEN, ContractParameter.hash160(GasToken.SCRIPT_HASH))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
     }
 
     @Test
@@ -291,50 +379,36 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
-    public void getFunders() throws IOException {
-        List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
-                .getStack().get(0).getList();
-        assertThat(funders.size(), is(2));
-        List<byte[]> pubKeys = funders.stream()
-                .map(StackItem::getByteArray)
-                .collect(Collectors.toList());
-        assertThat(pubKeys, containsInAnyOrder(bob.getECKeyPair().getPublicKey().getEncoded(true),
-                denise.getECKeyPair().getPublicKey().getEncoded(true)));
-    }
-
-    @Test
-    public void getWhitelistedTokens() throws IOException {
-        Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
-                .getInvocationResult().getStack().get(0).getMap();
-        assertThat(tokens.size(), is(2));
-        Set<String> tokenAddresses = tokens.keySet().stream()
-                .map(StackItem::getAddress).collect(Collectors.toSet());
-        assertThat(tokenAddresses, containsInAnyOrder(NeoToken.SCRIPT_HASH.toAddress(),
-                GasToken.SCRIPT_HASH.toAddress()));
-
-        Set<Integer> tokenMaxes = tokens.values().stream()
-                .map(si -> si.getInteger().intValue()).collect(Collectors.toSet());
-        assertThat(tokenMaxes, containsInAnyOrder(NEO_MAX_AMOUNT, GAS_MAX_AMOUNT));
-    }
-
-    @Test
-    public void fail_funding_treasury_with_non_funder() throws IOException {
-        NeoToken neo = new NeoToken(neow3j);
-        String exception = neo.transfer(alice, treasury.getScriptHash(), BigInteger.valueOf(10))
+    public void fail_funding_treasury_with_non_funder() throws Throwable {
+        String exception = new GasToken(neow3j).transfer(alice, treasury.getScriptHash(), BigInteger.valueOf(10))
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Non-whitelisted sender"));
+        assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted sender"));
+    }
+
+    @Test
+    @Order(8)
+    public void fail_funding_treasury_with_non_whitelisted_token() throws Throwable {
+        String exception = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted token"));
     }
 
     @Test
     public void funding_treasury_with_whitelisted_token_and_funder() throws Throwable {
-        NeoToken neo = new NeoToken(neow3j);
-        Hash256 tx = neo.transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+        Hash256 tx = new GasToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.ONE)
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
-        assertThat(neo.getBalanceOf(treasury.getScriptHash()).intValue(), is(10));
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("Transfer"));
+        assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
+        assertThat(n.getState().getList().get(0).getAddress(), is(bob.getAddress()));
+        assertThat(n.getState().getList().get(1).getAddress(), is(treasury.getScriptHash().toAddress()));
+        assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.ONE));
     }
-
-
 }
