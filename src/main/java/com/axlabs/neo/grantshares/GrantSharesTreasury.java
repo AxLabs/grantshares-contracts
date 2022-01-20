@@ -76,20 +76,40 @@ public class GrantSharesTreasury {
         }
     }
 
+    /**
+     * Checks if the sender is an eligible funder and if the transferred token is whitelisted.
+     * <p>
+     * Fails if the contract is paused.
+     *
+     * @param sender The token sender.
+     * @param amount The transferred amount.
+     * @param data   Data sent with the transfer.
+     */
     @Safe
     @OnNEP17Payment
     public static void onNep17Payment(Hash160 sender, int amount, Object data) {
+        assertNotPaused();
         assert funders.get(sender.toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted sender";
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted token";
     }
 
+    /**
+     * Gets the number of funders eligible to send funds to the treasury.
+     *
+     * @return the number of funders.
+     */
     @Safe
     public static int getFundersCount() {
         return Storage.getInt(ctx, FUNDER_COUNT_KEY);
     }
 
+    /**
+     * Gets all funders eligible to send funds to the treasury.
+     *
+     * @return the funders public keys.
+     */
     @Safe
     public static List<ECPoint> getFunders() {
         Iterator<ByteString> it = Storage.find(ctx, FUNDERS_PREFIX, ValuesOnly);
@@ -100,6 +120,11 @@ public class GrantSharesTreasury {
         return funders;
     }
 
+    /**
+     * Gets all whitelisted tokens.
+     *
+     * @return a map of token hashes to the corresponding max funding amount set for the tokens.
+     */
     @Safe
     public static Map<Hash160, Integer> getWhitelistedTokens() {
         Iterator<Struct<Hash160, Integer>> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX,
@@ -112,31 +137,79 @@ public class GrantSharesTreasury {
         return tokens;
     }
 
+    /**
+     * Checks if the contract is paused.
+     *
+     * @return true if paused. False otherwise.
+     */
+    @Safe
+    public static boolean isPaused() {
+        return (boolean) Contract.call(
+                new Hash160(Storage.get(ctx, OWNER_KEY)),
+                "isPaused", CallFlags.ReadOnly, new Object[]{});
+    }
+
+    /**
+     * Adds the given public key as a whitelisted funder to the treasury. Only whitelisted
+     * funders can transfer tokens to the treasury.
+     * <p>
+     * This method must be called by the treasury owner and fails if the contract is paused.
+     *
+     * @param funderKey The public key of the funder.
+     */
     public static void addFunder(ECPoint funderKey) {
+        assertNotPaused();
         assertCallerIsOwner();
         Hash160 funderHash = createStandardAccount(funderKey);
-        assert funders.get(funderHash.toByteString()) == null: "GrantSharesTreasury: Already a funder";
+        assert funders.get(funderHash.toByteString()) ==
+                null : "GrantSharesTreasury: Already a funder";
         funders.put(funderHash.toByteString(), funderKey.toByteString());
         Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) + 1);
         funderAdded.fire(funderHash);
     }
 
+    /**
+     * Removes the given public key from the whitelisted funders.
+     * <p>
+     * This method must be called by the treasury owner and fails if the contract is paused.
+     *
+     * @param funderKey The public key of the funder.
+     */
     public static void removeFunder(ECPoint funderKey) {
+        assertNotPaused();
         assertCallerIsOwner();
         Hash160 funderHash = createStandardAccount(funderKey);
-        assert funders.get(funderHash.toByteString()) != null: "GrantSharesTreasury: Not a funder";
+        assert funders.get(funderHash.toByteString()) != null : "GrantSharesTreasury: Not a funder";
         funders.delete(funderHash.toByteString());
         Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) - 1);
         funderRemoved.fire(funderHash);
     }
 
-    public static void addWhitelistedToken(Hash160 token, int maxAmount) throws Exception {
+    /**
+     * Adds the given token to the whitelist or overwrites the tokens max funding amount if it is
+     * already whitelisted.
+     * <p>
+     * This method must be called by the treasury owner and fails if the contract is paused.
+     *
+     * @param token            The token to add to the whitelist.
+     * @param maxFundingAmount The max funding amount for the token.
+     */
+    public static void addWhitelistedToken(Hash160 token, int maxFundingAmount) {
+        assertNotPaused();
         assertCallerIsOwner();
-        whitelistedTokens.put(token.toByteString(), maxAmount);
-        whitelistedTokenAdded.fire(token, maxAmount);
+        whitelistedTokens.put(token.toByteString(), maxFundingAmount);
+        whitelistedTokenAdded.fire(token, maxFundingAmount);
     }
 
-    public static void removeWhitelistedToken(Hash160 token) throws Exception {
+    /**
+     * Removes the given token from the whitelist.
+     * <p>
+     * This method must be called by the treasury owner and fails if the contract is paused.
+     *
+     * @param token The token to remove from the whitelist.
+     */
+    public static void removeWhitelistedToken(Hash160 token) {
+        assertNotPaused();
         assertCallerIsOwner();
         assert whitelistedTokens.get(token.toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted token";
@@ -144,7 +217,18 @@ public class GrantSharesTreasury {
         whitelistedTokenRemoved.fire(token);
     }
 
+    /**
+     * Calls the transfer method of {@code tokenContract} with the given amount and receiver. The
+     * sender being this treasury contract.
+     * <p>
+     * This method fails if the contract is paused.
+     *
+     * @param tokenContract The token to transfer.
+     * @param to            The receiver of the transfer.
+     * @param amount        The amount to transfer.
+     */
     public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
+        assertNotPaused();
         assertCallerIsOwner();
         Object[] params = new Object[]{
                 Runtime.getExecutingScriptHash(), to, amount, new Object[]{}};
@@ -154,13 +238,24 @@ public class GrantSharesTreasury {
                 + " from " + tokenContract.toByteString().toString();
     }
 
+    /**
+     * Updates the contract to the new NEF and manifest.
+     * <p>
+     * This method can only be called by the owner. It can be called even if the contract is paused
+     * in case the contract needs a fix.
+     */
     public static void update(ByteString nef, String manifest, Object data) {
         assertCallerIsOwner();
         ContractManagement.update(nef, manifest, data);
     }
 
     private static void assertCallerIsOwner() {
-        assert Runtime.getCallingScriptHash().toByteString() == Storage.get(ctx, OWNER_KEY) : "GrantSharesTreasury: Not authorised";
+        assert Runtime.getCallingScriptHash().toByteString() ==
+                Storage.get(ctx, OWNER_KEY) : "GrantSharesTreasury: Not authorised";
+    }
+
+    private static void assertNotPaused() {
+        assert !isPaused() : "GrantSharesTreasury: Contract is paused";
     }
 
 }

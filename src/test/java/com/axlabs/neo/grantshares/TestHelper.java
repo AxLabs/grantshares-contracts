@@ -54,6 +54,7 @@ public class TestHelper {
     static final String REMOVE_FUNDER = "removeFunder";
     static final String ADD_WHITELISTED_TOKEN = "addWhitelistedToken";
     static final String REMOVE_WHITELISTED_TOKEN = "removeWhitelistedToken";
+    static final String RELEASE_TOKENS = "releaseTokens";
 
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";

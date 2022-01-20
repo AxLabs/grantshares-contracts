@@ -636,45 +636,6 @@ public class GrantSharesGovTest {
                 .getStack().get(0).getBoolean());
     }
 
-    @Order(2)
-    @Test
-    public void fail_creating_proposal_on_paused_contract() throws Throwable {
-        String exception = contract.callInvokeFunction(CREATE, asList(
-                        hash160(alice.getScriptHash()),
-                        array(array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                array(new Hash160(defaultAccountScriptHash())))),
-                        string("default_proposal"),
-                        integer(-1)))
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
-    }
-
-    @Order(3)
-    @Test
-    public void fail_endorsing_proposal_on_paused_contract() throws Throwable {
-        String exception = contract.callInvokeFunction(ENDORSE,
-                        asList(integer(defaultProposalId), hash160(alice.getScriptHash())))
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
-    }
-
-    @Order(4)
-    @Test
-    public void fail_voting_on_proposal_on_paused_contract() throws Throwable {
-        String exception = contract.callInvokeFunction(VOTE, asList(
-                        integer(defaultProposalId), integer(1), hash160(charlie.getScriptHash())))
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
-    }
-
-    @Order(5)
-    @Test
-    public void fail_executing_proposal_on_paused_contract() throws Throwable {
-        String exception = contract.callInvokeFunction(EXECUTE, asList(integer(defaultProposalId)))
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
-    }
-
     @Order(6)
     @Test
     public void fail_change_param_on_paused_contract() throws Throwable {
@@ -698,15 +659,6 @@ public class GrantSharesGovTest {
     public void fail_remove_member_on_paused_contract() throws Throwable {
         String exception = contract.callInvokeFunction(REMOVE_MEMBER,
                         asList(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))))
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
-    }
-
-    @Order(9)
-    @Test
-    public void fail_update_contract_on_paused_contract() throws Throwable {
-        String exception = contract.callInvokeFunction(UPDATE_CONTRACT,
-                        asList(byteArray(new byte[]{1, 2, 3}), string("manifest"), any(null)))
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Contract is paused"));
     }

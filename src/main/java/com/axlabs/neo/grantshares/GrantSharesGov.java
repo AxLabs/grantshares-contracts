@@ -273,9 +273,6 @@ public class GrantSharesGov {
     public static int createProposal(Hash160 proposer, Intent[] intents,
             String description, int linkedProposal, int acceptanceRate, int quorum) {
 
-        // TODO: Check for targetContract validity and if they target only the Governance and
-        //  Treasury contracts.
-        assertNotPaused();
         assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
         assert acceptanceRate >= parameters.getInt(MIN_ACCEPTANCE_RATE_KEY)
                 : "GrantSharesGov: Acceptance rate not allowed";
@@ -304,7 +301,6 @@ public class GrantSharesGov {
      * @param endorser The script hash of the endorsing DAO member.
      */
     public static void endorseProposal(int id, Hash160 endorser) {
-        assertNotPaused();
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
                 : "GrantSharesGov: Not authorised";
         ByteString proposalBytes = proposals.get(id);
@@ -333,7 +329,6 @@ public class GrantSharesGov {
      *              invoking script must hold a witness of the voter.
      */
     public static void vote(int id, int vote, Hash160 voter) {
-        assertNotPaused();
         assert vote >= -1 && vote <= 1 : "GrantSharesGov: Invalid vote";
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
                 : "GrantSharesGov: Not authorised";
@@ -372,7 +367,6 @@ public class GrantSharesGov {
      * @return the values returned by the proposal's intents.
      */
     public static Object[] execute(int id) {
-        assertNotPaused();
         ByteString proposalBytes = proposals.get(id);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
@@ -455,14 +449,14 @@ public class GrantSharesGov {
     /**
      * Updates the contract to the new NEF and manifest.
      * <p>
-     * This method can only be called by the contract itself.
+     * This method can only be called by the contract itself. It can be called even if the
+     * contract is paused in case the contract needs a fix.
      *
      * @param nef      The new contract NEF.
      * @param manifest The new contract manifest.
      * @param data     Optional data passed to the update (_deploy) method.
      */
     public static void updateContract(ByteString nef, String manifest, Object data) {
-        assertNotPaused();
         assertCallerIsSelf();
         ContractManagement.update(nef, manifest, data);
     }
@@ -483,7 +477,7 @@ public class GrantSharesGov {
                 "GrantSharesGov: Method only callable by the contract itself";
     }
 
-    private static void assertNotPaused() {
+    public static void assertNotPaused() {
         assert !isPaused() : "GrantSharesGov: Contract is paused";
     }
 
