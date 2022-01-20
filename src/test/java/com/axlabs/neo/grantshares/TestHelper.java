@@ -25,7 +25,6 @@ import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.types.ContractParameter.string;
-import static java.util.Arrays.asList;
 
 public class TestHelper {
 
@@ -53,8 +52,8 @@ public class TestHelper {
     static final String GET_WHITELISTED_TOKENS = "getWhitelistedTokens";
     static final String ADD_FUNDER = "addFunder";
     static final String REMOVE_FUNDER = "removeFunder";
-    static final String ADD_WHITELISTED_TOKENS = "addWhitelistedToken";
-    static final String REMOVE_WHITELISTED_TOKENS = "removeWhitelistedToken";
+    static final String ADD_WHITELISTED_TOKEN = "addWhitelistedToken";
+    static final String REMOVE_WHITELISTED_TOKEN = "removeWhitelistedToken";
 
     static final String ENDORSE = "endorseProposal";
     static final String VOTE = "vote";

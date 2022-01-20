@@ -1,12 +1,10 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.contract.FungibleToken;
 import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
-import io.neow3j.protocol.core.response.NeoSendRawTransaction;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -14,11 +12,9 @@ import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
-import io.neow3j.transaction.Transaction;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
-import io.neow3j.utils.AddressUtils;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
@@ -251,7 +247,7 @@ public class GrantSharesTreasuryTest {
     @Order(5)
     public void execute_proposal_with_remove_whitelisted_token() throws Throwable {
         ContractParameter intents = array(
-                array(treasury.getScriptHash(), REMOVE_WHITELISTED_TOKENS, array(NeoToken.SCRIPT_HASH)));
+                array(treasury.getScriptHash(), REMOVE_WHITELISTED_TOKEN, array(NeoToken.SCRIPT_HASH)));
         String desc = "execute_proposal_with_remove_whitelisted_token";
 
         // 1. Create and endorse proposal
@@ -282,7 +278,7 @@ public class GrantSharesTreasuryTest {
     public void execute_proposal_with_add_whitelisted_token() throws Throwable {
 
         ContractParameter intents = array(
-                array(treasury.getScriptHash(), ADD_WHITELISTED_TOKENS, array(FLM_TOKEN, FLM_MAX_AMOUNT)));
+                array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN, array(FLM_TOKEN, FLM_MAX_AMOUNT)));
         String desc = "execute_proposal_with_add_whitelisted_token";
 
         // 1. Create and endorse proposal
@@ -316,7 +312,7 @@ public class GrantSharesTreasuryTest {
     @Order(7)
     public void execute_proposal_with_change_whitelisted_token_max_amount() throws Throwable {
         ContractParameter intents = array(
-                array(treasury.getScriptHash(), ADD_WHITELISTED_TOKENS, array(GasToken.SCRIPT_HASH, GAS_MAX_NEW_AMOUNT)));
+                array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN, array(GasToken.SCRIPT_HASH, GAS_MAX_NEW_AMOUNT)));
         String desc = "execute_proposal_with_change_whitelisted_token_max_amount";
 
         // 1. Create and endorse proposal
@@ -353,7 +349,7 @@ public class GrantSharesTreasuryTest {
 
     @Test
     public void fail_calling_add_whitelisted_token_directly() throws IOException {
-        String exception = treasury.invokeFunction(ADD_WHITELISTED_TOKENS, ContractParameter.hash160(GasToken.SCRIPT_HASH),
+        String exception = treasury.invokeFunction(ADD_WHITELISTED_TOKEN, ContractParameter.hash160(GasToken.SCRIPT_HASH),
                         ContractParameter.integer(1))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
@@ -361,7 +357,7 @@ public class GrantSharesTreasuryTest {
 
     @Test
     public void fail_calling_remove_whitelisted_token_directly() throws IOException {
-        String exception = treasury.invokeFunction(REMOVE_WHITELISTED_TOKENS, ContractParameter.hash160(GasToken.SCRIPT_HASH))
+        String exception = treasury.invokeFunction(REMOVE_WHITELISTED_TOKEN, ContractParameter.hash160(GasToken.SCRIPT_HASH))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
     }
