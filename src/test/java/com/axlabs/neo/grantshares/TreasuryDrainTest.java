@@ -94,7 +94,7 @@ public class TreasuryDrainTest {
     @Test
     @Order(1)
     public void fail_execute_drain_on_unpaused_contract() throws Throwable {
-        String exception = treasury.invokeFunction(DRAIN, integer(1))
+        String exception = treasury.invokeFunction(DRAIN)
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Contract is not paused"));
     }
@@ -122,7 +122,7 @@ public class TreasuryDrainTest {
     @Order(3)
     @Test
     public void fail_execute_drain_with_non_funder() throws IOException {
-        String exception = treasury.invokeFunction(DRAIN, integer(1)).signers(AccountSigner.calledByEntry(bob))
+        String exception = treasury.invokeFunction(DRAIN).signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Not authorized"));
     }
@@ -130,7 +130,7 @@ public class TreasuryDrainTest {
     @Order(3)
     @Test
     public void execute_proposal_with_drain_contract() throws Throwable {
-        ContractParameter intents = array(array(treasury.getScriptHash(), DRAIN, array(integer(1))));
+        ContractParameter intents = array(array(treasury.getScriptHash(), DRAIN, array()));
         String desc = "execute_proposal_with_drain_contract";
 
         // 1. Create and endorse proposal

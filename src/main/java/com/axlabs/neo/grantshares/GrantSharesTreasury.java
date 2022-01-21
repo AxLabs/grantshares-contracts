@@ -66,7 +66,7 @@ public class GrantSharesTreasury {
             }
 
             // set parameter
-            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, (int)ownerFundersTokens[3]);
+            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, (int) ownerFundersTokens[3]);
         }
     }
 
@@ -258,7 +258,7 @@ public class GrantSharesTreasury {
      * <p>
      * This method fails if the contract is paused.
      *
-     * @param value    The new threshold value.
+     * @param value The new threshold value.
      */
     public static void changeThreshold(Integer value) {
         assertNotPaused();
@@ -269,22 +269,23 @@ public class GrantSharesTreasury {
     /**
      * Drain the treasury contract to save the tokens from being stolen.
      * <p>
-     * This method can only be called once the contract is paused and by the multi-sig account of funders
+     * This method can only be called once the contract is paused and by the multi-sig account of
+     * funders
      */
-    public static void drain(int tmp){
+    public static void drain() {
         assert isPaused() : "GrantSharesTreasury: Contract is not paused";
         Hash160 fundersMultiAccount = calcFundersMultiSigAccount();
         assert checkWitness(fundersMultiAccount) : "GrantSharesTreasury: Not authorized";
 
         Hash160 selfHash = Runtime.getExecutingScriptHash();
-        Iterator<ByteString> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX, (byte) (FindOptions.RemovePrefix | KeysOnly));
+        Iterator<ByteString> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX,
+                (byte) (FindOptions.RemovePrefix | KeysOnly));
 
         while (it.next()) {
             Hash160 token = new Hash160(it.get());
-            int balance = (int)Contract.call(token, "balanceOf", CallFlags.ReadStates, new Object[]{ selfHash });
+            int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadStates, new Object[]{selfHash});
             if (balance > 0) {
-                Object[] params = new Object[]{
-                        selfHash, fundersMultiAccount, balance, new Object[]{}};
+                Object[] params = new Object[]{selfHash, fundersMultiAccount, balance, new Object[]{}};
                 Contract.call(token, "transfer", CallFlags.All, params);
             }
         }
