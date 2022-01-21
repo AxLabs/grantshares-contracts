@@ -31,8 +31,8 @@ public class GrantSharesTreasury {
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap funders = ctx.createMap(FUNDERS_PREFIX);
-    static final StorageMap whitelistedTokens = ctx.createMap(WHITELISTED_TOKENS_PREFIX);
+    static final StorageMap funders = new StorageMap(ctx, FUNDERS_PREFIX);
+    static final StorageMap whitelistedTokens = new StorageMap(ctx, WHITELISTED_TOKENS_PREFIX);
 
     @DisplayName("FunderAdded")
     static Event1Arg<Hash160> funderAdded;
