@@ -1,17 +1,8 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.devpack.ByteString;
-import io.neow3j.devpack.Contract;
-import io.neow3j.devpack.ECPoint;
-import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.Iterator;
+import io.neow3j.devpack.*;
 import io.neow3j.devpack.Iterator.Struct;
-import io.neow3j.devpack.List;
-import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
-import io.neow3j.devpack.Storage;
-import io.neow3j.devpack.StorageContext;
-import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.OnNEP17Payment;
@@ -23,9 +14,10 @@ import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
-import io.neow3j.devpack.events.Event3Args;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
+import static io.neow3j.devpack.Runtime.checkWitness;
+import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
 @Permission(contract = "*", methods = "transfer")
@@ -36,6 +28,7 @@ public class GrantSharesTreasury {
     static final String FUNDERS_PREFIX = "funders";
     static final String FUNDER_COUNT_KEY = "funderCount";
     static final String WHITELISTED_TOKENS_PREFIX = "whitelistedTokens";
+    static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
     static final StorageContext ctx = Storage.getStorageContext();
     static final StorageMap funders = ctx.createMap(FUNDERS_PREFIX);
@@ -71,6 +64,9 @@ public class GrantSharesTreasury {
             for (int i = 0; i < hashes.length; i++) {
                 whitelistedTokens.put(hashes[i].toByteString(), maxes[i]);
             }
+
+            // set parameter
+            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, (int)ownerFundersTokens[3]);
         }
     }
 
@@ -116,6 +112,25 @@ public class GrantSharesTreasury {
             funders.add(new ECPoint(it.get()));
         }
         return funders;
+    }
+
+    /**
+     * Calculates the hash of the multi-sig account made up of the governance members. The signing
+     * threshold is calculated from the value of the
+     * {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
+     *
+     * @return The multi-sig account hash.
+     */
+    @Safe
+    public static Hash160 calcFundersMultiSigAccount() {
+        int count = getFundersCount();
+        int thresholdRatio = Storage.getInt(ctx, MULTI_SIG_THRESHOLD_KEY);
+        int thresholdTimes100 = count * thresholdRatio;
+        int threshold = thresholdTimes100 / 100;
+        if (thresholdTimes100 % 100 != 0) {
+            threshold += 1; // Always round up.
+        }
+        return Account.createMultiSigAccount(threshold, getFunders().toArray());
     }
 
     /**
@@ -239,6 +254,43 @@ public class GrantSharesTreasury {
     }
 
     /**
+     * Changes the value of the multiSigThreshold to {@code value}.
+     * <p>
+     * This method fails if the contract is paused.
+     *
+     * @param value    The new threshold value.
+     */
+    public static void changeThreshold(Integer value) {
+        assertNotPaused();
+        assertCallerIsOwner();
+        Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
+    }
+
+    /**
+     * Drain the treasury contract to save the tokens from being stolen.
+     * <p>
+     * This method can only be called once the contract is paused and by the multi-sig account of funders
+     */
+    public static void drain(int tmp){
+        assert isPaused() : "GrantSharesTreasury: Contract is not paused";
+        Hash160 fundersMultiAccount = calcFundersMultiSigAccount();
+        assert checkWitness(fundersMultiAccount) : "GrantSharesTreasury: Not authorized";
+
+        Hash160 selfHash = Runtime.getExecutingScriptHash();
+        Iterator<ByteString> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX, (byte) (FindOptions.RemovePrefix | KeysOnly));
+
+        while (it.next()) {
+            Hash160 token = new Hash160(it.get());
+            int balance = (int)Contract.call(token, "balanceOf", CallFlags.ReadStates, new Object[]{ selfHash });
+            if (balance > 0) {
+                Object[] params = new Object[]{
+                        selfHash, fundersMultiAccount, balance, new Object[]{}};
+                Contract.call(token, "transfer", CallFlags.All, params);
+            }
+        }
+    }
+
+    /**
      * Updates the contract to the new NEF and manifest.
      * <p>
      * This method can only be called by the owner. It can be called even if the contract is paused
@@ -257,5 +309,4 @@ public class GrantSharesTreasury {
     private static void assertNotPaused() {
         assert !isPaused() : "GrantSharesTreasury: Contract is paused";
     }
-
 }
