@@ -50,12 +50,12 @@ public class GrantSharesGov {
     static final String MEMBERS_COUNT_KEY = "#_members"; // int
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap proposals = new StorageMap(ctx, 1); // [id, Proposal]
-    static final StorageMap proposalData = new StorageMap(ctx, 2); // [id, ProposalData]
-    static final StorageMap proposalVotes = new StorageMap(ctx, 3); // [id, ProposalVotes]
-    static final StorageMap parameters = new StorageMap(ctx, 4); // [param_key, param_value]
+    static final StorageMap proposals = new StorageMap(ctx, new byte[]{ 1 }); // [id, Proposal]
+    static final StorageMap proposalData = new StorageMap(ctx, new byte[]{ 2 }); // [id, ProposalData]
+    static final StorageMap proposalVotes = new StorageMap(ctx, new byte[]{ 3 }); // [id, ProposalVotes]
+    static final StorageMap parameters = new StorageMap(ctx, new byte[]{ 4 }); // [param_key, param_value]
     static final byte MEMBERS_MAP_PREFIX = 5;
-    static final StorageMap members = new StorageMap(ctx, MEMBERS_MAP_PREFIX); // [Hash160, ECPoint]
+    static final StorageMap members = new StorageMap(ctx, new byte[]{ MEMBERS_MAP_PREFIX }); // [Hash160, ECPoint]
     //endregion CONTRACT VARIABLES
 
     //region EVENTS
