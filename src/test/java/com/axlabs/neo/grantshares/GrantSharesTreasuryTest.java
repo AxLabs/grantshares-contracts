@@ -75,6 +75,7 @@ public class GrantSharesTreasuryTest {
     private static final int NEO_MAX_AMOUNT = 100;
     private static final int NEO_MAX_AMOUNT_CHANGED = 1000;
     private static final int GAS_MAX_AMOUNT = 10000;
+    private static final int MULTI_SIG_THRESHOLD_RATIO = 100;
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
@@ -110,7 +111,7 @@ public class GrantSharesTreasuryTest {
         tokens.put(GasToken.SCRIPT_HASH, GAS_MAX_AMOUNT);
         ContractParameter tokensParam = map(tokens);
 
-        config.setDeployParam(array(gov.getScriptHash(), funders, tokensParam));
+        config.setDeployParam(array(gov.getScriptHash(), funders, tokensParam, MULTI_SIG_THRESHOLD_RATIO));
         return config;
     }
 
@@ -124,7 +125,7 @@ public class GrantSharesTreasuryTest {
         charlie = ext.getAccount(CHARLIE);
         denise = ext.getAccount(DENISE);
         Hash256 txHash = new GasToken(neow3j).transfer(
-                bob, treasury.getScriptHash(), BigInteger.valueOf(100))
+                        bob, treasury.getScriptHash(), BigInteger.valueOf(100))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(txHash, neow3j);
     }
@@ -351,7 +352,7 @@ public class GrantSharesTreasuryTest {
         Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
                 .getInvocationResult().getStack().get(0).getMap();
         assertThat(tokens.get(new ByteStringStackItem(NeoToken.SCRIPT_HASH.toLittleEndianArray()))
-                        .getInteger().intValue(), is(NEO_MAX_AMOUNT_CHANGED));
+                .getInteger().intValue(), is(NEO_MAX_AMOUNT_CHANGED));
 
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN,
@@ -426,9 +427,9 @@ public class GrantSharesTreasuryTest {
     @Test
     public void fail_funding_treasury_with_non_funder() throws Throwable {
         String exception = new GasToken(neow3j).transfer(alice, treasury.getScriptHash(),
-                                BigInteger.valueOf(10))
-                        .signers(AccountSigner.calledByEntry(alice))
-                        .callInvokeScript().getInvocationResult().getException();
+                        BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted sender"));
     }
 
