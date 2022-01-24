@@ -1,8 +1,18 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.devpack.*;
+import io.neow3j.devpack.Account;
+import io.neow3j.devpack.ByteString;
+import io.neow3j.devpack.Contract;
+import io.neow3j.devpack.ECPoint;
+import io.neow3j.devpack.Hash160;
+import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.Iterator.Struct;
+import io.neow3j.devpack.List;
+import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
+import io.neow3j.devpack.Storage;
+import io.neow3j.devpack.StorageContext;
+import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.OnNEP17Payment;
@@ -254,9 +264,9 @@ public class GrantSharesTreasury {
     }
 
     /**
-     * Changes the value of the multiSigThreshold to {@code value}.
+     * Changes the signing threshold of the funders multi-sig account to {@code value}.
      * <p>
-     * This method fails if the contract is paused.
+     * This method can only be called by the treasury owner and fails if the contract is paused.
      *
      * @param value The new threshold value.
      */
@@ -283,9 +293,11 @@ public class GrantSharesTreasury {
 
         while (it.next()) {
             Hash160 token = new Hash160(it.get());
-            int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadStates, new Object[]{selfHash});
+            int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadStates,
+                            new Object[]{selfHash});
             if (balance > 0) {
-                Object[] params = new Object[]{selfHash, fundersMultiAccount, balance, new Object[]{}};
+                Object[] params = new Object[]{selfHash, fundersMultiAccount, balance,
+                        new Object[]{}};
                 Contract.call(token, "transfer", CallFlags.All, params);
             }
         }
