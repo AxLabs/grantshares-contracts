@@ -30,7 +30,7 @@ import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
-@Permission(contract = "*", methods = "transfer")
+@Permission(contract = "*", methods = {"transfer", "update"})
 @SuppressWarnings("unchecked")
 public class GrantSharesTreasury {
 
@@ -52,6 +52,8 @@ public class GrantSharesTreasury {
     static Event2Args<Hash160, Integer> whitelistedTokenAdded;
     @DisplayName("WhitelistedTokenRemoved")
     static Event1Arg<Hash160> whitelistedTokenRemoved;
+    @DisplayName("ThresholdChanged")
+    static Event1Arg<Integer> thresholdChanged;
 
     @OnDeployment
     public static void deploy(Object data, boolean update) {
@@ -274,6 +276,7 @@ public class GrantSharesTreasury {
         assertNotPaused();
         assertCallerIsOwner();
         Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
+        thresholdChanged.fire(value);
     }
 
     /**
@@ -309,7 +312,7 @@ public class GrantSharesTreasury {
      * This method can only be called by the owner. It can be called even if the contract is paused
      * in case the contract needs a fix.
      */
-    public static void update(ByteString nef, String manifest, Object data) {
+    public static void updateContract(ByteString nef, String manifest, Object data) {
         assertCallerIsOwner();
         ContractManagement.update(nef, manifest, data);
     }
