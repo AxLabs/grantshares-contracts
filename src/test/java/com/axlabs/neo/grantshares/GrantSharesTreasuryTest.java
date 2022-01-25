@@ -39,7 +39,6 @@ import java.util.stream.Collectors;
 
 import static com.axlabs.neo.grantshares.TestHelper.*;
 import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
-import static io.neow3j.transaction.AccountSigner.calledByEntry;
 import static io.neow3j.types.ContractParameter.*;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -116,6 +115,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void getFunders() throws IOException {
         List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
                 .getStack().get(0).getList();
@@ -128,6 +128,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void getWhitelistedTokens() throws IOException {
         Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
                 .getInvocationResult().getStack().get(0).getMap();
@@ -232,6 +233,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(3)
     public void fail_removing_nonexistant_funder() throws Throwable {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_FUNDER,
@@ -376,6 +378,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_add_whitelisted_token_directly() throws IOException {
         String exception = treasury.invokeFunction(ADD_WHITELISTED_TOKEN,
                         hash160(GasToken.SCRIPT_HASH),
@@ -385,6 +388,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_remove_whitelisted_token_directly() throws IOException {
         String exception =
                 treasury.invokeFunction(REMOVE_WHITELISTED_TOKEN,
@@ -394,6 +398,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_add_funder_directly() throws Exception {
         String exception = treasury.invokeFunction(ADD_FUNDER, ContractParameter.publicKey(
                         alice.getECKeyPair().getPublicKey().getEncoded(true)))
@@ -402,6 +407,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_remove_funder_directly() throws Exception {
         String exception = treasury.invokeFunction(REMOVE_FUNDER, ContractParameter.publicKey(
                         charlie.getECKeyPair().getPublicKey().getEncoded(true)))
@@ -410,6 +416,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_funding_treasury_with_non_funder() throws Throwable {
         String exception = new GasToken(neow3j).transfer(alice, treasury.getScriptHash(),
                         BigInteger.valueOf(10))
@@ -419,6 +426,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(14)
     public void funding_treasury_with_whitelisted_token_and_funder() throws Throwable {
         GasToken gas = new GasToken(neow3j);
         int initialValue = gas.getBalanceOf(treasury.getScriptHash()).intValue();
@@ -529,6 +537,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_release_tokens_directly() throws IOException {
         String exception = treasury.invokeFunction(RELEASE_TOKENS,
                         hash160(GasToken.SCRIPT_HASH),
@@ -539,6 +548,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(15)
     public void execute_proposal_with_release_tokens() throws Throwable {
         Account acc = Account.create();
         final int fundingAmount = 10;
@@ -575,6 +585,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_release_tokens_with_non_whitelisted_token() throws Throwable {
         final Hash160 someToken = new Hash160("1a1512528147558851b39c2cd8aa47da7418aba1");
         ContractParameter intents = array(array(
@@ -604,6 +615,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_release_tokens_with_to_high_amount() throws Throwable {
         ContractParameter intents = array(array(
                 treasury.getScriptHash(),
@@ -671,6 +683,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_execute_update_contract_directly() throws Throwable {
         File nefFile = new File(this.getClass().getClassLoader()
                 .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());

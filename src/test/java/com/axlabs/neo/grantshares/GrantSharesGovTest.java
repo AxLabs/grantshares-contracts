@@ -108,6 +108,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void succeed_creating_and_retrieving_proposal() throws Throwable {
         // 1. Setup and create proposal
         Hash160 targetContract = NeoToken.SCRIPT_HASH;
@@ -161,6 +162,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_creating_with_missing_linked_proposal() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
@@ -178,6 +180,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_creating_with_bad_quorum() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
@@ -197,6 +200,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_creating_with_bad_acceptance_rate() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
@@ -216,6 +220,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void succeed_endorsing_with_member() throws Throwable {
         // 1. Create a proposal
         Hash256 creationTx = createSimpleProposal(contract, alice, "succeed_endorsing_with_member");
@@ -267,6 +272,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_endorsing_with_non_member() throws Throwable {
         InvocationResult res = contract.callInvokeFunction(ENDORSE, asList(
                         integer(defaultProposalId), hash160(bob.getScriptHash())),
@@ -276,6 +282,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_endorsing_with_member_but_wrong_signer() throws Throwable {
         InvocationResult res = contract.callInvokeFunction(ENDORSE, asList(
                         integer(defaultProposalId), hash160(alice.getScriptHash())),
@@ -285,6 +292,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_endorsing_already_endorsed_proposal() throws Throwable {
         // 1. Create a proposal
         Hash256 creationTx = createSimpleProposal(contract, alice,
@@ -308,6 +316,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_endorsing_non_existent_proposal() throws Throwable {
         InvocationResult res = contract.callInvokeFunction(ENDORSE, asList(
                         byteArray(Hash256.ZERO.toArray()), hash160(alice.getScriptHash())),
@@ -316,6 +325,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void succeed_voting() throws Throwable {
         // 1. Create proposal
         Hash256 creationTx = createSimpleProposal(contract, bob, "succeed_voting");
@@ -362,6 +372,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_voting_in_review_and_queued_phase() throws Throwable {
         Hash256 creationTx = createSimpleProposal(contract, bob, "fail_voting_in_review_phase");
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
@@ -394,6 +405,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_voting_multiple_times() throws Throwable {
         Hash256 creationTx = createSimpleProposal(contract, bob, "fail_voting_multiple_times");
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
@@ -438,6 +450,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_voting_with_non_member() throws IOException {
         // Vote on the default proposal. Doesn't matter in what phase it is.
         String exception = contract.invokeFunction(VOTE, integer(defaultProposalId),
@@ -448,6 +461,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_voting_on_non_existent_proposal() throws IOException {
         String exception = contract.invokeFunction(VOTE, byteArray("0102030405"),
                         integer(-1), hash160(charlie.getScriptHash()))
@@ -457,6 +471,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_voting_on_not_enorsed_proposal() throws IOException {
         // Vote on the default proposal. Doesn't matter in what phase it is.
         String exception = contract.invokeFunction(VOTE, integer(defaultProposalId),
@@ -467,6 +482,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_voting_with_invalid_vote() throws IOException {
         // Vote on the default proposal. Doesn't matter in what phase it is.
         String exception = contract.invokeFunction(VOTE, integer(defaultProposalId),
@@ -477,6 +493,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void create_proposal_with_large_intents_and_description() throws Throwable {
         String desc =
                 "aabcababcababcababcabbcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcaabcabcabcabcabcabca";
@@ -558,6 +575,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void succeed_creating_exact_same_proposal_that_already_exists() throws IOException {
         // Recreate default proposal
         InvocationResult result = contract.invokeFunction(CREATE, hash160(alice.getScriptHash()),
@@ -571,6 +589,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void get_proposals() throws Throwable {
         ContractParameter intents = array(array(NeoToken.SCRIPT_HASH, "balanceOf",
                 array(new Hash160(defaultAccountScriptHash()))));
@@ -593,6 +612,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void get_number_of_proposals() throws IOException {
         int result = contract.callInvokeFunction(GET_PROPOSAL_COUNT)
                 .getInvocationResult().getStack().get(0).getInteger().intValue();
@@ -670,6 +690,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_pausing_contract_without_members_account() throws Throwable {
         String exception = contract.invokeFunction(PAUSE)
                 .signers(AccountSigner.calledByEntry(alice))
@@ -678,6 +699,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_unpausing_contract_without_members_account() throws Throwable {
         String exception = contract.invokeFunction(UNPAUSE)
                 .signers(AccountSigner.calledByEntry(alice))
@@ -731,6 +753,7 @@ public class GrantSharesGovTest {
     }
 
     @Test
+    @Order(0)
     public void fail_execute_update_contract_directly() throws Throwable {
         File nefFile = new File(this.getClass().getClassLoader()
                 .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
