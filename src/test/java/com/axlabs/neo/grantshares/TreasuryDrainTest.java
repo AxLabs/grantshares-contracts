@@ -92,6 +92,42 @@ public class TreasuryDrainTest {
     }
 
     @Test
+    @Order(0)
+    public void execute_proposal_with_modify_threshold() throws Throwable {
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), CHANGE_THRESHOLD,
+                        array(50)));
+        String desc = "execute_proposal_with_modify_threshold";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, charlie);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("ThresholdChanged"));
+    }
+
+    @Test
+    @Order(1)
+    public void calc_funders_multisig_account() throws Throwable {
+        String account = treasury.callInvokeFunction(CALC_FUNDERS_MULTI_SIG_ACCOUNT)
+                .getInvocationResult().getStack().get(0).getAddress();
+        assertThat(account, is(createMultiSigAccount(1, bob, denise).getAddress()));
+    }
+
+    @Test
     @Order(1)
     public void fail_execute_drain_on_unpaused_contract() throws Throwable {
         String exception = treasury.invokeFunction(DRAIN)
@@ -142,14 +178,14 @@ public class TreasuryDrainTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
-        Account membersAccount = createMultiSigAccount(2, bob, denise);
+        Account membersAccount = createMultiSigAccount(1, bob, denise);
         Transaction tx = gov.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(bob),
                         AccountSigner.calledByEntry(membersAccount).setAllowedContracts(treasury.getScriptHash()))
                 .getUnsignedTransaction();
         Hash256 txHash = tx
                 .addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair()))
-                .addMultiSigWitness(membersAccount.getVerificationScript(), denise, bob)
+                .addMultiSigWitness(membersAccount.getVerificationScript(), bob)
                 .send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(txHash, neow3j);
 

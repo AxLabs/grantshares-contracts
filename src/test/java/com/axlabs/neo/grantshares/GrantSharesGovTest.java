@@ -1,8 +1,10 @@
 package com.axlabs.neo.grantshares;
 
+import io.neow3j.contract.NefFile;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoInvokeFunction;
@@ -28,38 +30,17 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.TestHelper.ADD_MEMBER;
-import static com.axlabs.neo.grantshares.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
-import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.TestHelper.CREATE;
-import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
-import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
-import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
-import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL_COUNT;
-import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
-import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_CREATED;
-import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
-import static com.axlabs.neo.grantshares.TestHelper.REMOVE_MEMBER;
-import static com.axlabs.neo.grantshares.TestHelper.UNPAUSE;
-import static com.axlabs.neo.grantshares.TestHelper.UPDATE_CONTRACT;
-import static com.axlabs.neo.grantshares.TestHelper.VOTE;
-import static com.axlabs.neo.grantshares.TestHelper.VOTED;
-import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
-import static com.axlabs.neo.grantshares.TestHelper.createSimpleProposal;
-import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
+import static com.axlabs.neo.grantshares.TestHelper.*;
+import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
+import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
@@ -93,6 +74,10 @@ public class GrantSharesGovTest {
     private static Account bob;
     private static Account charlie; // Set to be a DAO member.
     private static int defaultProposalId;
+
+    private final static Path TESTCONTRACT_NEF_FILE = Paths.get("TestContract.nef");
+    private final static Path TESTCONTRACT_MANIFEST_FILE =
+            Paths.get("TestGrantSharesGov.manifest.json");
 
     @DeployConfig(GrantSharesGov.class)
     public static DeployConfiguration deployConfig() throws Exception {
@@ -703,4 +688,64 @@ public class GrantSharesGovTest {
     // TODO:
     //  update gov contract
     //  fail calling update method directly
+
+    @Test
+    @Order(11)
+    public void execute_proposal_with_update_contract() throws Throwable {
+        File nefFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
+        NefFile nef = NefFile.readFromFile(nefFile);
+
+        File manifestFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_MANIFEST_FILE.toString()).toURI());
+        ContractManifest manifest = getObjectMapper()
+                .readValue(manifestFile, ContractManifest.class);
+        byte[] manifestBytes = getObjectMapper().writeValueAsBytes(manifest);
+
+        ContractParameter data = string("some data");
+
+        ContractParameter intents = array(
+                array(contract.getScriptHash(), UPDATE_CONTRACT,
+                        array(nef.toArray(), manifestBytes, data)));
+        String desc = "execute_proposal_with_update_contract";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("Update"));
+    }
+
+    @Test
+    public void fail_execute_update_contract_directly() throws Throwable {
+        File nefFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
+        NefFile nef = NefFile.readFromFile(nefFile);
+
+        File manifestFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_MANIFEST_FILE.toString()).toURI());
+        ContractManifest manifest = getObjectMapper()
+                .readValue(manifestFile, ContractManifest.class);
+        byte[] manifestBytes = getObjectMapper().writeValueAsBytes(manifest);
+
+        ContractParameter data = string("update contract");
+
+        String exception = contract.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Method only callable by the contract itself"));
+    }
 }
