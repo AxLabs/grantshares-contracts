@@ -28,6 +28,7 @@ import io.neow3j.devpack.events.Event2Args;
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
+import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
 @Permission(contract = "*", methods = {"transfer", "update"})
@@ -58,19 +59,19 @@ public class GrantSharesTreasury {
     @OnDeployment
     public static void deploy(Object data, boolean update) {
         if (!update) {
-            Object[] ownerFundersTokens = (Object[]) data;
+            Object[] config = (Object[]) data;
             // Set owner
-            Storage.put(ctx, OWNER_KEY, (Hash160) ownerFundersTokens[0]);
+            Storage.put(ctx, OWNER_KEY, (Hash160) config[0]);
 
             // Set initial funders.
-            ECPoint[] pubKeys = (ECPoint[]) ownerFundersTokens[1];
+            ECPoint[] pubKeys = (ECPoint[]) config[1];
             for (ECPoint pubKey : pubKeys) {
                 funders.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
             }
             Storage.put(ctx, FUNDER_COUNT_KEY, pubKeys.length);
 
             // Set whitelisted tokens
-            Map<Hash160, Integer> tokens = (Map<Hash160, Integer>) ownerFundersTokens[2];
+            Map<Hash160, Integer> tokens = (Map<Hash160, Integer>) config[2];
             Hash160[] hashes = tokens.keys();
             Integer[] maxes = tokens.values();
             for (int i = 0; i < hashes.length; i++) {
@@ -78,7 +79,7 @@ public class GrantSharesTreasury {
             }
 
             // set parameter
-            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, (int) ownerFundersTokens[3]);
+            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, (int) config[3]);
         }
     }
 
@@ -118,7 +119,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static List<ECPoint> getFunders() {
-        Iterator<ByteString> it = Storage.find(ctx, FUNDERS_PREFIX, ValuesOnly);
+        Iterator<ByteString> it = funders.find(ValuesOnly);
         List<ECPoint> funders = new List<>();
         while (it.next()) {
             funders.add(new ECPoint(it.get()));
@@ -152,8 +153,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static Map<Hash160, Integer> getWhitelistedTokens() {
-        Iterator<Struct<Hash160, Integer>> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX,
-                FindOptions.RemovePrefix);
+        Iterator<Struct<Hash160, Integer>> it = whitelistedTokens.find(RemovePrefix);
         Map<Hash160, Integer> tokens = new Map<>();
         while (it.next()) {
             Struct<Hash160, Integer> i = it.get();
@@ -291,8 +291,7 @@ public class GrantSharesTreasury {
         assert checkWitness(fundersMultiAccount) : "GrantSharesTreasury: Not authorized";
 
         Hash160 selfHash = Runtime.getExecutingScriptHash();
-        Iterator<ByteString> it = Storage.find(ctx, WHITELISTED_TOKENS_PREFIX,
-                (byte) (FindOptions.RemovePrefix | KeysOnly));
+        Iterator<ByteString> it = whitelistedTokens.find((byte) (RemovePrefix | KeysOnly));
 
         while (it.next()) {
             Hash160 token = new Hash160(it.get());

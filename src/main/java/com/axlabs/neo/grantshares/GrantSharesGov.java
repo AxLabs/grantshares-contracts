@@ -161,7 +161,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static List<ECPoint> getMembers() {
-        Iterator<ByteString> it = Storage.find(ctx, MEMBERS_MAP_PREFIX, ValuesOnly);
+        Iterator<ByteString> it = members.find(ValuesOnly);
         List<ECPoint> members = new List<>();
         while (it.next()) {
             members.add(new ECPoint(it.get()));

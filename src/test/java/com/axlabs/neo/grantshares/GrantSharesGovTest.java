@@ -707,10 +707,6 @@ public class GrantSharesGovTest {
         assertThat(exception, containsString("Not authorized"));
     }
 
-    // TODO:
-    //  update gov contract
-    //  fail calling update method directly
-
     @Test
     @Order(11)
     public void execute_proposal_with_update_contract() throws Throwable {

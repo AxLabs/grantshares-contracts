@@ -151,11 +151,6 @@ public class ProposalExecutionsTest {
         assertThat(exception, containsString("Proposal already executed"));
     }
 
-
-    // TODO:
-    //  - succeed voting and executing proposal that has different quorum and acceptance rate.
-    //  - succeed executing proposal that has multiple intents.
-
     @Test
     public void execute_proposal_with_multiple_intents() throws Throwable {
         ContractParameter intents = array(
@@ -201,5 +196,9 @@ public class ProposalExecutionsTest {
         assertThat(n.getContract(), is(contract.getScriptHash()));
         assertThat(n.getState().getList().get(0).getInteger().intValue(), is(id));
     }
+
+    // TODO:
+    //  - succeed voting and executing proposal that has different quorum and acceptance rate.
+    //  - succeed executing proposal that has multiple intents.
 
 }
