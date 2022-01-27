@@ -1,9 +1,8 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.contract.GasToken;
-import io.neow3j.contract.NeoToken;
-import io.neow3j.contract.SmartContract;
+import io.neow3j.contract.*;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.stackitem.ByteStringStackItem;
 import io.neow3j.protocol.core.stackitem.StackItem;
@@ -27,39 +26,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.axlabs.neo.grantshares.TestHelper.ADD_FUNDER;
-import static com.axlabs.neo.grantshares.TestHelper.ADD_WHITELISTED_TOKEN;
-import static com.axlabs.neo.grantshares.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.TestHelper.GET_FUNDERS;
-import static com.axlabs.neo.grantshares.TestHelper.GET_WHITELISTED_TOKENS;
-import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
-import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.RELEASE_TOKENS;
-import static com.axlabs.neo.grantshares.TestHelper.REMOVE_FUNDER;
-import static com.axlabs.neo.grantshares.TestHelper.REMOVE_WHITELISTED_TOKEN;
-import static com.axlabs.neo.grantshares.TestHelper.UNPAUSE;
-import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
-import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
-import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
-import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
-import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.hash160;
-import static io.neow3j.types.ContractParameter.integer;
-import static io.neow3j.types.ContractParameter.map;
-import static io.neow3j.types.ContractParameter.publicKey;
+import static com.axlabs.neo.grantshares.TestHelper.*;
+import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
+import static io.neow3j.types.ContractParameter.*;
+import static io.neow3j.types.ContractParameter.byteArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
@@ -76,6 +57,9 @@ public class GrantSharesTreasuryTest {
     private static final int NEO_MAX_AMOUNT_CHANGED = 1000;
     private static final int GAS_MAX_AMOUNT = 10000;
     private static final int MULTI_SIG_THRESHOLD_RATIO = 100;
+    private final static Path TESTCONTRACT_NEF_FILE = Paths.get("TestContract.nef");
+    private final static Path TESTCONTRACT_MANIFEST_FILE =
+            Paths.get("TestGrantSharesTreasury.manifest.json");
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
@@ -131,6 +115,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void getFunders() throws IOException {
         List<StackItem> funders = treasury.callInvokeFunction(GET_FUNDERS).getInvocationResult()
                 .getStack().get(0).getList();
@@ -143,6 +128,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void getWhitelistedTokens() throws IOException {
         Map<StackItem, StackItem> tokens = treasury.callInvokeFunction(GET_WHITELISTED_TOKENS)
                 .getInvocationResult().getStack().get(0).getMap();
@@ -247,6 +233,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(3)
     public void fail_removing_nonexistant_funder() throws Throwable {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_FUNDER,
@@ -391,6 +378,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_add_whitelisted_token_directly() throws IOException {
         String exception = treasury.invokeFunction(ADD_WHITELISTED_TOKEN,
                         hash160(GasToken.SCRIPT_HASH),
@@ -400,6 +388,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_remove_whitelisted_token_directly() throws IOException {
         String exception =
                 treasury.invokeFunction(REMOVE_WHITELISTED_TOKEN,
@@ -409,6 +398,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_add_funder_directly() throws Exception {
         String exception = treasury.invokeFunction(ADD_FUNDER, ContractParameter.publicKey(
                         alice.getECKeyPair().getPublicKey().getEncoded(true)))
@@ -417,6 +407,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_remove_funder_directly() throws Exception {
         String exception = treasury.invokeFunction(REMOVE_FUNDER, ContractParameter.publicKey(
                         charlie.getECKeyPair().getPublicKey().getEncoded(true)))
@@ -425,6 +416,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_funding_treasury_with_non_funder() throws Throwable {
         String exception = new GasToken(neow3j).transfer(alice, treasury.getScriptHash(),
                         BigInteger.valueOf(10))
@@ -434,6 +426,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(14)
     public void funding_treasury_with_whitelisted_token_and_funder() throws Throwable {
         GasToken gas = new GasToken(neow3j);
         int initialValue = gas.getBalanceOf(treasury.getScriptHash()).intValue();
@@ -544,6 +537,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_calling_release_tokens_directly() throws IOException {
         String exception = treasury.invokeFunction(RELEASE_TOKENS,
                         hash160(GasToken.SCRIPT_HASH),
@@ -554,6 +548,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(15)
     public void execute_proposal_with_release_tokens() throws Throwable {
         Account acc = Account.create();
         final int fundingAmount = 10;
@@ -590,6 +585,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_release_tokens_with_non_whitelisted_token() throws Throwable {
         final Hash160 someToken = new Hash160("1a1512528147558851b39c2cd8aa47da7418aba1");
         ContractParameter intents = array(array(
@@ -619,6 +615,7 @@ public class GrantSharesTreasuryTest {
     }
 
     @Test
+    @Order(0)
     public void fail_release_tokens_with_to_high_amount() throws Throwable {
         ContractParameter intents = array(array(
                 treasury.getScriptHash(),
@@ -645,6 +642,63 @@ public class GrantSharesTreasuryTest {
         assertThat(exception, containsString("Above token's max funding amount"));
     }
 
-    // TODO: Test
-    //   - update contract
+    @Test
+    @Order(30)
+    public void execute_proposal_with_update_contract() throws Throwable {
+        File nefFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
+        NefFile nef = NefFile.readFromFile(nefFile);
+
+        File manifestFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_MANIFEST_FILE.toString()).toURI());
+        ContractManifest manifest = getObjectMapper()
+                .readValue(manifestFile, ContractManifest.class);
+        byte[] manifestBytes = getObjectMapper().writeValueAsBytes(manifest);
+
+        ContractParameter data = string("update contract");
+
+        ContractParameter intents = array(
+                array(treasury.getScriptHash(), UPDATE_CONTRACT,
+                        array(nef.toArray(), manifestBytes, data)));
+        String desc = "execute_proposal_with_update_contract";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
+                .getApplicationLog().getExecutions().get(0);
+        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        assertThat(n.getEventName(), is("Update"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_execute_update_contract_directly() throws Throwable {
+        File nefFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
+        NefFile nef = NefFile.readFromFile(nefFile);
+
+        File manifestFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_MANIFEST_FILE.toString()).toURI());
+        ContractManifest manifest = getObjectMapper()
+                .readValue(manifestFile, ContractManifest.class);
+        byte[] manifestBytes = getObjectMapper().writeValueAsBytes(manifest);
+
+        ContractParameter data = string("update contract");
+
+        String exception = treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Not authorised"));
+    }
 }
