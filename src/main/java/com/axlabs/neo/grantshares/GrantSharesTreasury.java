@@ -19,7 +19,6 @@ import io.neow3j.devpack.annotations.OnNEP17Payment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
-import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
@@ -296,7 +295,7 @@ public class GrantSharesTreasury {
         while (it.next()) {
             Hash160 token = new Hash160(it.get());
             int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadStates,
-                            new Object[]{selfHash});
+                    new Object[]{selfHash});
             if (balance > 0) {
                 Object[] params = new Object[]{selfHash, fundersMultiAccount, balance,
                         new Object[]{}};
