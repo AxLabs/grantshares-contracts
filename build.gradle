@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'io.neow3j.gradle-plugin' version '3.14.2-SNAPSHOT'
+    id 'io.neow3j.gradle-plugin' version '3.15.0'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -12,10 +12,10 @@ repositories {
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.14.2-SNAPSHOT'
+    implementation 'io.neow3j:devpack:3.15.0'
 
-    testImplementation 'io.neow3j:devpack-test:3.14.2-SNAPSHOT',
-            'io.neow3j:compiler:3.14.2-SNAPSHOT',
+    testImplementation 'io.neow3j:devpack-test:3.15.0',
+            'io.neow3j:compiler:3.15.0',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 }
@@ -26,4 +26,20 @@ neow3jCompiler {
 
 tasks.withType(Test) {
     useJUnitPlatform()
+}
+
+sourceSets {
+    deploy {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+
+configurations {
+    deployImplementation.extendsFrom implementation
+    deployRuntimeOnly.extendsFrom runtimeOnly
+}
+
+dependencies {
+    deployImplementation 'io.neow3j:compiler:3.15.0'
 }
