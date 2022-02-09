@@ -14,6 +14,7 @@ import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.DisplayName;
+import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.OnNEP17Payment;
 import io.neow3j.devpack.annotations.Permission;
@@ -30,8 +31,10 @@ import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
-@Permission(contract = "*", methods = {"transfer", "update"})
 @SuppressWarnings("unchecked")
+@Permission(contract = "*", methods = {"transfer", "update"})
+@DisplayName("GrantSharesTreasuryV1")
+@ManifestExtra(key = "author", value = "AxLabs")
 public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";

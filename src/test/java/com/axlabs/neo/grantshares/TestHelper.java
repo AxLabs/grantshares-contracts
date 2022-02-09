@@ -85,7 +85,7 @@ public class TestHelper {
     // parameter names
     static final String REVIEW_LENGTH_KEY = "review_len";
     static final String VOTING_LENGTH_KEY = "voting_len";
-    static final String QUEUED_LENGTH_KEY = "queued_len";
+    static final String TIMELOCK_LENGTH_KEY = "timelock_len";
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     static final String MIN_QUORUM_KEY = "min_quorum";
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
@@ -108,7 +108,7 @@ public class TestHelper {
                 array(
                         REVIEW_LENGTH_KEY, PHASE_LENGTH,
                         VOTING_LENGTH_KEY, PHASE_LENGTH,
-                        QUEUED_LENGTH_KEY, PHASE_LENGTH,
+                        TIMELOCK_LENGTH_KEY, PHASE_LENGTH,
                         MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
                         MIN_QUORUM_KEY, MIN_QUORUM,
                         MULTI_SIG_THRESHOLD_KEY, MULTI_SIG_THRESHOLD_RATIO

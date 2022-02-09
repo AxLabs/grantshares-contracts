@@ -13,6 +13,7 @@ import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.StringLiteralHelper;
 import io.neow3j.devpack.annotations.DisplayName;
+import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
@@ -30,9 +31,10 @@ import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
 
-@Permission(contract = "*", methods = "*")
 @SuppressWarnings("unchecked")
-@DisplayName("ConcealedContractV1")
+@Permission(contract = "*", methods = "*")
+@DisplayName("GrantSharesGovV1")
+@ManifestExtra(key = "author", value = "AxLabs")
 public class GrantSharesGov {
 
     //region CONTRACT VARIABLES
@@ -40,7 +42,7 @@ public class GrantSharesGov {
     // Parameter keys
     static final String REVIEW_LENGTH_KEY = "review_len"; // milliseconds
     static final String VOTING_LENGTH_KEY = "voting_len"; // milliseconds
-    static final String QUEUED_LENGTH_KEY = "queued_len"; // milliseconds
+    static final String TIMELOCK_LENGTH_KEY = "timelock_len"; // milliseconds
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate"; // percentage
     static final String MIN_QUORUM_KEY = "min_quorum"; // percentage
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold"; // percentage
@@ -79,15 +81,15 @@ public class GrantSharesGov {
     @SuppressWarnings("unchecked")
     public static void deploy(Object data, boolean update) {
         if (!update) {
-            List<Object> membersAndParams = (List<Object>) data;
+            List<Object> config = (List<Object>) data;
             // Set parameters
-            List<Object> params = (List<Object>) membersAndParams.get(1);
+            List<Object> params = (List<Object>) config.get(1);
             for (int i = 0; i < params.size(); i += 2) {
                 parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
             }
 
             // Set members
-            ECPoint[] pubKeys = (ECPoint[]) membersAndParams.get(0);
+            ECPoint[] pubKeys = (ECPoint[]) config.get(0);
             for (ECPoint pubKey : pubKeys) {
                 members.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
             }
@@ -314,7 +316,7 @@ public class GrantSharesGov {
         //  the contract should use the actual time.
         proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
-        proposal.queuedEnd = proposal.votingEnd + parameters.getInt(QUEUED_LENGTH_KEY);
+        proposal.queuedEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposals.put(id, serialize(proposal));
         endorsed.fire(id, endorser);
     }
