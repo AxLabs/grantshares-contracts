@@ -2,9 +2,10 @@
 
 # GrantShares: Smart Contracts
 
-This git repo contains the smart contracts for the GrantSharesDAO.
+This git repo contains the smart contracts for the GrantShares prgoram.
 
 If you want to know more about GrantShares, please refer to the root repository:
+
 * [https://github.com/AxLabs/grantshares](https://github.com/AxLabs/grantshares)
 
 ## Development
@@ -15,26 +16,145 @@ Clone this repo:
 git clone https://github.com/AxLabs/grantshares-contracts.git
 ```
 
-Compiling the GrantSharesGov smart contract (the .nef, .manifest, and .nefdbgnfo output files are 
-at `./build/neow3j`).
+Run the tests:
 
 ```shell
-./gradlew clean neow3jCompile
+./gradlew test
 ```
 
-Note, that this doesn't automatically compile the GrantSharesTreasury too. For that you have to 
-change the `className` value in the `neow3jCompiler` section of the build.gradle file.
-```groovy
-    neow3jCompiler {
-        className = "com.axlabs.neo.grantshares.GrantSharesTreasury"
+## Deployment
+
+Both contracts have several things that need to be configured at deploy time.
+
+### GrantSharesGov Deploy Configuration
+
+For the GrantSharesGov contract the following values have to be set. Names of parameters are given
+in brackets.
+
+- Review phase length ("review_len")
+- Voting phase length ("voting_len")
+- Timelock phase length ("timelock_len")
+- Minimum acceptance rate of a proposal ("min_accept_rate")
+- Minimum quorum of a proposal ("min_quorum")
+- Members multi-sig address signing threshold ("threshold")
+- The initial GrantShares members
+
+At deploy time all of these things have to be passed as one parameter. This is the expected
+structure:
+
+```json
+{
+  "type": "Array",
+  "value": [
+    {
+      "type": "Array",
+      "value": [
+        {
+          "type": "PublicKey",
+          "value": "<member1 pubkey>"
+        },
+        {
+          "type": "PublicKey",
+          "value": "<member2 pubkey>"
+        },
+        ...
+      ]
+    },
+    {
+      "type": "Array",
+      "value": [
+        {
+          "type": "String",
+          "value": "<param1 name>"
+        },
+        {
+          "type": "Integer",
+          "value": "<param1 value>"
+        },
+        {
+          "type": "String",
+          "value": "<param2 name>"
+        },
+        {
+          "type": "Integer",
+          "value": "<param2 value>"
+        },
+        ...
+      ]
     }
+  ]
+}
 ```
 
-Running the tests:
+### GrantSharesTreasury Deploy Configuration
 
-```shell
-./gradlew clean test
+For the treasury contract the following values have to be set.
+
+- Contract owner, which is the GrantSharesGov contract hash
+- The initial GrantShares funders
+- Whitelisted tokens and their maximum funding amounts
+- Funders multi-sig address signing threshold 
+
+At deploy time all of these things have to be passed as one parameter. This is the expected
+structure:
+
+```json
+{
+  "type": "Array",
+  "value": [
+    {
+      "type": "Hash160",
+      "value": "<GrantSharesGov contract hash>"
+    },
+    {
+      "type": "Array",
+      "value": [
+        {
+          "type": "PublicKey",
+          "value": "<funder1 publikey>"
+        },
+        {
+          "type": "PublicKey",
+          "value": "<funder2 publikey>"
+        },
+        ...
+      ]
+    },
+    {
+      "type": "Map",
+      "value": [
+        {
+          "key": {
+            "type": "Hash160",
+            "value": "<token1 contract hash>"
+          },
+          "value": {
+            "type": "Integer",
+            "value": "<token1 max funding amount>"
+          }
+        },
+        {
+          "key": {
+            "type": "Hash160",
+            "value": "<token2 contract hash>"
+          },
+          "value": {
+            "type": "Integer",
+            "value": "<token2 max funding amount>"
+          }
+        },
+        ...
+      ]
+    },
+    {
+      "type": "Integer",
+      "value": "<funders multi-sig threshold>"
+    }
+  ]
+}
 ```
+
+- Funders multi-sig address signing threshold ("threshold")
 
 ## Docs
 
@@ -42,8 +162,8 @@ Documents about proposals, flow, etc., are in the official documentation page fo
 
 ## Acknowledgement
 
-[AxLabs](https://axlabs.com) develops and maintains the GrantSharesDAO, with the support from the
-whole community.
+[AxLabs](https://axlabs.com) develops and maintains the GrantShares contracts, with the support from
+the whole Neo community.
 
 ## License
 
