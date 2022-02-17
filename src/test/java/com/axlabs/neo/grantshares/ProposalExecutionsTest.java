@@ -26,7 +26,6 @@ import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
@@ -85,10 +84,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_that_wasnt_endorsed() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 51)));
-        String desc = "fail_executing_proposal_that_wasnt_endorsed";
+        String discUrl = "fail_executing_proposal_that_wasnt_endorsed";
 
         // 1. Create proposal then skip till after the queued phase without endorsing.
-        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob), intents, string(desc),
+        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob), intents, string(discUrl),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -109,10 +108,10 @@ public class ProposalExecutionsTest {
         int newValue = 60;
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, newValue)));
-        String desc = "fail_executing_proposal_without_votes";
+        String discUrl = "fail_executing_proposal_without_votes";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
@@ -126,10 +125,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_accepted_proposal_multiple_times() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String desc = "fail_executing_accepted_proposal_multiple_times";
+        String discUrl = "fail_executing_accepted_proposal_multiple_times";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
@@ -158,10 +157,10 @@ public class ProposalExecutionsTest {
                         bob.getScriptHash(), 1, any(null))),
                 array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
                         bob.getScriptHash(), 1, any(null))));
-        String desc = "execute_proposal_with_multiple_intents";
+        String discUrl = "execute_proposal_with_multiple_intents";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);

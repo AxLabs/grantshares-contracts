@@ -1,6 +1,9 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.contract.*;
+import io.neow3j.contract.GasToken;
+import io.neow3j.contract.NefFile;
+import io.neow3j.contract.NeoToken;
+import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
@@ -37,10 +40,35 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static com.axlabs.neo.grantshares.TestHelper.*;
+import static com.axlabs.neo.grantshares.TestHelper.ADD_FUNDER;
+import static com.axlabs.neo.grantshares.TestHelper.ADD_WHITELISTED_TOKEN;
+import static com.axlabs.neo.grantshares.TestHelper.ALICE;
+import static com.axlabs.neo.grantshares.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.TestHelper.DENISE;
+import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.GET_FUNDERS;
+import static com.axlabs.neo.grantshares.TestHelper.GET_WHITELISTED_TOKENS;
+import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
+import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.RELEASE_TOKENS;
+import static com.axlabs.neo.grantshares.TestHelper.REMOVE_FUNDER;
+import static com.axlabs.neo.grantshares.TestHelper.REMOVE_WHITELISTED_TOKEN;
+import static com.axlabs.neo.grantshares.TestHelper.UNPAUSE;
+import static com.axlabs.neo.grantshares.TestHelper.UPDATE_CONTRACT;
+import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
+import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
+import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
+import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
-import static io.neow3j.types.ContractParameter.*;
+import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
+import static io.neow3j.types.ContractParameter.hash160;
+import static io.neow3j.types.ContractParameter.integer;
+import static io.neow3j.types.ContractParameter.map;
+import static io.neow3j.types.ContractParameter.publicKey;
+import static io.neow3j.types.ContractParameter.string;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
@@ -149,10 +177,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), ADD_FUNDER,
                         array(publicKey(alice.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "execute_proposal_with_add_funder";
+        String discUrl = "execute_proposal_with_add_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -182,10 +210,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), ADD_FUNDER,
                         array(publicKey(ext.getAccount(DENISE).getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "fail_adding_already_added_funder";
+        String discUrl = "fail_adding_already_added_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -205,10 +233,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_FUNDER, array(publicKey(
                         alice.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "execute_proposal_with_remove_funder";
+        String discUrl = "execute_proposal_with_remove_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -238,10 +266,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_FUNDER,
                         array(publicKey(charlie.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "fail_execution_remove_funder";
+        String discUrl = "fail_execution_remove_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -261,10 +289,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), REMOVE_WHITELISTED_TOKEN,
                         array(NeoToken.SCRIPT_HASH)));
-        String desc = "execute_proposal_with_remove_whitelisted_token";
+        String discUrl = "execute_proposal_with_remove_whitelisted_token";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -303,10 +331,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN, array(NeoToken.SCRIPT_HASH,
                         NEO_MAX_AMOUNT_CHANGED)));
-        String desc = "execute_proposal_with_add_whitelisted_token";
+        String discUrl = "execute_proposal_with_add_whitelisted_token";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -344,10 +372,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), ADD_WHITELISTED_TOKEN,
                         array(NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT)));
-        String desc = "execute_proposal_with_change_whitelisted_token_max_amount";
+        String discUrl = "execute_proposal_with_change_whitelisted_token_max_amount";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -560,10 +588,10 @@ public class GrantSharesTreasuryTest {
                         hash160(acc),
                         integer(fundingAmount)
                 )));
-        String desc = "execute_proposal_with_release_tokens";
+        String discUrl = "execute_proposal_with_release_tokens";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -596,10 +624,10 @@ public class GrantSharesTreasuryTest {
                         hash160(alice),
                         integer(10)
                 )));
-        String desc = "fail_release_tokens_with_non_whitelisted_token";
+        String discUrl = "fail_release_tokens_with_non_whitelisted_token";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -625,10 +653,10 @@ public class GrantSharesTreasuryTest {
                         hash160(alice),
                         integer(GAS_MAX_AMOUNT + 1)
                 )));
-        String desc = "fail_release_tokens_with_to_high_amount";
+        String discUrl = "fail_release_tokens_with_to_high_amount";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -660,10 +688,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), UPDATE_CONTRACT,
                         array(nef.toArray(), manifestBytes, data)));
-        String desc = "execute_proposal_with_update_contract";
+        String discUrl = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -697,8 +725,9 @@ public class GrantSharesTreasuryTest {
 
         ContractParameter data = string("update contract");
 
-        String exception = treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
-                .callInvokeScript().getInvocationResult().getException();
+        String exception =
+                treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                        .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Not authorised"));
     }
 }

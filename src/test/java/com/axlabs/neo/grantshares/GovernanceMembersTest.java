@@ -111,10 +111,10 @@ public class GovernanceMembersTest {
                 contract.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "execute_add_member";
+        String discUrl = "execute_add_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -158,10 +158,10 @@ public class GovernanceMembersTest {
                 contract.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(alice.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "fail_execute_add_member_with_already_member";
+        String discUrl = "fail_execute_add_member_with_already_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
@@ -182,10 +182,10 @@ public class GovernanceMembersTest {
                 contract.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(invalidPubKey))));
-        String desc = "fail_execute_add_member_with_invalid_public_key";
+        String discUrl = "fail_execute_add_member_with_invalid_public_key";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
@@ -220,10 +220,10 @@ public class GovernanceMembersTest {
                 contract.getScriptHash(),
                 REMOVE_MEMBER,
                 array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "execute_remove_member";
+        String discUrl = "execute_remove_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -264,10 +264,10 @@ public class GovernanceMembersTest {
                 contract.getScriptHash(),
                 REMOVE_MEMBER,
                 array(publicKey(acc.getECKeyPair().getPublicKey().getEncoded(true)))));
-        String desc = "fail_execute_remove_member_with_non_member";
+        String discUrl = "fail_execute_remove_member_with_non_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);

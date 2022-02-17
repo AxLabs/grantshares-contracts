@@ -97,10 +97,10 @@ public class TreasuryDrainTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), CHANGE_THRESHOLD,
                         array(50)));
-        String desc = "execute_proposal_with_modify_threshold";
+        String discUrl = "execute_proposal_with_modify_threshold";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, discUrl );
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -167,10 +167,10 @@ public class TreasuryDrainTest {
     @Test
     public void execute_proposal_with_drain_contract() throws Throwable {
         ContractParameter intents = array(array(treasury.getScriptHash(), DRAIN, array()));
-        String desc = "execute_proposal_with_drain_contract";
+        String discUrl = "execute_proposal_with_drain_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl );
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);

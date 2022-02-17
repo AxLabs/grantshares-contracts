@@ -117,7 +117,7 @@ public class TestHelper {
     }
 
     static Hash256 createSimpleProposal(SmartContract contract, Account proposer,
-            String description) throws Throwable {
+            String discussionUrl) throws Throwable {
 
         return contract.invokeFunction(CREATE, hash160(proposer),
                         array(
@@ -127,7 +127,7 @@ public class TestHelper {
                                         array(new Hash160(defaultAccountScriptHash()))
                                 )
                         ),
-                        string(description),
+                        string(discussionUrl),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
@@ -135,11 +135,11 @@ public class TestHelper {
 
 
     static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
-            Account endorser, ContractParameter intents, String description) throws Throwable {
+            Account endorser, ContractParameter intents, String discussionUrl) throws Throwable {
 
         // 1. create proposal
         Hash256 tx = contract.invokeFunction(CREATE, hash160(proposer),
-                        intents, string(description), integer(-1))
+                        intents, string(discussionUrl), integer(-1))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -208,16 +208,15 @@ public class TestHelper {
         int queuedEnd;
         boolean executed;
         List<Intent> intents;
-        String desc;
+        String discussionUrl;
         int approve;
         int reject;
         int abstain;
         Map<StackItem, StackItem> voters;
 
-        public Proposal(int id, Hash160 proposer, int linkedProposal,
-                int acceptanceRate, int quorum, Hash160 endorser, int reviewEnd, int votingEnd,
-                int queuedEnd, boolean executed, List<Intent> intents, String desc, int approve,
-                int reject, int abstain, Map<StackItem, StackItem> voters) {
+        public Proposal(int id, Hash160 proposer, int linkedProposal, int acceptanceRate, int quorum, Hash160 endorser,
+                int reviewEnd, int votingEnd, int queuedEnd, boolean executed, List<Intent> intents,
+                String discussionUrl, int approve, int reject, int abstain, Map<StackItem, StackItem> voters) {
             this.id = id;
             this.proposer = proposer;
             this.linkedProposal = linkedProposal;
@@ -229,7 +228,7 @@ public class TestHelper {
             this.queuedEnd = queuedEnd;
             this.executed = executed;
             this.intents = intents;
-            this.desc = desc;
+            this.discussionUrl = discussionUrl;
             this.approve = approve;
             this.reject = reject;
             this.abstain = abstain;

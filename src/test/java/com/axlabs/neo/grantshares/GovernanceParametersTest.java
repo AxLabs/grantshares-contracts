@@ -89,10 +89,10 @@ public class GovernanceParametersTest {
                 contract.getScriptHash(),
                 CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, newValue)));
-        String desc = "execute_change_parameter";
+        String discUrl = "execute_change_parameter";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl );
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);

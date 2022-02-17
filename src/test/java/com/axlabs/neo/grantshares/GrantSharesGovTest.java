@@ -38,7 +38,34 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.TestHelper.*;
+import static com.axlabs.neo.grantshares.TestHelper.ADD_MEMBER;
+import static com.axlabs.neo.grantshares.TestHelper.ALICE;
+import static com.axlabs.neo.grantshares.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
+import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.TestHelper.CREATE;
+import static com.axlabs.neo.grantshares.TestHelper.ENDORSE;
+import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSALS;
+import static com.axlabs.neo.grantshares.TestHelper.GET_PROPOSAL_COUNT;
+import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.TestHelper.MIN_QUORUM;
+import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_CREATED;
+import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_ENDORSED;
+import static com.axlabs.neo.grantshares.TestHelper.REMOVE_MEMBER;
+import static com.axlabs.neo.grantshares.TestHelper.UNPAUSE;
+import static com.axlabs.neo.grantshares.TestHelper.UPDATE_CONTRACT;
+import static com.axlabs.neo.grantshares.TestHelper.VOTE;
+import static com.axlabs.neo.grantshares.TestHelper.VOTED;
+import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
+import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
+import static com.axlabs.neo.grantshares.TestHelper.createSimpleProposal;
+import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
 import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
@@ -118,11 +145,11 @@ public class GrantSharesGovTest {
         int targetParam3 = 1;
         ContractParameter intent = array(targetContract, targetMethod,
                 array(targetParam1, targetParam2, targetParam3));
-        String proposalDescription = "description of the proposal";
+        String discUrl = "discussionUrl of the proposal";
         Hash256 proposalCreationTx = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(proposalDescription),
+                        string(discUrl),
                         integer(-1)) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -166,13 +193,13 @@ public class GrantSharesGovTest {
     public void fail_creating_with_missing_linked_proposal() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        String description = "fail_creating_with_missing_linked_proposal";
+        String discussionUrl = "fail_creating_with_missing_linked_proposal";
         byte[] linkedProposal = Hash256.ZERO.toArray();
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(description),
+                        string(discussionUrl),
                         byteArray(linkedProposal))
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
@@ -184,12 +211,12 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_quorum() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        String desc = "fail_creating_with_bad_quorum";
+        String discUrl = "fail_creating_with_bad_quorum";
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(desc),
+                        string(discUrl),
                         any(null), // linked proposal
                         integer(MIN_ACCEPTANCE_RATE),
                         integer(MIN_QUORUM - 1))
@@ -204,12 +231,12 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_acceptance_rate() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(contract.getScriptHash(), alice.getScriptHash(), 1));
-        String desc = "fail_creating_with_bad_acceptance_rate";
+        String discUrl = "fail_creating_with_bad_acceptance_rate";
 
         String exception = contract.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(desc),
+                        string(discUrl),
                         any(null), // linked proposal
                         integer(MIN_ACCEPTANCE_RATE - 1),
                         integer(MIN_QUORUM))
@@ -494,8 +521,8 @@ public class GrantSharesGovTest {
 
     @Test
     @Order(0)
-    public void create_proposal_with_large_intents_and_description() throws Throwable {
-        String desc =
+    public void create_proposal_with_large_intents_and_discussionUrl() throws Throwable {
+        String discUrl =
                 "aabcababcababcababcabbcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcaabcabcabcabcabcabca";
         Hash256 tx = contract.invokeFunction(CREATE, hash160(bob),
                         array(
@@ -553,7 +580,7 @@ public class GrantSharesGovTest {
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
                                         ))
                         ),
-                        string(desc),
+                        string(discUrl),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -571,7 +598,7 @@ public class GrantSharesGovTest {
         assertThat(p.acceptanceRate, is(MIN_ACCEPTANCE_RATE));
         assertThat(p.quorum, is(MIN_QUORUM));
         assertThat(p.intents.size(), is(9));
-        assertThat(p.desc, is(desc));
+        assertThat(p.discussionUrl, is(discUrl));
     }
 
     @Test
@@ -725,10 +752,10 @@ public class GrantSharesGovTest {
         ContractParameter intents = array(
                 array(contract.getScriptHash(), UPDATE_CONTRACT,
                         array(nef.toArray(), manifestBytes, data)));
-        String desc = "execute_proposal_with_update_contract";
+        String discUrl = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, desc);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -763,8 +790,9 @@ public class GrantSharesGovTest {
 
         ContractParameter data = string("update contract");
 
-        String exception = contract.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
-                .callInvokeScript().getInvocationResult().getException();
+        String exception =
+                contract.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                        .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Method only callable by the contract itself"));
     }
 }
