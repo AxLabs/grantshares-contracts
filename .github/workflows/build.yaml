@@ -14,7 +14,5 @@ jobs:
           distribution: temurin
           java-version: '8'
           cache: 'gradle'
-      - name: Compile with neow3j
-        run: ./gradlew clean neow3jCompile
       - name: Unit Tests
         run: ./gradlew --info --warning-mode=all clean test
