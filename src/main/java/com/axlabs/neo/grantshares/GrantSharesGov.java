@@ -130,7 +130,7 @@ public class GrantSharesGov {
             dto.acceptanceRate = p.acceptanceRate;
             dto.quorum = p.quorum;
             dto.intents = p.intents;
-            dto.desc = p.desc;
+            dto.discussionUrl = p.discussionUrl;
         } else {
             return null;
         }
@@ -248,15 +248,15 @@ public class GrantSharesGov {
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
      *
-     * @param proposer    The account set as the proposer.
-     * @param intents     The intents to be executed when the proposal is accepted.
-     * @param description The proposal description. Must not be larger than 1024 bytes.
+     * @param proposer      The account set as the proposer.
+     * @param intents       The intents to be executed when the proposal is accepted.
+     * @param discussionUrl The proposal's discussion URL. Must not be larger than 1024 bytes.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String description,
+    public static int createProposal(Hash160 proposer, Intent[] intents, String discussionUrl,
             int linkedProposal) {
 
-        return createProposal(proposer, intents, description, linkedProposal,
+        return createProposal(proposer, intents, discussionUrl, linkedProposal,
                 parameters.getInt(MIN_ACCEPTANCE_RATE_KEY),
                 parameters.getInt(MIN_QUORUM_KEY));
     }
@@ -266,14 +266,14 @@ public class GrantSharesGov {
      *
      * @param proposer       The account set as the proposer.
      * @param intents        The intents to be executed when the proposal is accepted.
-     * @param description    The proposal description. Must not be larger than 1024 bytes.
+     * @param discussionUrl  The proposal discussion URL. Must not be larger than 1024 bytes.
      * @param linkedProposal A proposal that preceded this one.
      * @param acceptanceRate The desired acceptance rate.
      * @param quorum         The desired quorum.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents,
-            String description, int linkedProposal, int acceptanceRate, int quorum) {
+    public static int createProposal(Hash160 proposer, Intent[] intents, String discussionUrl,
+            int linkedProposal, int acceptanceRate, int quorum) {
 
         assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
         assert acceptanceRate >= parameters.getInt(MIN_ACCEPTANCE_RATE_KEY)
@@ -286,11 +286,11 @@ public class GrantSharesGov {
         int id = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
         proposals.put(id, serialize(new Proposal(id)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
-                quorum, intents, description)));
+                quorum, intents, discussionUrl)));
         proposalVotes.put(id, serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
 
-        // An event can take max 1024 bytes state data. Thus, we're not passing the description.
+        // An event can take max 1024 bytes state data. Thus, we're not passing the discussionUrl.
         created.fire(id, proposer, acceptanceRate, quorum);
         return id;
     }
