@@ -33,7 +33,7 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
 @SuppressWarnings("unchecked")
 @Permission(contract = "*", methods = {"transfer", "update"})
-@DisplayName("GrantSharesTreasuryV1")
+@DisplayName("GrantSharesTreasury")
 @ManifestExtra(key = "author", value = "AxLabs")
 public class GrantSharesTreasury {
 
