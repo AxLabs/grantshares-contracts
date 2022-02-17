@@ -11,23 +11,6 @@ repositories {
     maven { url "https://oss.sonatype.org/content/repositories/snapshots" }
 }
 
-dependencies {
-    implementation 'io.neow3j:devpack:3.15.0'
-
-    testImplementation 'io.neow3j:devpack-test:3.15.0',
-            'io.neow3j:compiler:3.15.0',
-            'org.junit.jupiter:junit-jupiter:5.8.2',
-            'org.hamcrest:hamcrest:2.2'
-}
-
-neow3jCompiler {
-    className = "com.axlabs.neo.grantshares.GrantSharesGov"
-}
-
-tasks.withType(Test) {
-    useJUnitPlatform()
-}
-
 sourceSets {
     deploy {
         compileClasspath += sourceSets.main.output
@@ -35,11 +18,16 @@ sourceSets {
     }
 }
 
-configurations {
-    deployImplementation.extendsFrom implementation
-    deployRuntimeOnly.extendsFrom runtimeOnly
+dependencies {
+    implementation 'io.neow3j:devpack:3.15.0'
+
+    testImplementation 'io.neow3j:devpack-test:3.15.0',
+            'org.junit.jupiter:junit-jupiter:5.8.2',
+            'org.hamcrest:hamcrest:2.2'
+
+    deployImplementation 'io.neow3j:compiler:3.15.0'
 }
 
-dependencies {
-    deployImplementation 'io.neow3j:compiler:3.15.0'
+tasks.withType(Test) {
+    useJUnitPlatform()
 }
