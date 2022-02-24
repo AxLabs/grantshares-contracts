@@ -41,4 +41,8 @@ public class IntentParam extends ContractParameter {
         return new IntentParam(Config.getGrantSharesGovHash(), "updateContract",
                 byteArray(nef.toArray()), string(manifestString), any(null));
     }
+
+    static IntentParam addFunderToTreasuryWhitelistProposal(ECKeyPair.ECPublicKey pubKey) {
+        return new IntentParam(Config.getGrantSharesTreasuryHash(), "addFunder", publicKey(pubKey));
+    }
 }
