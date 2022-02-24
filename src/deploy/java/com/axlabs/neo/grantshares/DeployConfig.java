@@ -17,7 +17,7 @@ import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.map;
 import static io.neow3j.types.ContractParameter.publicKey;
 
-public class DeployConfigs {
+public class DeployConfig {
 
     //////////////////////////////////
     // GrantSharesGov Deploy Config //
@@ -47,15 +47,13 @@ public class DeployConfigs {
      *  ...
      * </pre>
      */
-    static ContractParameter getGovDeployConfig() throws IOException {
-        Properties prop = new Properties();
-        prop.load(DeployConfigs.class.getClassLoader().getResourceAsStream("deploy.properties"));
+    static ContractParameter getGovDeployConfig() {
         List<ContractParameter> members = new ArrayList<>();
         int i = 1;
-        String val = prop.getProperty("member" + i++);
+        String val = Config.getProperty("member" + i++);
         while (val != null) {
             members.add(publicKey(val));
-            val = prop.getProperty("member" + i++);
+            val = Config.getProperty("member" + i++);
         }
         return array(
                 members,
@@ -90,19 +88,17 @@ public class DeployConfigs {
      *  ...
      * </pre>
      */
-    static ContractParameter getTreasuryDeployConfig(Hash160 grantSharesGovHash) throws IOException {
+    static ContractParameter getTreasuryDeployConfig(Hash160 grantSharesGovHash) {
         Map<Hash160, Integer> tokens = new HashMap<>();
         tokens.put(NEO, NEO_MAX_AMOUNT);
         tokens.put(GAS, GAS_MAX_AMOUNT);
 
-        Properties prop = new Properties();
-        prop.load(DeployConfigs.class.getClassLoader().getResourceAsStream("deploy.properties"));
         List<ContractParameter> funders = new ArrayList<>();
         int i = 1;
-        String val = prop.getProperty("funder" + i++);
+        String val = Config.getProperty("funder" + i++);
         while (val != null) {
             funders.add(publicKey(val));
-            val = prop.getProperty("funder" + i++);
+            val = Config.getProperty("funder" + i++);
         }
         return array(
                 hash160(grantSharesGovHash),
