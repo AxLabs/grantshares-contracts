@@ -1,16 +1,12 @@
 package com.axlabs.neo.grantshares;
 
 import io.neow3j.protocol.core.stackitem.StackItem;
-import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.hash160;
-import static io.neow3j.types.ContractParameter.string;
 
 public class ProposalStruct {
 
@@ -20,9 +16,9 @@ public class ProposalStruct {
     public int acceptanceRate;
     public int quorum;
     public Hash160 endorser;
-    public int reviewEnd;
-    public int votingEnd;
-    public int queuedEnd;
+    public BigInteger reviewEnd;
+    public BigInteger votingEnd;
+    public BigInteger queuedEnd;
     public boolean executed;
     public List<IntentStruct> intents;
     public String discussionUrl;
@@ -39,9 +35,9 @@ public class ProposalStruct {
                 list.get(3).getInteger().intValue(),
                 list.get(4).getInteger().intValue(),
                 list.get(5).getValue() == null ? null : Hash160.fromAddress(list.get(5).getAddress()),
-                list.get(6).getInteger().intValue(),
-                list.get(7).getInteger().intValue(),
-                list.get(8).getInteger().intValue(),
+                list.get(6).getInteger(),
+                list.get(7).getInteger(),
+                list.get(8).getInteger(),
                 list.get(9).getBoolean(),
                 list.get(10).getList().stream().map(i -> new IntentStruct(i.getList())).collect(Collectors.toList()),
                 list.get(11).getString(),
@@ -53,7 +49,8 @@ public class ProposalStruct {
     }
 
     public ProposalStruct(int id, Hash160 proposer, int linkedProposal, int acceptanceRate, int quorum,
-            Hash160 endorser, int reviewEnd, int votingEnd, int queuedEnd, boolean executed, List<IntentStruct> intents,
+            Hash160 endorser, BigInteger reviewEnd, BigInteger votingEnd, BigInteger queuedEnd, boolean executed,
+            List<IntentStruct> intents,
             String discussionUrl, int approve, int reject, int abstain, Map<StackItem, StackItem> voters) {
         this.id = id;
         this.proposer = proposer;
