@@ -160,8 +160,7 @@ public class GrantSharesGovTest {
 
         // 2. Test correct setup of the created proposal.
         NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
-        TestHelper.Proposal p =
-                TestHelper.convert(r.getInvocationResult().getStack().get(0).getList());
+        ProposalStruct p = new ProposalStruct(r.getInvocationResult().getStack().get(0).getList());
         assertThat(p.id, is(id));
         assertThat(p.proposer, is(alice.getScriptHash()));
         assertThat(p.linkedProposal, is(-1));
@@ -590,8 +589,7 @@ public class GrantSharesGovTest {
                 .getStack().get(0).getInteger().intValue();
 
         NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
-        TestHelper.Proposal p =
-                TestHelper.convert(r.getInvocationResult().getStack().get(0).getList());
+        ProposalStruct p = new ProposalStruct(r.getInvocationResult().getStack().get(0).getList());
         assertThat(p.id, is(id));
         assertThat(p.proposer, is(bob.getScriptHash()));
         assertThat(p.linkedProposal, is(-1));
@@ -629,10 +627,10 @@ public class GrantSharesGovTest {
         assertThat(page.get(1).getInteger().intValue(), is(greaterThanOrEqualTo(2))); // at least
         // two pages
         assertThat(page.get(2).getList().size(), is(1)); // the list of proposals should be 1
-        TestHelper.Proposal prop = TestHelper.convert(page.get(2).getList().get(0).getList());
+        ProposalStruct prop = new ProposalStruct(page.get(2).getList().get(0).getList());
         assertThat(prop.id, is(defaultProposalId));
 
-        prop = TestHelper.convert(contract.callInvokeFunction(GET_PROPOSALS,
+        prop = new ProposalStruct(contract.callInvokeFunction(GET_PROPOSALS,
                         asList(integer(1), integer(1))) // get page 1 with page size 1
                 .getInvocationResult().getStack().get(0).getList().get(2).getList().get(0).getList());
         assertThat(prop.id, is(greaterThanOrEqualTo(1)));
