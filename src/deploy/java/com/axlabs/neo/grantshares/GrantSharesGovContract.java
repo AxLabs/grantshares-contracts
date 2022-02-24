@@ -67,7 +67,7 @@ public class GrantSharesGovContract extends SmartContract {
                 string(discussionUrl), integer(linkedProposal));
     }
 
-    public TransactionBuilder createProposaladdingTreasuryFunder(Hash160 proposer, ECPublicKey pubKey) {
+    public TransactionBuilder createProposalAddingTreasuryFunder(Hash160 proposer, ECPublicKey pubKey) {
         return createProposal(proposer, "nodiscussion", -1, addFunderToTreasuryWhitelistProposal(pubKey));
     }
 
@@ -129,7 +129,6 @@ public class GrantSharesGovContract extends SmartContract {
     public String calcMembersMultiSigAccount() throws IOException, UnexpectedReturnTypeException {
         return callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0).getAddress();
     }
-
 
     private String getMethodName() {
         return new Exception().getStackTrace()[1].getMethodName();
