@@ -13,8 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static io.neow3j.utils.Numeric.reverseHexString;
-
 public class GrantSharesTreasuryContract extends SmartContract {
 
     public GrantSharesTreasuryContract(Hash160 scriptHash, Neow3j neow3j) {
@@ -29,7 +27,7 @@ public class GrantSharesTreasuryContract extends SmartContract {
         Map<StackItem, StackItem> map = callInvokeFunction(getMethodName())
                 .getInvocationResult().getStack().get(0).getMap();
         return map.entrySet().stream().collect(Collectors.toMap(
-                e -> new Hash160(reverseHexString(e.getKey().getHexString())),
+                e -> Hash160.fromAddress(e.getKey().getAddress()),
                 e -> e.getValue().getInteger())
         );
     }
