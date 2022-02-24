@@ -13,6 +13,8 @@ repositories {
 
 sourceSets {
     deploy {
+        compileClasspath += sourceSets.test.output
+        runtimeClasspath += sourceSets.test.output
         compileClasspath += sourceSets.main.output
         runtimeClasspath += sourceSets.main.output
     }
