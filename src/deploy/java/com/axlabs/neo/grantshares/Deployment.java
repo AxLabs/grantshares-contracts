@@ -15,7 +15,7 @@ import io.neow3j.utils.Await;
 
 public class Deployment {
 
-    static final Neow3j NEOW3J = Config.getPrivatenet();
+    static final Neow3j NEOW3J = Config.getNeow3j();
     static final AccountSigner signer = AccountSigner.none(Config.getDeployAccount());
 
     public static void main(String[] args) throws Throwable {

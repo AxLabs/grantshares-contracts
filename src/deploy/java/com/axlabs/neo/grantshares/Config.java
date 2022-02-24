@@ -25,16 +25,8 @@ public class Config {
         return props.getProperty(name);
     }
 
-    public static Neow3j getPrivatenet() {
-        return Neow3j.build(new HttpService(getProperty("privatenet")));
-    }
-
-    public static Neow3j getTestnet() {
-        return Neow3j.build(new HttpService(getProperty("testnet")));
-    }
-
-    public static Neow3j getMainnet() {
-        return Neow3j.build(new HttpService(getProperty("mainnet")));
+    public static Neow3j getNeow3j() {
+        return Neow3j.build(new HttpService(getProperty("node")));
     }
 
     public static Hash160 getGrantSharesGovHash() {
