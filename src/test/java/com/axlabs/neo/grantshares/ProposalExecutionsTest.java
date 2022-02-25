@@ -212,10 +212,10 @@ public class ProposalExecutionsTest {
     }
 
     @Test
-    public void fail_executing_proposal_quorum_reached_but_not_enough_yes_votes() throws Throwable {
+    public void fail_executing_proposal_quorum_reached_but_rejected() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String discUrl = "fail_executing_proposal_quorum_reached_but_not_enough_yes_votes";
+        String discUrl = "fail_executing_proposal_quorum_reached_but_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
@@ -288,7 +288,7 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_with_different_quorum_reached_different_rate_rejected() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String discUrl = "fail_executing_proposal_with_different_quorum_not_reached";
+        String discUrl = "fail_executing_proposal_with_different_quorum_reached_different_rate_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl, 60, 75);
@@ -314,7 +314,7 @@ public class ProposalExecutionsTest {
     public void succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String discUrl = "fail_executing_proposal_with_different_quorum_not_reached";
+        String discUrl = "succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted";
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl, 60, 75);
