@@ -25,7 +25,10 @@ import static com.axlabs.neo.grantshares.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.TestHelper.CREATE;
+import static com.axlabs.neo.grantshares.TestHelper.DENISE;
+import static com.axlabs.neo.grantshares.TestHelper.EVE;
 import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.FLORIAN;
 import static com.axlabs.neo.grantshares.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.TestHelper.PROPOSAL_EXECUTED;
@@ -40,6 +43,7 @@ import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -55,12 +59,16 @@ public class ProposalExecutionsTest {
     static Account alice; // Set to be a DAO member.
     static Account bob;
     static Account charlie; // Set to be a DAO member.
+    static Account denise; // Set to be a DAO member.
+    static Account eve; // Set to be a DAO member.
+    static Account florian; // Set to be a DAO member.
 
     @DeployConfig(GrantSharesGov.class)
     public static DeployConfiguration deployConfig() throws Exception {
         DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
-                ext.getAccount(ALICE), ext.getAccount(CHARLIE)));
+                ext.getAccount(ALICE), ext.getAccount(CHARLIE), ext.getAccount(DENISE), ext.getAccount(EVE),
+                ext.getAccount(FLORIAN)));
         return config;
     }
 
@@ -71,6 +79,9 @@ public class ProposalExecutionsTest {
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
+        denise = ext.getAccount(DENISE);
+        eve = ext.getAccount(EVE);
+        florian = ext.getAccount(FLORIAN);
     }
 
     @Test
@@ -133,6 +144,8 @@ public class ProposalExecutionsTest {
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(contract, neow3j, id, eve);
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute the first time
@@ -165,6 +178,8 @@ public class ProposalExecutionsTest {
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
+        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(contract, neow3j, id, eve);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
@@ -196,8 +211,127 @@ public class ProposalExecutionsTest {
         assertThat(n.getState().getList().get(0).getInteger().intValue(), is(id));
     }
 
-    // TODO:
-    //  - succeed voting and executing proposal that has different quorum and acceptance rate.
-    //  - succeed executing proposal that has multiple intents.
+    @Test
+    public void fail_executing_proposal_quorum_reached_but_not_enough_yes_votes() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
+                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+        String discUrl = "fail_executing_proposal_quorum_reached_but_not_enough_yes_votes";
+
+        // 1. Create and endorse proposal, then skip till voting phase.
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
+        ext.fastForward(PHASE_LENGTH);
+
+        // 2. Vote such that the proposal is accepted.
+        voteForProposal(contract, neow3j, id, -1, alice);
+        voteForProposal(contract, neow3j, id, 1, charlie);
+        voteForProposal(contract, neow3j, id, 0, denise);
+        voteForProposal(contract, neow3j, id, 0, florian);
+        voteForProposal(contract, neow3j, id, 0, eve);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        // 3. Call execute
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("Proposal rejected"));
+    }
+
+    @Test
+    public void fail_executing_proposal_quorum_not_reached() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
+                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+        String discUrl = "fail_executing_proposal_quorum_not_reached";
+
+        // 1. Create and endorse proposal, then skip till voting phase.
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
+        ext.fastForward(PHASE_LENGTH);
+
+        // 2. Vote such that the proposal is accepted.
+        voteForProposal(contract, neow3j, id, 1, alice);
+        voteForProposal(contract, neow3j, id, 1, charlie);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        // 3. Call execute
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("Quorum not reached"));
+    }
+
+    @Test
+    public void fail_executing_proposal_with_different_quorum_not_reached() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
+                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+        String discUrl = "fail_executing_proposal_with_different_quorum_not_reached";
+
+        // 1. Create and endorse proposal, then skip till voting phase.
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl, 50, 75);
+        ext.fastForward(PHASE_LENGTH);
+
+        // 2. Vote such that the proposal is accepted.
+        voteForProposal(contract, neow3j, id, 1, alice);
+        voteForProposal(contract, neow3j, id, 1, charlie);
+        voteForProposal(contract, neow3j, id, 1, eve);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        // 3. Call execute
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("Quorum not reached"));
+    }
+
+    @Test
+    public void fail_executing_proposal_with_different_quorum_reached_different_rate_rejected() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
+                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+        String discUrl = "fail_executing_proposal_with_different_quorum_not_reached";
+
+        // 1. Create and endorse proposal, then skip till voting phase.
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl, 60, 75);
+        ext.fastForward(PHASE_LENGTH);
+
+        // 2. Vote such that the proposal is accepted.
+        voteForProposal(contract, neow3j, id, 1, alice);
+        voteForProposal(contract, neow3j, id, 1, charlie);
+        voteForProposal(contract, neow3j, id, -1, eve);
+        voteForProposal(contract, neow3j, id, -1, denise);
+        voteForProposal(contract, neow3j, id, 0, florian);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        // 3. Call execute
+        String exception = contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+
+        assertThat(exception, containsString("Proposal rejected"));
+    }
+
+    @Test
+    public void succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
+                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+        String discUrl = "fail_executing_proposal_with_different_quorum_not_reached";
+
+        // 1. Create and endorse proposal, then skip till voting phase.
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl, 60, 75);
+        ext.fastForward(PHASE_LENGTH);
+
+        // 2. Vote such that the proposal is accepted.
+        voteForProposal(contract, neow3j, id, 1, alice);
+        voteForProposal(contract, neow3j, id, 1, charlie);
+        voteForProposal(contract, neow3j, id, -1, eve);
+        voteForProposal(contract, neow3j, id, 0, denise);
+        voteForProposal(contract, neow3j, id, 0, florian);
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        // 3. Call execute
+        assertThat(contract.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException(), is(nullValue()));
+    }
 
 }

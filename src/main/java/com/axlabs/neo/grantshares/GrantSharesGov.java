@@ -382,7 +382,8 @@ public class GrantSharesGov {
         int voteCount = votes.approve + votes.abstain + votes.reject;
         assert voteCount * 100 / Storage.getInt(ctx, MEMBERS_COUNT_KEY) >= data.quorum
                 : "GrantSharesGov: Quorum not reached";
-        assert votes.approve * 100 / voteCount >= data.acceptanceRate
+        int yesNoCount = votes.approve + votes.reject;
+        assert votes.approve * 100 / yesNoCount > data.acceptanceRate
                 : "GrantSharesGov: Proposal rejected";
 
         proposal.executed = true;

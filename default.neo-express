@@ -57,6 +57,6 @@
     }
   ],
   "settings": {
-    "chain.SecondsPerBlock": 5
+    "chain.SecondsPerBlock": "5"
   }
 }
