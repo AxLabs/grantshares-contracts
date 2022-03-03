@@ -223,14 +223,25 @@ public class GrantSharesGov {
 
 
     /**
-     * Calculates the hash of the multi-sig account made up of the governance members. The signing
-     * threshold is calculated from the value of the
-     * {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
+     * Calculates the hash of the multi-sig account made up of the governance members. The signing threshold is
+     * calculated from the value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of
+     * members.
      *
      * @return The multi-sig account hash.
      */
     @Safe
     public static Hash160 calcMembersMultiSigAccount() {
+        return Account.createMultiSigAccount(calcMembersMultiSigAccountThreshold(), getMembers().toArray());
+    }
+
+    /**
+     * Calculates the threshold of the multi-sig account made up of the governance members. It is calculated from the
+     * value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
+     *
+     * @return The multi-sig account signing threshold.
+     */
+    @Safe
+    public static int calcMembersMultiSigAccountThreshold() {
         int count = Storage.getInt(ctx, MEMBERS_COUNT_KEY);
         int thresholdRatio = parameters.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
@@ -238,7 +249,7 @@ public class GrantSharesGov {
         if (thresholdTimes100 % 100 != 0) {
             threshold += 1; // Always round up.
         }
-        return Account.createMultiSigAccount(threshold, getMembers().toArray());
+        return threshold;
     }
 
     //endregion SAFE METHODS

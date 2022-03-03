@@ -1,11 +1,14 @@
 package com.axlabs.neo.grantshares;
 
 import io.neow3j.contract.SmartContract;
+import io.neow3j.crypto.ECKeyPair;
+import io.neow3j.crypto.ECKeyPair.ECPublicKey;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.types.Hash160;
 import io.neow3j.utils.Numeric;
+import io.neow3j.wallet.Account;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -32,13 +35,12 @@ public class GrantSharesTreasuryContract extends SmartContract {
         );
     }
 
-    public List<Hash160> getFunders() throws IOException {
+    public List<ECPublicKey> getFunders() throws IOException {
         List<StackItem> stackItem = callInvokeFunction(getMethodName())
                 .getInvocationResult().getStack().get(0).getList();
         return stackItem.stream()
-                .map(StackItem::getHexString)
-                .map(Numeric::hexStringToByteArray)
-                .map(Hash160::fromPublicKey).collect(Collectors.toList());
+                .map(StackItem::getByteArray)
+                .map(ECPublicKey::new).collect(Collectors.toList());
     }
 
     public int getFundersCount() throws IOException {
@@ -49,6 +51,16 @@ public class GrantSharesTreasuryContract extends SmartContract {
         return Hash160.fromAddress(
                 callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0).getAddress()
         );
+    }
+
+    public int calcFundersMultiSigAccountThreshold() throws IOException {
+        return callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0).getInteger().intValue();
+    }
+
+    public Account getFundersAccount() throws IOException {
+        int threshold = calcFundersMultiSigAccountThreshold();
+        List<ECPublicKey> funders = getFunders();
+        return Account.createMultiSigAccount(funders, threshold);
     }
 
     public TransactionBuilder drain() {

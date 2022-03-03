@@ -21,6 +21,7 @@ import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.contracts.ContractManagement;
+import io.neow3j.devpack.contracts.NeoToken;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -138,6 +139,17 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static Hash160 calcFundersMultiSigAccount() {
+        return Account.createMultiSigAccount(calcFundersMultiSigAccountThreshold(), getFunders().toArray());
+    }
+
+    /**
+     * Calculates the threshold of the multi-sig account made up of the treasury funders. It is calculated from the
+     * value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of funders.
+     *
+     * @return The multi-sig account signing threshold.
+     */
+    @Safe
+    public static int calcFundersMultiSigAccountThreshold() {
         int count = getFundersCount();
         int thresholdRatio = Storage.getInt(ctx, MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
@@ -145,7 +157,7 @@ public class GrantSharesTreasury {
         if (thresholdTimes100 % 100 != 0) {
             threshold += 1; // Always round up.
         }
-        return Account.createMultiSigAccount(threshold, getFunders().toArray());
+        return threshold;
     }
 
     /**
@@ -326,4 +338,5 @@ public class GrantSharesTreasury {
     private static void assertNotPaused() {
         assert !isPaused() : "GrantSharesTreasury: Contract is paused";
     }
+
 }

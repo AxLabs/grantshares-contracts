@@ -1,12 +1,18 @@
 package com.axlabs.neo.grantshares;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import io.neow3j.contract.NefFile;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.contract.exceptions.UnexpectedReturnTypeException;
+import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.crypto.ECKeyPair.ECPublicKey;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.ObjectMapperFactory;
+import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.types.Hash160;
+import io.neow3j.wallet.Account;
 
 import java.io.IOException;
 import java.util.Date;
@@ -14,7 +20,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import static com.axlabs.neo.grantshares.IntentParam.addFunderToTreasuryWhitelistProposal;
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
@@ -128,6 +136,16 @@ public class GrantSharesGovContract extends SmartContract {
 
     public String calcMembersMultiSigAccount() throws IOException, UnexpectedReturnTypeException {
         return callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0).getAddress();
+    }
+
+    public int calcMembersMultiSigAccountThreshold() throws IOException {
+        return callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0).getInteger().intValue();
+    }
+
+    public Account getMembersAccount() throws IOException {
+        int threshold = calcMembersMultiSigAccountThreshold();
+        List<ECKeyPair.ECPublicKey> members = getMembers();
+        return Account.createMultiSigAccount(members, threshold);
     }
 
     private String getMethodName() {
