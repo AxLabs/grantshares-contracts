@@ -136,10 +136,14 @@ public class GrantSharesTreasuryTest {
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
         denise = ext.getAccount(DENISE);
-        Hash256 txHash = new GasToken(neow3j).transfer(
+        Hash256 txHash1 = new GasToken(neow3j).transfer(
                         bob, treasury.getScriptHash(), BigInteger.valueOf(100))
                 .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(txHash, neow3j);
+        Hash256 txHash2 = new NeoToken(neow3j).transfer(
+                        bob, treasury.getScriptHash(), BigInteger.valueOf(100))
+                .sign().send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(txHash1, neow3j);
+        Await.waitUntilTransactionIsExecuted(txHash2, neow3j);
     }
 
     @Test
@@ -318,10 +322,8 @@ public class GrantSharesTreasuryTest {
     @Test
     @Order(11)
     public void fail_funding_treasury_with_non_whitelisted_token() throws Throwable {
-        String exception =
-                new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
-                        .signers(AccountSigner.calledByEntry(bob))
-                        .callInvokeScript().getInvocationResult().getException();
+        String exception = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted token"));
     }
 

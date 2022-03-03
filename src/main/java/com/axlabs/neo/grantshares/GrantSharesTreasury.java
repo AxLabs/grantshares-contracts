@@ -21,7 +21,6 @@ import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.contracts.ContractManagement;
-import io.neow3j.devpack.contracts.NeoToken;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -95,10 +94,12 @@ public class GrantSharesTreasury {
      * @param amount The transferred amount.
      * @param data   Data sent with the transfer.
      */
-    @Safe
     @OnNEP17Payment
     public static void onNep17Payment(Hash160 sender, int amount, Object data) {
         assertNotPaused();
+        if (sender == null) {
+            return; // If the sender is null the transfer is a GAS claim.
+        }
         assert funders.get(sender.toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted sender";
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null :
