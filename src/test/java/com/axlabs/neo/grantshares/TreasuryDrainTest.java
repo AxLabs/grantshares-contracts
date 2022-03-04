@@ -5,7 +5,12 @@ import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
-import io.neow3j.test.*;
+import io.neow3j.protocol.core.response.NeoGetNep17Balances;
+import io.neow3j.test.ContractTest;
+import io.neow3j.test.ContractTestExtension;
+import io.neow3j.test.DeployConfig;
+import io.neow3j.test.DeployConfiguration;
+import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.Transaction;
 import io.neow3j.transaction.Witness;
@@ -14,16 +19,37 @@ import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.TestHelper.*;
-import static io.neow3j.types.ContractParameter.*;
+import static com.axlabs.neo.grantshares.TestHelper.ALICE;
+import static com.axlabs.neo.grantshares.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.TestHelper.CALC_FUNDERS_MULTI_SIG_ACCOUNT;
+import static com.axlabs.neo.grantshares.TestHelper.CHANGE_THRESHOLD;
+import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.TestHelper.DENISE;
+import static com.axlabs.neo.grantshares.TestHelper.DRAIN;
+import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
+import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
+import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
+import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
+import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
+import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
+import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.integer;
+import static io.neow3j.types.ContractParameter.map;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
@@ -100,7 +126,7 @@ public class TreasuryDrainTest {
         String discUrl = "execute_proposal_with_modify_threshold";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, discUrl );
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -165,12 +191,12 @@ public class TreasuryDrainTest {
 
     @Order(3)
     @Test
-    public void execute_proposal_with_drain_contract() throws Throwable {
+    public void fail_execute_proposal_with_drain_contract() throws Throwable {
         ContractParameter intents = array(array(treasury.getScriptHash(), DRAIN, array()));
         String discUrl = "execute_proposal_with_drain_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl );
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -179,24 +205,27 @@ public class TreasuryDrainTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
         Account membersAccount = createMultiSigAccount(1, bob, denise);
-        Transaction tx = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(bob),
+        String exception = gov.invokeFunction(EXECUTE, integer(id))
+                .signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Not authorized"));
+    }
+
+    @Order(4)
+    @Test
+    public void successfully_drain_with_funders_account() throws Throwable {
+        Account membersAccount = createMultiSigAccount(1, bob, denise);
+        Transaction tx = treasury.invokeFunction(DRAIN).signers(
+                        AccountSigner.none(bob),
                         AccountSigner.calledByEntry(membersAccount).setAllowedContracts(treasury.getScriptHash()))
                 .getUnsignedTransaction();
-        Hash256 txHash = tx
-                .addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair()))
-                .addMultiSigWitness(membersAccount.getVerificationScript(), bob)
-                .send().getSendRawTransaction().getHash();
+        tx.addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair()));
+        tx.addMultiSigWitness(membersAccount.getVerificationScript(), bob);
+        Hash256 txHash = tx.send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(txHash, neow3j);
-
-        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(txHash).send()
-                .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
-        assertThat(n.getEventName(), is("Transfer"));
-        assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
-        assertThat(n.getState().getList().get(0).getAddress(), is(treasury.getScriptHash().toAddress()));
-        assertThat(n.getState().getList().get(1).getAddress(),
-                is(membersAccount.getAddress()));
-        assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.valueOf(100)));
+        List<NeoGetNep17Balances.Nep17Balance> balances =
+                neow3j.getNep17Balances(treasury.getScriptHash()).send().getBalances().getBalances();
+        balances.stream().map(b -> Long.valueOf(b.getAmount())).reduce(Long::sum)
+                .ifPresent(s -> assertThat(s, is(0L)));
     }
 }
