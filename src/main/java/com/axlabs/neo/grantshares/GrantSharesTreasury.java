@@ -21,6 +21,8 @@ import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.contracts.ContractManagement;
+import io.neow3j.devpack.contracts.LedgerContract;
+import io.neow3j.devpack.contracts.NeoToken;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -95,7 +97,7 @@ public class GrantSharesTreasury {
      * @param data   Data sent with the transfer.
      */
     @OnNEP17Payment
-    public static void onNep17Payment(Hash160 sender, int amount, Object data) {
+    public static void onNep17Payment(Hash160 sender, int amount, Object data) throws Exception {
         assertNotPaused();
         if (sender == null) {
             return; // If the sender is null the transfer is a GAS claim.
@@ -104,6 +106,36 @@ public class GrantSharesTreasury {
                 "GrantSharesTreasury: Non-whitelisted sender";
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted token";
+
+        if (Runtime.getCallingScriptHash() == NeoToken.getHash()) {
+            voteOnLastNeoCommitteeMember();
+        }
+    }
+
+    public static void voteOnLastNeoCommitteeMember() throws Exception {
+        ECPoint c = getLastNeoCommitteeMember();
+        if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c)) {
+            throw new Exception("Tried to vote on canidate " + c.toByteString().toString() + " but failed.");
+        }
+    }
+
+    private static ECPoint getLastNeoCommitteeMember() {
+        NeoToken.Candidate[] candidates = NeoToken.getCandidates();
+        List<ECPoint> committee = new List<>(NeoToken.getCommittee());
+        int leastVotes = 100000000; // just a large number for initialisation
+        ECPoint lestVotesMember = null;
+        for (int i = 0; i < candidates.length; i++) {
+            NeoToken.Candidate candidate = candidates[i];
+            for (int j = 0; j < committee.size(); j++) {
+                if (committee.get(i) == candidate.publicKey) {
+                    committee.remove(i); // Remove the committee member from list to shorten the for loop.
+                    if (candidate.votes < leastVotes) {
+                        lestVotesMember = candidate.publicKey;
+                    }
+                }
+            }
+        }
+        return lestVotesMember;
     }
 
     /**
