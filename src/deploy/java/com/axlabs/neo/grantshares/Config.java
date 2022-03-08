@@ -25,6 +25,10 @@ public class Config {
         return props.getProperty(name);
     }
 
+    public static int getIntProperty(String name) {
+        return Integer.valueOf(getProperty(name));
+    }
+
     public static Neow3j getNeow3j() {
         return Neow3j.build(new HttpService(getProperty("node")));
     }

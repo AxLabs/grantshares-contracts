@@ -19,10 +19,6 @@ import static io.neow3j.types.ContractParameter.publicKey;
 
 public class DeployConfig {
 
-    //////////////////////////////////
-    // GrantSharesGov Deploy Config //
-    //////////////////////////////////
-
     // param names
     static final String REVIEW_LENGTH_KEY = "review_len";
     static final String VOTING_LENGTH_KEY = "voting_len";
@@ -30,13 +26,6 @@ public class DeployConfig {
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     static final String MIN_QUORUM_KEY = "min_quorum";
     static final String THRESHOLD_KEY = "threshold";
-    // param values
-    static final int REVIEW_LENGTH = 0; // no review phase
-    static final int VOTING_LENGTH = 600000; // 10 min
-    static final int TIMELOCK_LENGTH = 300000; // 5 min
-    static final int MIN_ACCEPTANCE_RATE = 50;
-    static final int MIN_QUORUM = 50;
-    static final int MEMBERS_MULTI_SIG_THRESHOLD = 50;
 
     /**
      * Gets the deploy configuration for the governance contract. Requires that there is a
@@ -46,6 +35,7 @@ public class DeployConfig {
      *  member2=0351408068b0e1f7fdd901acf96cdc35676687b25fba5f4ed267ad4ec483bc7ac5
      *  ...
      * </pre>
+     * And all the initial parameter values of the contract's parameters.
      */
     static ContractParameter getGovDeployConfig() {
         List<ContractParameter> members = new ArrayList<>();
@@ -58,26 +48,14 @@ public class DeployConfig {
         return array(
                 members,
                 array(
-                        REVIEW_LENGTH_KEY, REVIEW_LENGTH,
-                        VOTING_LENGTH_KEY, VOTING_LENGTH,
-                        TIMELOCK_LENGTH_KEY, TIMELOCK_LENGTH,
-                        MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
-                        MIN_QUORUM_KEY, MIN_QUORUM,
-                        THRESHOLD_KEY, MEMBERS_MULTI_SIG_THRESHOLD
+                        REVIEW_LENGTH_KEY, Config.getIntProperty(REVIEW_LENGTH_KEY),
+                        VOTING_LENGTH_KEY, Config.getIntProperty(VOTING_LENGTH_KEY),
+                        TIMELOCK_LENGTH_KEY, Config.getIntProperty(TIMELOCK_LENGTH_KEY),
+                        MIN_ACCEPTANCE_RATE_KEY, Config.getIntProperty(MIN_ACCEPTANCE_RATE_KEY),
+                        MIN_QUORUM_KEY, Config.getIntProperty(MIN_QUORUM_KEY),
+                        THRESHOLD_KEY, Config.getIntProperty(THRESHOLD_KEY)
                 ));
     }
-
-    ///////////////////////////////////////
-    // GrantSharesTreasury Deploy Config //
-    ///////////////////////////////////////
-
-    // whitelisted tokens
-    static final Hash160 NEO = NeoToken.SCRIPT_HASH;
-    static final int NEO_MAX_AMOUNT = 1000;
-    static final Hash160 GAS = GasToken.SCRIPT_HASH;
-    static final int GAS_MAX_AMOUNT = 10000;
-
-    static final int FUNDERS_MULTI_SIG_THRESHOLD = 75;
 
     /**
      * Gets the deploy configuration for the treasurty contract. Requires that there is a
@@ -87,11 +65,12 @@ public class DeployConfig {
      *  funder2=0351408068b0e1f7fdd901acf96cdc35676687b25fba5f4ed267ad4ec483bc7ac5
      *  ...
      * </pre>
+     * And the token maximum for NEO and GAS in the properties "neo_token_max" and "gas_token_max".
      */
     static ContractParameter getTreasuryDeployConfig(Hash160 grantSharesGovHash) {
         Map<Hash160, Integer> tokens = new HashMap<>();
-        tokens.put(NEO, NEO_MAX_AMOUNT);
-        tokens.put(GAS, GAS_MAX_AMOUNT);
+        tokens.put(new Hash160(Config.getProperty("neo_token")), Config.getIntProperty("neo_token_max"));
+        tokens.put(new Hash160(Config.getProperty("gas_token")), Config.getIntProperty("gas_token_max"));
 
         List<ContractParameter> funders = new ArrayList<>();
         int i = 1;
@@ -104,7 +83,7 @@ public class DeployConfig {
                 hash160(grantSharesGovHash),
                 funders,
                 map(tokens),
-                FUNDERS_MULTI_SIG_THRESHOLD);
+                Config.getIntProperty(THRESHOLD_KEY));
     }
 
 }
