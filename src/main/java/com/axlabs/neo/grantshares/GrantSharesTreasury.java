@@ -21,7 +21,6 @@ import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.contracts.ContractManagement;
-import io.neow3j.devpack.contracts.LedgerContract;
 import io.neow3j.devpack.contracts.NeoToken;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
@@ -108,18 +107,18 @@ public class GrantSharesTreasury {
                 "GrantSharesTreasury: Non-whitelisted token";
 
         if (Runtime.getCallingScriptHash() == NeoToken.getHash()) {
-            voteOnLastNeoCommitteeMember();
+            voteCommitteeMemberWithLeastVotes();
         }
     }
 
-    public static void voteOnLastNeoCommitteeMember() throws Exception {
-        ECPoint c = getLastNeoCommitteeMember();
+    public static void voteCommitteeMemberWithLeastVotes() throws Exception {
+        ECPoint c = getCommitteeMemberWithLeastVotes();
         if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c)) {
             throw new Exception("Tried to vote on canidate " + c.toByteString().toString() + " but failed.");
         }
     }
 
-    private static ECPoint getLastNeoCommitteeMember() {
+    private static ECPoint getCommitteeMemberWithLeastVotes() {
         NeoToken.Candidate[] candidates = NeoToken.getCandidates();
         List<ECPoint> committee = new List<>(NeoToken.getCommittee());
         int leastVotes = 100000000; // just a large number for initialisation
