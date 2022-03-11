@@ -35,7 +35,7 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @Permission(contract = "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd", methods = "update") // ContractManagement
 @Permission(contract = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5", methods = "vote") // NeoToken
 @Permission(contract = "*", methods = "transfer")
-@DisplayName("GrantSharesTreasury")
+@DisplayName("GrantSharesTreasuryV6")
 @ManifestExtra(key = "author", value = "AxLabs")
 public class GrantSharesTreasury {
 
@@ -130,19 +130,20 @@ public class GrantSharesTreasury {
         NeoToken.Candidate[] candidates = NeoToken.getCandidates();
         List<ECPoint> committee = new List<>(NeoToken.getCommittee());
         int leastVotes = 100000000; // just a large number for initialisation
-        ECPoint lestVotesMember = null;
+        ECPoint leastVotesMember = null;
         for (int i = 0; i < candidates.length; i++) {
             NeoToken.Candidate candidate = candidates[i];
             for (int j = 0; j < committee.size(); j++) {
-                if (committee.get(i) == candidate.publicKey) {
-                    committee.remove(i); // Remove the committee member from list to shorten the for loop.
+                if (committee.get(j) == candidate.publicKey) {
+                    committee.remove(j); // Remove the committee member from list to shorten the loop.
                     if (candidate.votes < leastVotes) {
-                        lestVotesMember = candidate.publicKey;
+                        leastVotesMember = candidate.publicKey;
+                        leastVotes = candidate.votes;
                     }
                 }
             }
         }
-        return lestVotesMember;
+        return leastVotesMember;
     }
 
     /**
