@@ -32,7 +32,9 @@ import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
 @SuppressWarnings("unchecked")
-@Permission(contract = "*", methods = {"transfer", "update"})
+@Permission(contract = "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd", methods = "update") // ContractManagement
+@Permission(contract = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5", methods = "vote") // NeoToken
+@Permission(contract = "*", methods = "transfer")
 @DisplayName("GrantSharesTreasury")
 @ManifestExtra(key = "author", value = "AxLabs")
 public class GrantSharesTreasury {
@@ -89,6 +91,8 @@ public class GrantSharesTreasury {
      * Checks if the sender is an eligible funder and if the transferred token is whitelisted.
      * <p>
      * Fails if the contract is paused.
+     * <p>
+     * If the received token is NEO, then a vote is cast on the committee member with the least votes.
      *
      * @param sender The token sender.
      * @param amount The transferred amount.
@@ -110,10 +114,15 @@ public class GrantSharesTreasury {
         }
     }
 
+    /**
+     * Places the treasuries vote on the committee member with the least votes.
+     *
+     * @throws Exception if voting was not successful.
+     */
     public static void voteCommitteeMemberWithLeastVotes() throws Exception {
         ECPoint c = getCommitteeMemberWithLeastVotes();
         if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c)) {
-            throw new Exception("Tried to vote on canidate " + c.toByteString().toString() + " but failed.");
+            throw new Exception("Tried to vote on candidate " + c.toByteString().toString() + " but failed.");
         }
     }
 
@@ -272,8 +281,8 @@ public class GrantSharesTreasury {
      * This method must be called by the treasury owner and fails if the contract is paused.
      *
      * @param accountHash The account to add to the funders list.
-     * @param publicKeys The public key(s) that are part of the account. One, in case of a single-sig account.
-     *                   Multiple, in case of a multi-sig account.
+     * @param publicKeys  The public key(s) that are part of the account. One, in case of a single-sig account.
+     *                    Multiple, in case of a multi-sig account.
      */
     public static void addFunder(Hash160 accountHash, ECPoint[] publicKeys) {
         assertNotPaused();

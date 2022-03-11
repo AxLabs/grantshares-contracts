@@ -110,4 +110,9 @@ public class GrantSharesTreasuryContract extends SmartContract {
     public TransactionBuilder releaseTokens(Hash160 tokenHash, Hash160 receiverHash, BigInteger amount) {
         return invokeFunction(getMethodName(), hash160(tokenHash), hash160(receiverHash), integer(amount));
     }
+
+    public TransactionBuilder voteCommitteeMemberWithLeastVotes() {
+        return invokeFunction(getMethodName());
+    }
+
 }

@@ -31,10 +31,10 @@ import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
 
-@SuppressWarnings("unchecked")
 @Permission(contract = "*", methods = "*")
 @DisplayName("GrantSharesGov")
 @ManifestExtra(key = "author", value = "AxLabs")
+@SuppressWarnings("unchecked")
 public class GrantSharesGov {
 
     //region CONTRACT VARIABLES
