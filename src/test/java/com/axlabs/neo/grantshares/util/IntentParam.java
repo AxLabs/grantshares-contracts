@@ -38,10 +38,10 @@ public class IntentParam extends ContractParameter {
         return new IntentParam(gov, "removeMember", publicKey(pubKey));
     }
 
-    public static IntentParam updateContractProposal(Hash160 gov, NefFile nef, ContractManifest manifest)
+    public static IntentParam updateContractProposal(Hash160 contract, NefFile nef, ContractManifest manifest)
             throws JsonProcessingException {
         String manifestString = ObjectMapperFactory.getObjectMapper().writeValueAsString(manifest);
-        return new IntentParam(gov, "updateContract",
+        return new IntentParam(contract, "updateContract",
                 byteArray(nef.toArray()), string(manifestString), any(null));
     }
 
