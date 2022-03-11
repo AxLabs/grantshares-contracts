@@ -2,15 +2,18 @@ package com.axlabs.neo.grantshares;
 
 import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NeoToken;
+import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 
 import java.io.IOException;
+import java.security.interfaces.ECPublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.hash160;
@@ -72,16 +75,25 @@ public class DeployConfig {
         tokens.put(new Hash160(Config.getProperty("neo_token")), Config.getIntProperty("neo_token_max"));
         tokens.put(new Hash160(Config.getProperty("gas_token")), Config.getIntProperty("gas_token_max"));
 
-        List<ContractParameter> funders = new ArrayList<>();
+        Map<Hash160, List<ECKeyPair.ECPublicKey>> funders = new HashMap<>();
         int i = 1;
-        String val = Config.getProperty("funder" + i++);
-        while (val != null) {
-            funders.add(publicKey(val));
-            val = Config.getProperty("funder" + i++);
+        String address = Config.getProperty("funderAddress" + i);
+        while (address != null) {
+            int j = 1;
+            List<ECKeyPair.ECPublicKey> pubKeys = new ArrayList<>();
+            String pubKey = Config.getProperty("funderPubKey" + i + j);
+            while (pubKey != null) {
+                pubKeys.add(new ECKeyPair.ECPublicKey(pubKey));
+                pubKey = Config.getProperty("funderPubKey" + i + ++j);
+            }
+            funders.put(Hash160.fromAddress(address), pubKeys);
+            address = Config.getProperty("funderAddress" + ++i);
         }
+        ContractParameter fundersParam = array(funders.entrySet().stream()
+                .map(e -> array(e.getKey(), array(e.getValue()))).collect(Collectors.toList()));
         return array(
                 hash160(grantSharesGovHash),
-                funders,
+                fundersParam,
                 map(tokens),
                 Config.getIntProperty(THRESHOLD_KEY));
     }
