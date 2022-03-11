@@ -1,4 +1,4 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.util;
 
 import io.neow3j.protocol.core.stackitem.StackItem;
 

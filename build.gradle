@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'io.neow3j.gradle-plugin' version '3.15.0'
+    id 'io.neow3j.gradle-plugin' version '3.16.0-SNAPSHOT'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -21,15 +21,19 @@ sourceSets {
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.15.0'
+    implementation 'io.neow3j:devpack:3.16.0-SNAPSHOT'
 
-    testImplementation 'io.neow3j:devpack-test:3.15.0',
+    testImplementation 'io.neow3j:devpack-test:3.16.0-SNAPSHOT',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 
-    deployImplementation 'io.neow3j:compiler:3.15.0'
+    deployImplementation 'io.neow3j:compiler:3.16.0-SNAPSHOT'
 }
 
 tasks.withType(Test) {
     useJUnitPlatform()
+}
+
+neow3jCompile {
+    className="com.axlabs.neo.grantshares.GrantSharesTreasury"
 }

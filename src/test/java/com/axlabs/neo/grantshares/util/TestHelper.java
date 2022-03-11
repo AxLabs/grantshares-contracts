@@ -1,4 +1,4 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.util;
 
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
@@ -28,68 +28,55 @@ import static io.neow3j.types.ContractParameter.string;
 public class TestHelper {
 
     // Account names available in the neo-express config file.
-    static final String ALICE = "NM7Aky765FG8NhhwtxjXRx7jEL1cnw7PBP";
-    static final String BOB = "NZpsgXn9VQQoLexpuXJsrX8BsoyAhKUyiX";
-    static final String CHARLIE = "NdbtgSku2qLuwsBBzLx3FLtmmMdm32Ktor";
-    static final String DENISE = "NerDv9t8exrQRrP11jjvZKXzSXvTnmfDTo";
-    static final String EVE = "NZ539Rd57v5NEtAdkHyFGaWj1uGt2DecUL";
-    static final String FLORIAN = "NRy5bp81kScYFZHLfMBXuubFfRyboVyu7G";
+    public static final String ALICE = "NM7Aky765FG8NhhwtxjXRx7jEL1cnw7PBP";
+    public static final String BOB = "NZpsgXn9VQQoLexpuXJsrX8BsoyAhKUyiX";
+    public static final String CHARLIE = "NdbtgSku2qLuwsBBzLx3FLtmmMdm32Ktor";
+    public static final String DENISE = "NerDv9t8exrQRrP11jjvZKXzSXvTnmfDTo";
+    public static final String EVE = "NZ539Rd57v5NEtAdkHyFGaWj1uGt2DecUL";
+    public static final String FLORIAN = "NRy5bp81kScYFZHLfMBXuubFfRyboVyu7G";
 
     // GrantSharesGov contract methods
-    static final String CREATE = "createProposal";
-    static final String GET_PROPOSAL = "getProposal";
-    static final String GET_PROPOSALS = "getProposals";
-    static final String GET_PARAMETER = "getParameter";
-    static final String GET_MEMBERS = "getMembers";
-    static final String GET_MEMBERS_COUNT = "getMembersCount";
-    static final String GET_PROPOSAL_COUNT = "getProposalCount";
-    static final String PAUSE = "pause";
-    static final String UNPAUSE = "unpause";
-    static final String IS_PAUSED = "isPaused";
-    static final String CALC_MEMBER_MULTI_SIG_ACC = "calcMembersMultiSigAccount";
-
-    // GrantSharesTreasury contract methods
-    static final String GET_FUNDERS = "getFunders";
-    static final String GET_WHITELISTED_TOKENS = "getWhitelistedTokens";
-    static final String ADD_FUNDER = "addFunder";
-    static final String REMOVE_FUNDER = "removeFunder";
-    static final String ADD_WHITELISTED_TOKEN = "addWhitelistedToken";
-    static final String REMOVE_WHITELISTED_TOKEN = "removeWhitelistedToken";
-    static final String RELEASE_TOKENS = "releaseTokens";
-    static final String DRAIN = "drain";
-    static final String CHANGE_THRESHOLD = "changeThreshold";
-    static final String CALC_FUNDERS_MULTI_SIG_ACCOUNT = "calcFundersMultiSigAccount";
-
-    static final String ENDORSE = "endorseProposal";
-    static final String VOTE = "vote";
-    static final String EXECUTE = "execute";
-    static final String CHANGE_PARAM = "changeParam";
-    static final String ADD_MEMBER = "addMember";
-    static final String REMOVE_MEMBER = "removeMember";
-    static final String UPDATE_CONTRACT = "updateContract";
+    public static final String CREATE = "createProposal";
+    public static final String GET_PROPOSAL = "getProposal";
+    public static final String GET_PROPOSALS = "getProposals";
+    public static final String GET_PARAMETER = "getParameter";
+    public static final String GET_MEMBERS = "getMembers";
+    public static final String GET_MEMBERS_COUNT = "getMembersCount";
+    public static final String GET_PROPOSAL_COUNT = "getProposalCount";
+    public static final String PAUSE = "pause";
+    public static final String UNPAUSE = "unpause";
+    public static final String IS_PAUSED = "isPaused";
+    public static final String CALC_MEMBER_MULTI_SIG_ACC = "calcMembersMultiSigAccount";
+    public static final String ENDORSE = "endorseProposal";
+    public static final String VOTE = "vote";
+    public static final String EXECUTE = "execute";
+    public static final String CHANGE_PARAM = "changeParam";
+    public static final String ADD_MEMBER = "addMember";
+    public static final String REMOVE_MEMBER = "removeMember";
+    public static final String UPDATE_CONTRACT = "updateContract";
 
     // events
-    static final String PROPOSAL_CREATED = "ProposalCreated";
-    static final String PROPOSAL_ENDORSED = "ProposalEndorsed";
-    static final String PROPOSAL_EXECUTED = "ProposalExecuted";
-    static final String VOTED = "Voted";
-    static final String MEMBER_ADDED = "MemberAdded";
-    static final String MEMBER_REMOVED = "MemberRemoved";
-    static final String PARAMETER_CHANGED = "ParameterChanged";
+    public static final String PROPOSAL_CREATED = "ProposalCreated";
+    public static final String PROPOSAL_ENDORSED = "ProposalEndorsed";
+    public static final String PROPOSAL_EXECUTED = "ProposalExecuted";
+    public static final String VOTED = "Voted";
+    public static final String MEMBER_ADDED = "MemberAdded";
+    public static final String MEMBER_REMOVED = "MemberRemoved";
+    public static final String PARAMETER_CHANGED = "ParameterChanged";
 
     // governance parameters values
-    static final int PHASE_LENGTH = 10; // blocks instead of time for testing
-    static final int MIN_ACCEPTANCE_RATE = 50;
-    static final int MIN_QUORUM = 50;
-    static final int MULTI_SIG_THRESHOLD_RATIO = 50;
+    public static final int PHASE_LENGTH = 10; // blocks instead of time for testing
+    public static final int MIN_ACCEPTANCE_RATE = 50;
+    public static final int MIN_QUORUM = 50;
+    public static final int MULTI_SIG_THRESHOLD_RATIO = 50;
 
     // parameter names
-    static final String REVIEW_LENGTH_KEY = "review_len";
-    static final String VOTING_LENGTH_KEY = "voting_len";
-    static final String TIMELOCK_LENGTH_KEY = "timelock_len";
-    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
-    static final String MIN_QUORUM_KEY = "min_quorum";
-    static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
+    public static final String REVIEW_LENGTH_KEY = "review_len";
+    public static final String VOTING_LENGTH_KEY = "voting_len";
+    public static final String TIMELOCK_LENGTH_KEY = "timelock_len";
+    public static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
+    public static final String MIN_QUORUM_KEY = "min_quorum";
+    public static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
     static MessageDigest hasher;
 
@@ -101,7 +88,7 @@ public class TestHelper {
         }
     }
 
-    static ContractParameter prepareDeployParameter(Account... members) {
+    public static ContractParameter prepareDeployParameter(Account... members) {
         return array(
                 array(Arrays.stream(members)
                         .map(m -> publicKey(m.getECKeyPair().getPublicKey().getEncoded(true)))
@@ -117,7 +104,7 @@ public class TestHelper {
         );
     }
 
-    static Hash256 createSimpleProposal(SmartContract contract, Account proposer,
+    public static Hash256 createSimpleProposal(SmartContract contract, Account proposer,
             String discussionUrl) throws Throwable {
 
         return contract.invokeFunction(CREATE, hash160(proposer),
@@ -135,7 +122,7 @@ public class TestHelper {
     }
 
 
-    static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+    public static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
             Account endorser, ContractParameter intents, String discussionUrl) throws Throwable {
         // 1. create proposal
         TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(discussionUrl),
@@ -143,7 +130,7 @@ public class TestHelper {
         return sendAndEndorseProposal(contract, neow3j, proposer, endorser, b);
     }
 
-    static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+    public static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
             Account endorser, ContractParameter intents, String discussionUrl, int acceptanceRate, int quorum)
             throws Throwable {
         // 1. create proposal
@@ -170,7 +157,7 @@ public class TestHelper {
         return id;
     }
 
-    static void voteForProposal(SmartContract contract, Neow3j neow3j, int id,
+    public static void voteForProposal(SmartContract contract, Neow3j neow3j, int id,
             Account endorserAndVoter) throws Throwable {
         Hash256 tx = contract.invokeFunction(VOTE, integer(id), integer(1),
                         hash160(endorserAndVoter))
@@ -179,7 +166,7 @@ public class TestHelper {
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
     }
 
-    static void voteForProposal(SmartContract contract, Neow3j neow3j, int id, int vote,
+    public static void voteForProposal(SmartContract contract, Neow3j neow3j, int id, int vote,
             Account endorserAndVoter) throws Throwable {
         Hash256 tx = contract.invokeFunction(VOTE, integer(id), integer(vote),
                         hash160(endorserAndVoter))
@@ -188,7 +175,7 @@ public class TestHelper {
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
     }
 
-    static Account createMultiSigAccount(int threshold, Account... accounts) {
+    public static Account createMultiSigAccount(int threshold, Account... accounts) {
         List<ECKeyPair.ECPublicKey> pubKeys = Arrays.stream(accounts)
                 .map(a -> a.getECKeyPair().getPublicKey())
                 .collect(Collectors.toList());

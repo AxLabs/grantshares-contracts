@@ -1,5 +1,8 @@
 package com.axlabs.neo.grantshares;
 
+import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
+import com.axlabs.neo.grantshares.util.GrantSharesTreasuryContract;
+import com.axlabs.neo.grantshares.util.IntentParam;
 import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
@@ -32,24 +35,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.TestHelper.CALC_FUNDERS_MULTI_SIG_ACCOUNT;
-import static com.axlabs.neo.grantshares.TestHelper.CHANGE_THRESHOLD;
-import static com.axlabs.neo.grantshares.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.TestHelper.DRAIN;
-import static com.axlabs.neo.grantshares.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.TestHelper.IS_PAUSED;
-import static com.axlabs.neo.grantshares.TestHelper.PAUSE;
-import static com.axlabs.neo.grantshares.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.TestHelper.createAndEndorseProposal;
-import static com.axlabs.neo.grantshares.TestHelper.createMultiSigAccount;
-import static com.axlabs.neo.grantshares.TestHelper.prepareDeployParameter;
-import static com.axlabs.neo.grantshares.TestHelper.voteForProposal;
+import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.DENISE;
+import static com.axlabs.neo.grantshares.util.TestHelper.EVE;
+import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
+import static com.axlabs.neo.grantshares.util.TestHelper.IS_PAUSED;
+import static com.axlabs.neo.grantshares.util.TestHelper.PAUSE;
+import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
+import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
+import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
+import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.map;
+import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
@@ -59,21 +61,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class TreasuryDrainTest {
+public class TreasuryMultiSigTest {
     private static final int NEO_MAX_AMOUNT = 100;
     private static final int GAS_MAX_AMOUNT = 10000;
-    private static final int MULTI_SIG_THRESHOLD_RATIO = 100;
+    private static final int MULTI_SIG_THRESHOLD_RATIO = 50;
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
 
     static Neow3j neow3j;
-    static SmartContract gov;
-    static SmartContract treasury;
+    static GrantSharesGovContract gov;
+    static GrantSharesTreasuryContract treasury;
     static Account alice; // Set to be a DAO member.
     static Account bob; // Set to be a funder.
     static Account charlie; // Set to be a DAO member.
-    static Account denise; // Set to be a funder.
+    static Account denise;
+    static Account eve;
+    static Account deniseAndEve; // Set to be a funder.
 
     @DeployConfig(GrantSharesGov.class)
     public static DeployConfiguration deployConfigGov() throws Exception {
@@ -88,10 +92,20 @@ public class TreasuryDrainTest {
         DeployConfiguration config = new DeployConfiguration();
         // owner
         SmartContract gov = ctx.getDeployedContract(GrantSharesGov.class);
+
         // funders
+        Account bob = ext.getAccount(BOB);
+        Account denise = ext.getAccount(DENISE);
+        Account eve = ext.getAccount(EVE);
+        Account multiSigFunder = Account.createMultiSigAccount(
+                asList(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()), 2);
         ContractParameter funders = array(
-                ext.getAccount(BOB).getECKeyPair().getPublicKey().getEncoded(true),
-                ext.getAccount(DENISE).getECKeyPair().getPublicKey().getEncoded(true));
+                array(bob.getScriptHash(), // bob
+                        array(bob.getECKeyPair().getPublicKey())),
+                array(multiSigFunder.getScriptHash(), // denise, eve
+                        array(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()))
+        );
+
         // whitelisted tokens
         Map<Hash160, Integer> tokens = new HashMap<>();
         tokens.put(NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT);
@@ -105,14 +119,23 @@ public class TreasuryDrainTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        gov = ext.getDeployedContract(GrantSharesGov.class);
-        treasury = ext.getDeployedContract(GrantSharesTreasury.class);
+        // contracts
+        gov = new GrantSharesGovContract(
+                ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
+        treasury = new GrantSharesTreasuryContract(
+                ext.getDeployedContract(GrantSharesTreasury.class).getScriptHash(), neow3j);
+
+        // accounts
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
         denise = ext.getAccount(DENISE);
-        Hash256 txHash = new GasToken(neow3j).transfer(
-                        bob, treasury.getScriptHash(), BigInteger.valueOf(100))
+        eve = ext.getAccount(EVE);
+        deniseAndEve = Account.createMultiSigAccount(
+                asList(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()), 2);
+
+        // fund the treasury
+        Hash256 txHash = new GasToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(txHash, neow3j);
     }
@@ -120,13 +143,11 @@ public class TreasuryDrainTest {
     @Test
     @Order(0)
     public void execute_proposal_with_modify_threshold() throws Throwable {
-        ContractParameter intents = array(
-                array(treasury.getScriptHash(), CHANGE_THRESHOLD,
-                        array(50)));
+        ContractParameter intent = IntentParam.setFundersMultiSigThresholdRatioProposal(treasury.getScriptHash(), 51);
         String discUrl = "execute_proposal_with_modify_threshold";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, intents, discUrl);
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -134,7 +155,7 @@ public class TreasuryDrainTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
+        Hash256 tx = gov.execute(id)
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -143,21 +164,27 @@ public class TreasuryDrainTest {
                 .getApplicationLog().getExecutions().get(0);
         NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("ThresholdChanged"));
+        assertThat(treasury.getFundersMultiSigThresholdRatio(), is(51));
     }
 
     @Test
     @Order(1)
-    public void calc_funders_multisig_account() throws Throwable {
-        String account = treasury.callInvokeFunction(CALC_FUNDERS_MULTI_SIG_ACCOUNT)
-                .getInvocationResult().getStack().get(0).getAddress();
-        assertThat(account, is(createMultiSigAccount(1, bob, denise).getAddress()));
+    public void calc_funders_multisig_threshold() throws Throwable {
+        int th = treasury.calcFundersMultiSigAddressThreshold();
+        assertThat(th, is(2));
+    }
+
+    @Test
+    @Order(1)
+    public void calc_funders_multisig_address() throws Throwable {
+        Hash160 hash = treasury.calcFundersMultiSigAddress();
+        assertThat(hash, is(createMultiSigAccount(2, bob, denise, eve).getScriptHash()));
     }
 
     @Test
     @Order(1)
     public void fail_execute_drain_on_unpaused_contract() throws Throwable {
-        String exception = treasury.invokeFunction(DRAIN)
-                .callInvokeScript().getInvocationResult().getException();
+        String exception = treasury.drain().callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Contract is not paused"));
     }
 
@@ -184,7 +211,7 @@ public class TreasuryDrainTest {
     @Order(3)
     @Test
     public void fail_execute_drain_with_non_funder() throws IOException {
-        String exception = treasury.invokeFunction(DRAIN).signers(AccountSigner.calledByEntry(bob))
+        String exception = treasury.drain().signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Not authorized"));
     }
@@ -192,11 +219,11 @@ public class TreasuryDrainTest {
     @Order(3)
     @Test
     public void fail_execute_proposal_with_drain_contract() throws Throwable {
-        ContractParameter intents = array(array(treasury.getScriptHash(), DRAIN, array()));
+        ContractParameter intent = IntentParam.drainProposal(treasury.getScriptHash());
         String discUrl = "execute_proposal_with_drain_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, discUrl);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), discUrl);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -214,15 +241,14 @@ public class TreasuryDrainTest {
     @Order(4)
     @Test
     public void successfully_drain_with_funders_account() throws Throwable {
-        Account membersAccount = createMultiSigAccount(1, bob, denise);
-        Transaction tx = treasury.invokeFunction(DRAIN).signers(
-                        AccountSigner.none(bob),
-                        AccountSigner.calledByEntry(membersAccount).setAllowedContracts(treasury.getScriptHash()))
-                .getUnsignedTransaction();
-        tx.addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair()));
-        tx.addMultiSigWitness(membersAccount.getVerificationScript(), bob);
-        Hash256 txHash = tx.send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(txHash, neow3j);
+        Account membersAccount = createMultiSigAccount(2, bob, denise, eve);
+        Hash256 tx = treasury.drain()
+                .signers(AccountSigner.none(bob), AccountSigner.calledByEntry(membersAccount))
+                .getUnsignedTransaction()
+                .addWitness(bob)
+                .addMultiSigWitness(membersAccount.getVerificationScript(), bob, denise)
+                .send().getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
         List<NeoGetNep17Balances.Nep17Balance> balances =
                 neow3j.getNep17Balances(treasury.getScriptHash()).send().getBalances().getBalances();
         balances.stream().map(b -> Long.valueOf(b.getAmount())).reduce(Long::sum)

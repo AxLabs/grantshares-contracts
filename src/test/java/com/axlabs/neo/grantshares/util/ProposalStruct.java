@@ -1,4 +1,4 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.util;
 
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.types.Hash160;
@@ -70,7 +70,7 @@ public class ProposalStruct {
         this.voters = voters;
     }
 
-    static class IntentStruct {
+    public static class IntentStruct {
         public Hash160 targetContract;
         public String method;
         public List<StackItem> params;

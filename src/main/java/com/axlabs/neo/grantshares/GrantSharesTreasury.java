@@ -25,7 +25,6 @@ import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 
-import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
@@ -39,13 +38,12 @@ public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";
     static final String FUNDERS_PREFIX = "funders";
-    static final String FUNDER_COUNT_KEY = "funderCount";
     static final String WHITELISTED_TOKENS_PREFIX = "whitelistedTokens";
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap funders = new StorageMap(ctx, FUNDERS_PREFIX);
-    static final StorageMap whitelistedTokens = new StorageMap(ctx, WHITELISTED_TOKENS_PREFIX);
+    static final StorageMap funders = new StorageMap(ctx, FUNDERS_PREFIX); // [hash, List<ECPoint>]
+    static final StorageMap whitelistedTokens = new StorageMap(ctx, WHITELISTED_TOKENS_PREFIX); // [hash, max_amount]
 
     @DisplayName("FunderAdded")
     static Event1Arg<Hash160> funderAdded;
@@ -66,11 +64,12 @@ public class GrantSharesTreasury {
             Storage.put(ctx, OWNER_KEY, (Hash160) config[0]);
 
             // Set initial funders.
-            ECPoint[] pubKeys = (ECPoint[]) config[1];
-            for (ECPoint pubKey : pubKeys) {
-                funders.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
+            Object[][] accounts = (Object[][]) config[1]; // [  [hash, [keys...]],  [hash, [keys...]]  ]
+            for (Object[] account : accounts) {
+                Hash160 accountHash = (Hash160) account[0];
+                ECPoint[] accountKeys = (ECPoint[]) account[1];
+                funders.put(accountHash.toByteString(), StdLib.serialize(accountKeys));
             }
-            Storage.put(ctx, FUNDER_COUNT_KEY, pubKeys.length);
 
             // Set whitelisted tokens
             Map<Hash160, Integer> tokens = (Map<Hash160, Integer>) config[2];
@@ -107,51 +106,70 @@ public class GrantSharesTreasury {
     }
 
     /**
-     * Gets the number of funders eligible to send funds to the treasury.
-     *
-     * @return the number of funders.
-     */
-    @Safe
-    public static int getFundersCount() {
-        return Storage.getInt(ctx, FUNDER_COUNT_KEY);
-    }
-
-    /**
      * Gets all funders eligible to send funds to the treasury.
      *
-     * @return the funders public keys.
+     * @return the funder's addresses and their corresponding public keys.
      */
     @Safe
-    public static List<ECPoint> getFunders() {
-        Iterator<ByteString> it = funders.find(ValuesOnly);
-        List<ECPoint> funders = new List<>();
+    public static Map<Hash160, ECPoint[]> getFunders() {
+        Iterator<Struct<ByteString, ByteString>> it = funders.find(RemovePrefix);
+        Map<Hash160, ECPoint[]> funders = new Map<>();
         while (it.next()) {
-            funders.add(new ECPoint(it.get()));
+            Struct<ByteString, ByteString> entry = it.get();
+            funders.put(new Hash160(entry.key), (ECPoint[]) StdLib.deserialize(entry.value));
         }
         return funders;
     }
 
+    private static List<ECPoint> getFunderPublicKeys() {
+        Iterator<ByteString> it = funders.find(ValuesOnly);
+        List<ECPoint> pubKeys = new List<>();
+        while (it.next()) {
+            ECPoint[] keys = (ECPoint[]) StdLib.deserialize(it.get());
+            for (ECPoint key : keys) {
+                pubKeys.add(key);
+            }
+        }
+        return pubKeys;
+    }
+
     /**
-     * Calculates the hash of the multi-sig account made up of the governance members. The signing
-     * threshold is calculated from the value of the
-     * {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
+     * Calculates the hash of the multi-sig address made up of the governance members. The signing threshold is
+     * calculated from the value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of
+     * public keys involved in the treasury as funders. This number can be higher than the number of funder
+     * addresses because of possible multi-sig addresses.
      *
      * @return The multi-sig account hash.
      */
     @Safe
-    public static Hash160 calcFundersMultiSigAccount() {
-        return Account.createMultiSigAccount(calcFundersMultiSigAccountThreshold(), getFunders().toArray());
+    public static Hash160 calcFundersMultiSigAddress() {
+        List<ECPoint> funderPublicKeys = getFunderPublicKeys();
+        return Account.createMultiSigAccount(calcFundersMultiSigAddressThreshold(funderPublicKeys.size()),
+                funderPublicKeys.toArray());
     }
 
     /**
-     * Calculates the threshold of the multi-sig account made up of the treasury funders. It is calculated from the
-     * value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of funders.
+     * Calculates the threshold of the multi-sig address made up of the treasury funders. It is calculated from the
+     * value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of public keys involved
+     * in the treasury as funders. This number can be higher than the number of funder addresses because of
+     * possible multi-sig addresses.
      *
      * @return The multi-sig account signing threshold.
      */
     @Safe
-    public static int calcFundersMultiSigAccountThreshold() {
-        int count = getFundersCount();
+    public static int calcFundersMultiSigAddressThreshold() {
+        return calcFundersMultiSigAddressThreshold(getFunderPublicKeys().size());
+    }
+
+    /**
+     * Calculates the threshold of the multi-sig address made up of the treasury funders. It is calculated from the
+     * value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the given number of involved public
+     * keys.
+     *
+     * @param count The number of public keys involved in the treasury as funders.
+     * @return The multi-sig account signing threshold.
+     */
+    private static int calcFundersMultiSigAddressThreshold(int count) {
         int thresholdRatio = Storage.getInt(ctx, MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
@@ -190,39 +208,63 @@ public class GrantSharesTreasury {
     }
 
     /**
-     * Adds the given public key as a whitelisted funder to the treasury. Only whitelisted
-     * funders can transfer tokens to the treasury.
-     * <p>
-     * This method must be called by the treasury owner and fails if the contract is paused.
+     * Gets the signing threshold ratio of the funders multi-sig account.
      *
-     * @param funderKey The public key of the funder.
+     * @return the signing threshold ratio
      */
-    public static void addFunder(ECPoint funderKey) {
-        assertNotPaused();
-        assertCallerIsOwner();
-        Hash160 funderHash = createStandardAccount(funderKey);
-        assert funders.get(funderHash.toByteString()) ==
-                null : "GrantSharesTreasury: Already a funder";
-        funders.put(funderHash.toByteString(), funderKey.toByteString());
-        Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) + 1);
-        funderAdded.fire(funderHash);
+    @Safe
+    public static int getFundersMultiSigThresholdRatio() {
+        return Storage.getInt(ctx, MULTI_SIG_THRESHOLD_KEY);
     }
 
     /**
-     * Removes the given public key from the whitelisted funders.
+     * Sets the signing threshold ratio of the funders multi-sig account. The actual threshold is calculated from the
+     * number of funder public keys times this ratio.
+     * <p>
+     * This method can only be called by the treasury owner and fails if the contract is paused.
+     *
+     * @param value The new threshold value.
+     */
+    public static void setFundersMultiSigThresholdRatio(Integer value) {
+        assertNotPaused();
+        assertCallerIsOwner();
+        Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
+        thresholdChanged.fire(value);
+    }
+
+
+    /**
+     * Adds the given account as a whitelisted funder to the treasury. Only whitelisted funders can transfer tokens to
+     * the treasury. The public key(s) are necessary for the multi-sig address generated from all funders that can be
+     * used to withdraw all treasury funds.
      * <p>
      * This method must be called by the treasury owner and fails if the contract is paused.
      *
-     * @param funderKey The public key of the funder.
+     * @param accountHash The account to add to the funders list.
+     * @param publicKeys The public key(s) that are part of the account. One, in case of a single-sig account.
+     *                   Multiple, in case of a multi-sig account.
      */
-    public static void removeFunder(ECPoint funderKey) {
+    public static void addFunder(Hash160 accountHash, ECPoint[] publicKeys) {
         assertNotPaused();
         assertCallerIsOwner();
-        Hash160 funderHash = createStandardAccount(funderKey);
-        assert funders.get(funderHash.toByteString()) != null : "GrantSharesTreasury: Not a funder";
-        funders.delete(funderHash.toByteString());
-        Storage.put(ctx, FUNDER_COUNT_KEY, Storage.getInt(ctx, FUNDER_COUNT_KEY) - 1);
-        funderRemoved.fire(funderHash);
+        assert funders.get(accountHash.toByteString()) == null : "GrantSharesTreasury: Already a funder";
+        funders.put(accountHash.toByteString(), StdLib.serialize(publicKeys));
+        funderAdded.fire(accountHash);
+    }
+
+    /**
+     * Removes the given account from the whitelisted funders.
+     * <p>
+     * This method must be called by the treasury owner and fails if the contract is paused.
+     *
+     * @param accountHash The funder account to remove.
+     */
+    public static void removeFunder(Hash160 accountHash) {
+        assertNotPaused();
+        assertCallerIsOwner();
+        assert funders.get(accountHash.toByteString()) != null : "GrantSharesTreasury: Not a funder";
+        funders.delete(accountHash.toByteString());
+        funderRemoved.fire(accountHash);
     }
 
     /**
@@ -281,20 +323,6 @@ public class GrantSharesTreasury {
     }
 
     /**
-     * Changes the signing threshold of the funders multi-sig account to {@code value}.
-     * <p>
-     * This method can only be called by the treasury owner and fails if the contract is paused.
-     *
-     * @param value The new threshold value.
-     */
-    public static void changeThreshold(Integer value) {
-        assertNotPaused();
-        assertCallerIsOwner();
-        Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
-        thresholdChanged.fire(value);
-    }
-
-    /**
      * Drain the treasury contract to save the tokens from being stolen.
      * <p>
      * This method can only be called once the contract is paused and by the multi-sig account of
@@ -302,8 +330,8 @@ public class GrantSharesTreasury {
      */
     public static void drain() {
         assert isPaused() : "GrantSharesTreasury: Contract is not paused";
-        Hash160 fundersMultiAccount = calcFundersMultiSigAccount();
-        assert checkWitness(fundersMultiAccount) : "GrantSharesTreasury: Not authorized";
+        Hash160 fundersMultiAddress = calcFundersMultiSigAddress();
+        assert checkWitness(fundersMultiAddress) : "GrantSharesTreasury: Not authorized";
 
         Hash160 selfHash = Runtime.getExecutingScriptHash();
         Iterator<ByteString> it = whitelistedTokens.find((byte) (RemovePrefix | KeysOnly));
@@ -313,7 +341,7 @@ public class GrantSharesTreasury {
             int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadStates,
                     new Object[]{selfHash});
             if (balance > 0) {
-                Object[] params = new Object[]{selfHash, fundersMultiAccount, balance,
+                Object[] params = new Object[]{selfHash, fundersMultiAddress, balance,
                         new Object[]{}};
                 Contract.call(token, "transfer", CallFlags.All, params);
             }

@@ -1,14 +1,10 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import io.neow3j.contract.NefFile;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.contract.exceptions.UnexpectedReturnTypeException;
 import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.crypto.ECKeyPair.ECPublicKey;
 import io.neow3j.protocol.Neow3j;
-import io.neow3j.protocol.ObjectMapperFactory;
-import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.types.Hash160;
@@ -19,10 +15,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.axlabs.neo.grantshares.IntentParam.addFunderToTreasuryWhitelistProposal;
-import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
@@ -73,10 +66,6 @@ public class GrantSharesGovContract extends SmartContract {
             IntentParam... intents) {
         return invokeFunction(getMethodName(), hash160(proposer), array(asList(intents)),
                 string(discussionUrl), integer(linkedProposal));
-    }
-
-    public TransactionBuilder createProposalAddingTreasuryFunder(Hash160 proposer, ECPublicKey pubKey) {
-        return createProposal(proposer, "nodiscussion", -1, addFunderToTreasuryWhitelistProposal(pubKey));
     }
 
     public TransactionBuilder endorseProposal(int id, Hash160 endorser) {
