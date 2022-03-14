@@ -35,7 +35,7 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @Permission(contract = "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd", methods = "update") // ContractManagement
 @Permission(contract = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5", methods = "vote") // NeoToken
 @Permission(contract = "*", methods = "transfer")
-@DisplayName("GrantSharesTreasuryV6")
+@DisplayName("GrantSharesTreasury")
 @ManifestExtra(key = "author", value = "AxLabs")
 public class GrantSharesTreasury {
 
