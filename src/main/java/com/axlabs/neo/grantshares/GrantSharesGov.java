@@ -52,12 +52,12 @@ public class GrantSharesGov {
     static final String MEMBERS_COUNT_KEY = "#_members"; // int
 
     static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap proposals = new StorageMap(ctx, 1); // [id, Proposal]
-    static final StorageMap proposalData = new StorageMap(ctx, 2); // [id, ProposalData]
-    static final StorageMap proposalVotes = new StorageMap(ctx, 3); // [id, ProposalVotes]
-    static final StorageMap parameters = new StorageMap(ctx, 4); // [param_key, param_value]
+    static final StorageMap proposals = new StorageMap(ctx, 1); // [int id: Proposal proposal]
+    static final StorageMap proposalData = new StorageMap(ctx, 2); // [int id: ProposalData proposalData]
+    static final StorageMap proposalVotes = new StorageMap(ctx, 3); // [int id: ProposalVotes proposalVotes]
+    static final StorageMap parameters = new StorageMap(ctx, 4); // [String param_key: int param_value ]
     static final byte MEMBERS_MAP_PREFIX = 5;
-    static final StorageMap members = new StorageMap(ctx, MEMBERS_MAP_PREFIX); // [Hash160, ECPoint]
+    static final StorageMap members = new StorageMap(ctx, MEMBERS_MAP_PREFIX); // [Hash160 accHash: ECPoint publicKey]
     //endregion CONTRACT VARIABLES
 
     //region EVENTS
@@ -77,8 +77,29 @@ public class GrantSharesGov {
     static Event2Args<String, byte[]> paramChanged;
     //endregion EVENTS
 
+    /**
+     * Initialises this contract on deployment.
+     * <p>
+     * The data parameter has to be structured as follows:
+     * <pre>
+     * [
+     *      [
+     *          ECPoint publicKeyMember1,
+     *          ECPoint publicKeyMember2,
+     *          ...
+     *      ],
+     *      [
+     *          String paramName1: int paramValue1,
+     *          String paramName2: int paramValue2,
+     *          ...
+     *      ],
+     * ]
+     * </pre>
+     *
+     * @param data   The data to set up the governance's storage with.
+     * @param update Tells if the method is called for updating this contract.
+     */
     @OnDeployment
-    @SuppressWarnings("unchecked")
     public static void deploy(Object data, boolean update) {
         if (!update) {
             List<Object> config = (List<Object>) data;

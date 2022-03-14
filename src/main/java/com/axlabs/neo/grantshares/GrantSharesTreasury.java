@@ -59,6 +59,30 @@ public class GrantSharesTreasury {
     @DisplayName("ThresholdChanged")
     static Event1Arg<Integer> thresholdChanged;
 
+    /**
+     * Initialises this contract on deployment.
+     * <p>
+     * The data parameter has to be structured as follows:
+     * <pre>
+     * [
+     *      Hash160 grantSharesGovHash,
+     *      [
+     *          Hash160 funderAddress1: [ECPoint funder1PublicKey1, ECPoint funder1PublicKey2, ...]
+     *          Hash160 funderAddress2: [ECPoint funder2PublicKey1]
+     *          ...
+     *      ],
+     *      [
+     *          Hash160 tokenHash1: int maxFundingAmountToken1,
+     *          Hash160 tokenHash2: int maxFundingAmountToken2
+     *          ...
+     *      ],
+     *      int fundersMultiSigThresholdRatio
+     * ]
+     * </pre>
+     *
+     * @param data   The data to set up the treasury's storage with.
+     * @param update Tells if the method is called for updating this contract.
+     */
     @OnDeployment
     public static void deploy(Object data, boolean update) {
         if (!update) {
