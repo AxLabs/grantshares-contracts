@@ -140,7 +140,7 @@ public class GrantSharesGov {
             dto.endorser = p.endorser;
             dto.reviewEnd = p.reviewEnd;
             dto.votingEnd = p.votingEnd;
-            dto.queuedEnd = p.queuedEnd;
+            dto.queuedEnd = p.timeLockEnd;
             dto.executed = p.executed;
         }
         bytes = proposalVotes.get(id);
@@ -327,7 +327,7 @@ public class GrantSharesGov {
         //  the contract should use the actual time.
         proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
-        proposal.queuedEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
+        proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposals.put(id, serialize(proposal));
         endorsed.fire(id, endorser);
     }
@@ -385,7 +385,7 @@ public class GrantSharesGov {
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed yet";
         // TODO: `currentIndex` has to be replaced with `getTime`
-        assert currentIndex() >= proposal.queuedEnd
+        assert currentIndex() >= proposal.timeLockEnd
                 : "GrantSharesGov: Proposal not in execution phase";
         assert !proposal.executed : "GrantSharesGov: Proposal already executed";
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));

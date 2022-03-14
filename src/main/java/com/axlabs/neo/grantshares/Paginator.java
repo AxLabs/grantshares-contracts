@@ -1,10 +1,21 @@
 package com.axlabs.neo.grantshares;
 
 import io.neow3j.devpack.List;
-import io.neow3j.devpack.StorageMap;
 
+/**
+ * Utility for paging through storage entries.
+ */
 public class Paginator {
 
+    /**
+     * Calculates the start and end indices of a page in the list of {@code n} items.
+     *
+     * @param n            The total number of available items.
+     * @param page         The desired page.
+     * @param itemsPerPage The desired number of items per page.
+     * @return The start and end index of items on the desired page, plus the total number of pages available given
+     * that there are {@code n} items.
+     */
     static int[] calcPagination(int n, int page, int itemsPerPage) {
         int pages;
         if (n < itemsPerPage) {
@@ -23,7 +34,12 @@ public class Paginator {
         return new int[]{startAt, endAt, pages};
     }
 
-
+    /**
+     * Struct used to return a page in a set of items.
+     * <p>
+     * Instead of just returning the items of a page, this struct gives some context information, i.e., the page
+     * number and the total number of pages available.
+     */
     static class Paginated {
         public int page;
         public int pages;
