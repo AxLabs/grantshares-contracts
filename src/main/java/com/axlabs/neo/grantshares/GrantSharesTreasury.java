@@ -388,10 +388,10 @@ public class GrantSharesTreasury {
     }
 
     /**
-     * Drain the treasury contract to save the tokens from being stolen.
+     * Drain all tokens from the treasury contract to the funders multi-sig address.
      * <p>
-     * This method can only be called once the contract is paused and by the multi-sig account of
-     * funders
+     * This method can only be called if the {@link GrantSharesGov} contract is paused and by the funders multi-sig
+     * account.
      */
     public static void drain() {
         assert isPaused() : "GrantSharesTreasury: Contract is not paused";
