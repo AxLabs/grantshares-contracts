@@ -2,7 +2,7 @@
 
 # GrantShares: Smart Contracts
 
-This git repo contains the smart contracts for the GrantShares prgoram.
+This git repo contains the smart contracts for the GrantShares program.
 
 If you want to know more about GrantShares, please refer to the root repository:
 
@@ -24,12 +24,11 @@ Run the tests:
 
 ## Deployment
 
-Both contracts have several things that need to be configured at deploy time.
+GrantShares consists of two smart contracts. Both need to be configured at deploy time.
 
 ### GrantSharesGov Deploy Configuration
 
-For the GrantSharesGov contract the following values have to be set. Names of parameters are given
-in brackets.
+For the GrantSharesGov contract the following values have to be set. Names of parameters are given in brackets.
 
 - Review phase length ("review_len")
 - Voting phase length ("voting_len")
@@ -39,8 +38,7 @@ in brackets.
 - Members multi-sig address signing threshold ("threshold")
 - The initial GrantShares members
 
-At deploy time all of these things have to be passed as one parameter. This is the expected
-structure:
+At deploy time all of these things have to be passed as one parameter. This is the expected structure:
 
 ```json
 {
@@ -93,10 +91,9 @@ For the treasury contract the following values have to be set.
 - Contract owner, which is the GrantSharesGov contract hash
 - The initial GrantShares funders
 - Whitelisted tokens and their maximum funding amounts
-- Funders multi-sig address signing threshold 
+- Funders multi-sig address signing threshold
 
-At deploy time all of these things have to be passed as one parameter. This is the expected
-structure:
+At deploy time all of these things have to be passed as one parameter. This is the expected structure:
 
 ```json
 {
@@ -107,15 +104,42 @@ structure:
       "value": "<GrantSharesGov contract hash>"
     },
     {
-      "type": "Array",
+      "type": "Map",
       "value": [
         {
-          "type": "PublicKey",
-          "value": "<funder1 publikey>"
+          "key": {
+            "type": "Hash160",
+            "value": "<funder1 contract hash>"
+          },
+          "value": {
+            "type": "Array",
+            "value": [
+              {
+                "type": "ECPoint",
+                "value": "<funder1 pub key 1>"
+              },
+              {
+                "type": "ECPoint",
+                "value": "<funder1 pub key 2>"
+              },
+              ...
+            ]
+          }
         },
         {
-          "type": "PublicKey",
-          "value": "<funder2 publikey>"
+          "key": {
+            "type": "Hash160",
+            "value": "<funder2 contract hash>"
+          },
+          "value": {
+            "type": "Array",
+            "value": [
+              {
+                "type": "ECPoint",
+                "value": "<funder2 pub key 1>"
+              }
+            ]
+          }
         },
         ...
       ]
@@ -154,16 +178,14 @@ structure:
 }
 ```
 
-- Funders multi-sig address signing threshold ("threshold")
-
 ## Docs
 
-Documents about proposals, flow, etc., are in the official documentation page for GrantShares.
+Documentation about proposals, flow, etc., are in the official documentation page for GrantShares.
 
 ## Acknowledgement
 
-[AxLabs](https://axlabs.com) develops and maintains the GrantShares contracts, with the support from
-the whole Neo community.
+[AxLabs](https://axlabs.com) develops and maintains the GrantShares contracts, with the support from the whole Neo
+community.
 
 ## License
 
