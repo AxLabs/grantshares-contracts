@@ -43,7 +43,7 @@ public class GrantSharesGov {
     static final String REVIEW_LENGTH_KEY = "review_len"; // milliseconds
     static final String VOTING_LENGTH_KEY = "voting_len"; // milliseconds
     static final String TIMELOCK_LENGTH_KEY = "timelock_len"; // milliseconds
-    static final String EXPIRATION_KEY = "expiration_len"; // milliseconds
+    static final String EXPIRATION_LENGTH_KEY = "expiration_len"; // milliseconds
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate"; // percentage
     static final String MIN_QUORUM_KEY = "min_quorum"; // percentage
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold"; // percentage
@@ -319,7 +319,7 @@ public class GrantSharesGov {
 
         int id = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
         // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
-        int expiration = parameters.getInt(EXPIRATION_KEY) + currentIndex() + 1;
+        int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + currentIndex() + 1;
         proposals.put(id, serialize(new Proposal(id, expiration)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
                 quorum, intents, discussionUrl)));
@@ -352,7 +352,7 @@ public class GrantSharesGov {
         proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
-        proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_KEY);
+        proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
         proposals.put(id, serialize(proposal));
         endorsed.fire(id, endorser);
     }
