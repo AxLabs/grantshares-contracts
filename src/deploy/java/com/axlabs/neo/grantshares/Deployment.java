@@ -18,6 +18,7 @@ public class Deployment {
     static final Neow3j NEOW3J = Config.getNeow3j();
     static final AccountSigner signer = AccountSigner.none(Config.getDeployAccount());
 
+    // TODO: Don't forget to switch `currentIndex()` to `getTime()` in the governance contract.
     public static void main(String[] args) throws Throwable {
         Hash160 grantSharesGovHash = deployGrantSharesGov();
         deployGrantSharesTreasury(grantSharesGovHash);
