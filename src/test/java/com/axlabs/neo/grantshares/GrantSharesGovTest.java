@@ -1,10 +1,10 @@
 package com.axlabs.neo.grantshares;
 
+import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import com.axlabs.neo.grantshares.util.ProposalStruct;
 import com.axlabs.neo.grantshares.util.TestHelper;
 import io.neow3j.contract.NefFile;
 import io.neow3j.contract.NeoToken;
-import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.InvocationResult;
@@ -98,7 +98,7 @@ public class GrantSharesGovTest {
     private static ContractTestExtension ext = new ContractTestExtension();
 
     private static Neow3j neow3j;
-    private static SmartContract contract;
+    private static GrantSharesGovContract contract;
     private static Account alice; // Set to be a DAO member.
     private static Account bob;
     private static Account charlie; // Set to be a DAO member.
@@ -119,7 +119,7 @@ public class GrantSharesGovTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        contract = ext.getDeployedContract(GrantSharesGov.class);
+        contract = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
@@ -165,6 +165,8 @@ public class GrantSharesGovTest {
         ProposalStruct p = new ProposalStruct(r.getInvocationResult().getStack().get(0).getList());
         assertThat(p.id, is(id));
         assertThat(p.proposer, is(alice.getScriptHash()));
+        int n = neow3j.getTransactionHeight(proposalCreationTx).send().getHeight().intValue();
+        assertThat(p.expiration.intValue(), is(n + PHASE_LENGTH));
         assertThat(p.linkedProposal, is(-1));
         assertThat(p.acceptanceRate, is(MIN_ACCEPTANCE_RATE));
         assertThat(p.quorum, is(MIN_QUORUM));
@@ -257,12 +259,12 @@ public class GrantSharesGovTest {
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getInteger().intValue();
 
         // 2. Test that proposal endorser and phases have not yet been setup.
-        List<StackItem> proposal = contract.callInvokeFunction(GET_PROPOSAL,
-                asList(integer(id))).getInvocationResult().getStack().get(0).getList();
-        assertThat(proposal.get(5).getValue(), is(nullValue()));
-        assertThat(proposal.get(6).getInteger(), is(BigInteger.ZERO));
-        assertThat(proposal.get(7).getInteger(), is(BigInteger.ZERO));
-        assertThat(proposal.get(8).getInteger(), is(BigInteger.ZERO));
+        ProposalStruct p = contract.getProposal(id);
+        assertThat(p.endorser, is(nullValue()));
+        assertThat(p.reviewEnd, is(BigInteger.ZERO));
+        assertThat(p.votingEnd, is(BigInteger.ZERO));
+        assertThat(p.timelockEnd, is(BigInteger.ZERO));
+        assertThat(p.expiration, is(greaterThan(BigInteger.ZERO)));
 
         // 3. Endorse
         Hash256 endorseTx = contract.invokeFunction(ENDORSE, integer(id),
@@ -272,23 +274,19 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 4. Test the right setup of the proposal phases
-        NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL,
-                asList(integer(id)));
-        proposal = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(proposal.get(5).getAddress(), is(alice.getAddress()));
+        p = contract.getProposal(id);
+        assertThat(p.endorser, is(alice.getScriptHash()));
         int n = neow3j.getTransactionHeight(endorseTx).send().getHeight().intValue();
-//        long time = neow3j.getBlock(BigInteger.valueOf(n), false).send().getBlock().getTime();
-        assertThat(proposal.get(6).getInteger().intValue(), is(n + PHASE_LENGTH));
-        assertThat(proposal.get(7).getInteger().intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH));
-        assertThat(proposal.get(8).getInteger().intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH
-                + PHASE_LENGTH));
+        assertThat(p.reviewEnd.intValue(), is(n + PHASE_LENGTH));
+        assertThat(p.votingEnd.intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH));
+        assertThat(p.timelockEnd.intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH));
+        assertThat(p.expiration.intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH));
 
         // 5. Test the right setup of the votes map
-        r = contract.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
-        List<StackItem> votes = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(votes.get(12).getInteger(), is(BigInteger.ZERO));
-        assertThat(votes.get(13).getInteger(), is(BigInteger.ZERO));
-        assertThat(votes.get(14).getInteger(), is(BigInteger.ZERO));
+        p = contract.getProposal(id);
+        assertThat(p.approve, is(0));
+        assertThat(p.reject, is(0));
+        assertThat(p.abstain, is(0));
 
         // 6. Test emitted "endorsed" event
         NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(endorseTx).send()
@@ -354,6 +352,20 @@ public class GrantSharesGovTest {
 
     @Test
     @Order(0)
+    public void fail_endorsing_expired_proposal() throws Throwable {
+        Hash256 creationTx = createSimpleProposal(contract, bob, "fail_endorsing_expired_proposal");
+        Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
+        int id = neow3j.getApplicationLog(creationTx).send()
+                .getApplicationLog().getExecutions().get(0).getStack().get(0).getInteger().intValue();
+        ext.fastForward(PHASE_LENGTH);
+        InvocationResult res = contract.endorseProposal(id, alice.getScriptHash())
+                .signers(AccountSigner.calledByEntry(alice)).callInvokeScript().getInvocationResult();
+        assertThat(res.getState(), is(NeoVMStateType.FAULT));
+        assertThat(res.getException(), containsString("Proposal expired"));
+    }
+
+    @Test
+    @Order(0)
     public void succeed_voting() throws Throwable {
         // 1. Create proposal
         Hash256 creationTx = createSimpleProposal(contract, bob, "succeed_voting");
@@ -379,15 +391,12 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(voteTx, neow3j);
 
         // 5. Test the right setting of the votes
-        NeoInvokeFunction r = contract.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
-        List<StackItem> votesStruct = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(votesStruct.get(12).getInteger(), is(BigInteger.ZERO));
-        assertThat(votesStruct.get(13).getInteger(), is(BigInteger.ONE));
-        assertThat(votesStruct.get(14).getInteger(), is(BigInteger.ZERO));
-        Map<StackItem, StackItem> votes = votesStruct.get(15).getMap();
-        assertThat(votes.size(), is(1));
-        assertThat(votes.get(new ByteStringStackItem(charlie.getScriptHash().toLittleEndianArray()))
-                .getInteger().intValue(), is(-1));
+        ProposalStruct proposal = contract.getProposal(id);
+        assertThat(proposal.approve, is(0));
+        assertThat(proposal.reject, is(1));
+        assertThat(proposal.abstain, is(0));
+        assertThat(proposal.voters.size(), is(1));
+        assertThat(proposal.voters.get(charlie.getAddress()), is(-1));
 
         // 6. Test the emitted vote event
         NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(voteTx).send()
@@ -465,16 +474,12 @@ public class GrantSharesGovTest {
         assertThat(exception, containsString("Already voted on this proposal"));
 
         // 6. Check votes
-        NeoInvokeFunction r =
-                contract.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
-        List<StackItem> votesStruct = r.getInvocationResult().getStack().get(0).getList();
-        assertThat(votesStruct.get(12).getInteger(), is(BigInteger.ZERO));
-        assertThat(votesStruct.get(13).getInteger(), is(BigInteger.ONE));
-        assertThat(votesStruct.get(14).getInteger(), is(BigInteger.ZERO));
-        Map<StackItem, StackItem> votes = votesStruct.get(15).getMap();
-        assertThat(votes.size(), is(1));
-        assertThat(votes.get(new ByteStringStackItem(charlie.getScriptHash().toLittleEndianArray()))
-                .getInteger().intValue(), is(-1));
+        ProposalStruct proposal = contract.getProposal(id);
+        assertThat(proposal.approve, is(0));
+        assertThat(proposal.reject, is(1));
+        assertThat(proposal.abstain, is(0));
+        assertThat(proposal.voters.size(), is(1));
+        assertThat(proposal.voters.get(charlie.getAddress()), is(-1));
     }
 
     @Test

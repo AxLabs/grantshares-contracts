@@ -74,6 +74,7 @@ public class TestHelper {
     public static final String REVIEW_LENGTH_KEY = "review_len";
     public static final String VOTING_LENGTH_KEY = "voting_len";
     public static final String TIMELOCK_LENGTH_KEY = "timelock_len";
+    public static final String EXPIRATION_LENGTH_KEY = "expiration_len";
     public static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
     public static final String MIN_QUORUM_KEY = "min_quorum";
     public static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
@@ -97,6 +98,7 @@ public class TestHelper {
                         REVIEW_LENGTH_KEY, PHASE_LENGTH,
                         VOTING_LENGTH_KEY, PHASE_LENGTH,
                         TIMELOCK_LENGTH_KEY, PHASE_LENGTH,
+                        EXPIRATION_LENGTH_KEY, PHASE_LENGTH,
                         MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
                         MIN_QUORUM_KEY, MIN_QUORUM,
                         MULTI_SIG_THRESHOLD_KEY, MULTI_SIG_THRESHOLD_RATIO

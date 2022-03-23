@@ -18,14 +18,15 @@ public class ProposalStruct {
     public Hash160 endorser;
     public BigInteger reviewEnd;
     public BigInteger votingEnd;
-    public BigInteger queuedEnd;
+    public BigInteger timelockEnd;
+    public BigInteger expiration;
     public boolean executed;
     public List<IntentStruct> intents;
     public String discussionUrl;
     public int approve;
     public int reject;
     public int abstain;
-    Map<StackItem, StackItem> voters;
+    public Map<String, Integer> voters;
 
     public ProposalStruct(List<StackItem> list) {
         this(
@@ -38,20 +39,21 @@ public class ProposalStruct {
                 list.get(6).getInteger(),
                 list.get(7).getInteger(),
                 list.get(8).getInteger(),
-                list.get(9).getBoolean(),
-                list.get(10).getList().stream().map(i -> new IntentStruct(i.getList())).collect(Collectors.toList()),
-                list.get(11).getString(),
-                list.get(12).getInteger().intValue(),
+                list.get(9).getInteger(),
+                list.get(10).getBoolean(),
+                list.get(11).getList().stream().map(i -> new IntentStruct(i.getList())).collect(Collectors.toList()),
+                list.get(12).getString(),
                 list.get(13).getInteger().intValue(),
                 list.get(14).getInteger().intValue(),
-                list.get(15).getMap() // voters
+                list.get(15).getInteger().intValue(),
+                list.get(16).getMap() // voters
         );
     }
 
     public ProposalStruct(int id, Hash160 proposer, int linkedProposal, int acceptanceRate, int quorum,
-            Hash160 endorser, BigInteger reviewEnd, BigInteger votingEnd, BigInteger queuedEnd, boolean executed,
-            List<IntentStruct> intents,
-            String discussionUrl, int approve, int reject, int abstain, Map<StackItem, StackItem> voters) {
+            Hash160 endorser, BigInteger reviewEnd, BigInteger votingEnd, BigInteger timelockEnd, BigInteger expiration,
+            boolean executed, List<IntentStruct> intents, String discussionUrl, int approve, int reject, int abstain,
+            Map<StackItem, StackItem> voters) {
         this.id = id;
         this.proposer = proposer;
         this.linkedProposal = linkedProposal;
@@ -60,14 +62,17 @@ public class ProposalStruct {
         this.endorser = endorser;
         this.reviewEnd = reviewEnd;
         this.votingEnd = votingEnd;
-        this.queuedEnd = queuedEnd;
+        this.timelockEnd = timelockEnd;
+        this.expiration = expiration;
         this.executed = executed;
         this.intents = intents;
         this.discussionUrl = discussionUrl;
         this.approve = approve;
         this.reject = reject;
         this.abstain = abstain;
-        this.voters = voters;
+        this.voters = voters.entrySet().stream().collect(Collectors.toMap(
+                e -> e.getKey().getAddress(),
+                e -> e.getValue().getInteger().intValue()));
     }
 
     public static class IntentStruct {

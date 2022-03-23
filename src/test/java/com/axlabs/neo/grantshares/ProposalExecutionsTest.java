@@ -1,7 +1,7 @@
 package com.axlabs.neo.grantshares;
 
+import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import io.neow3j.contract.GasToken;
-import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.test.ContractTest;
@@ -32,6 +32,7 @@ import static com.axlabs.neo.grantshares.util.TestHelper.FLORIAN;
 import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
+import static com.axlabs.neo.grantshares.util.TestHelper.REVIEW_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
@@ -55,7 +56,7 @@ public class ProposalExecutionsTest {
     static ContractTestExtension ext = new ContractTestExtension();
 
     static Neow3j neow3j;
-    static SmartContract contract;
+    static GrantSharesGovContract contract;
     static Account alice; // Set to be a DAO member.
     static Account bob;
     static Account charlie; // Set to be a DAO member.
@@ -75,7 +76,7 @@ public class ProposalExecutionsTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        contract = ext.getDeployedContract(GrantSharesGov.class);
+        contract = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
@@ -333,5 +334,26 @@ public class ProposalExecutionsTest {
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException(), is(nullValue()));
     }
+
+    @Test
+    public void fail_executing_expired_proposal() throws Throwable {
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM, array(REVIEW_LENGTH_KEY, 1)));
+        String discUrl = "fail_executing_expired_proposal";
+
+        // 1. Create and endorse proposal, then skip till after the queued phase without voting.
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
+        ext.fastForward(PHASE_LENGTH); // skip review phase
+        voteForProposal(contract, neow3j, id, 1, alice);
+        voteForProposal(contract, neow3j, id, 1, charlie);
+        voteForProposal(contract, neow3j, id, 1, denise);
+
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH); // skip voting, time lock, expiration phase
+
+        // 2. Call execute
+        String exception = contract.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Proposal expired"));
+    }
+
 
 }
