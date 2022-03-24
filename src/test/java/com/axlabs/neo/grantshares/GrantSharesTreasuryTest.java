@@ -186,6 +186,12 @@ public class GrantSharesTreasuryTest {
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
         // treasury should vote for alice
         assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1100));
+        NeoApplicationLog.Execution.Notification n = neow3j.getApplicationLog(hash).send().getApplicationLog()
+                .getExecutions().get(0).getNotifications().get(2);
+        assertThat(n.getEventName(), is("VotedOnCommitteeMember"));
+        assertThat(n.getContract(), is(treasury.getScriptHash()));
+        assertThat(n.getState().getList().get(0).getByteArray(),
+                is(alice.getECKeyPair().getPublicKey().getEncoded(true)));
 
         // manually call the voting method
         hash = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(bob))
@@ -572,6 +578,12 @@ public class GrantSharesTreasuryTest {
         assertThat(n.getState().getList().get(1).getAddress(),
                 is(treasury.getScriptHash().toAddress()));
         assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.ONE));
+
+        n = execution.getNotifications().get(1);
+        assertThat(n.getEventName(), is("NEP17Payment"));
+        assertThat(n.getContract(), is(treasury.getScriptHash()));
+        assertThat(n.getState().getList().get(0).getAddress(), is(bob.getAddress()));
+        assertThat(n.getState().getList().get(1).getInteger(), is(BigInteger.ONE));
 
         assertThat(gas.getBalanceOf(treasury.getScriptHash()).intValue(), is(initialValue + 1));
     }

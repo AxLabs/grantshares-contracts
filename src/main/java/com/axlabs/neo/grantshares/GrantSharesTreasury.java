@@ -61,6 +61,10 @@ public class GrantSharesTreasury {
     static Event1Arg<Hash160> whitelistedTokenRemoved;
     @DisplayName("ThresholdChanged")
     static Event1Arg<Integer> thresholdChanged;
+    @DisplayName("NEP17Payment")
+    static Event2Args<Hash160, Integer> nep17Payment;
+    @DisplayName("VotedOnCommitteeMember")
+    static Event1Arg<ECPoint> voted;
 
     /**
      * Initialises this contract on deployment.
@@ -139,6 +143,7 @@ public class GrantSharesTreasury {
         if (Runtime.getCallingScriptHash() == NeoToken.getHash()) {
             voteCommitteeMemberWithLeastVotes();
         }
+        nep17Payment.fire(sender, amount);
     }
 
     /**
@@ -151,6 +156,7 @@ public class GrantSharesTreasury {
         if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c)) {
             throw new Exception("Tried to vote on candidate " + c.toByteString().toString() + " but failed.");
         }
+        voted.fire(c);
     }
 
     private static ECPoint getCommitteeMemberWithLeastVotes() {
