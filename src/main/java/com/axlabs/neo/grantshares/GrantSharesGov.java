@@ -36,7 +36,7 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 @ManifestExtra(key = "Author", value = "AxLabs")
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The main contract of the GrantShares DAO")
-@ManifestExtra(key = "Website", value = "grantshares.io")
+@ManifestExtra(key = "Website", value = "https://grantshares.io")
 @SuppressWarnings("unchecked")
 public class GrantSharesGov {
 
