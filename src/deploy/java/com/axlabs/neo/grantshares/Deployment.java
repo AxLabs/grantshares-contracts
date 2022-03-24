@@ -30,7 +30,8 @@ public class Deployment {
         CompilationUnit res = new Compiler().compile(GrantSharesGov.class.getCanonicalName());
         TransactionBuilder builder = new ContractManagement(getNeow3j())
                 .deploy(res.getNefFile(), res.getManifest(), DeployConfig.getGovDeployConfig())
-                .signers(signer);
+                .signers(signer)
+                .throwIfSenderCannotCoverFees(() -> new RuntimeException("Cannot cover fees"));
 
         Hash256 txHash = builder.sign().send().getSendRawTransaction().getHash();
         System.out.println("GrantSharesGov Deploy Transaction Hash: " + txHash.toString());
@@ -52,7 +53,8 @@ public class Deployment {
         TransactionBuilder builder = new ContractManagement(getNeow3j())
                 .deploy(res.getNefFile(), res.getManifest(),
                         DeployConfig.getTreasuryDeployConfig(grantSharesGovHash))
-                .signers(signer);
+                .signers(signer)
+                .throwIfSenderCannotCoverFees(() -> new RuntimeException("Cannot cover fees"));
 
         Hash256 txHash = builder.sign().send().getSendRawTransaction().getHash();
         System.out.println("GrantSharesTreasury Deploy Transaction Hash: " + txHash.toString());
