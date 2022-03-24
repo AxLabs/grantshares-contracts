@@ -11,13 +11,21 @@ import java.util.Properties;
 public class Config {
 
     private static final String PROPS_FILE = "deploy.properties";
+    private static String profile = null;
     private static Properties props;
+
+    public static void setProfile(String profileName) {
+        profile = profileName;
+    }
 
     public static String getProperty(String name) {
         if (props == null) {
             props = new Properties();
+            if (profile == null) {
+                throw new RuntimeException("Profile must be set, e.g., 'test' for 'test.deploy.properties'");
+            }
             try {
-                props.load(Config.class.getClassLoader().getResourceAsStream(PROPS_FILE));
+                props.load(Config.class.getClassLoader().getResourceAsStream(profile + "." + PROPS_FILE));
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }

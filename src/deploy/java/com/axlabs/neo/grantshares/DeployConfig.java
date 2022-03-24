@@ -1,18 +1,13 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.contract.GasToken;
-import io.neow3j.contract.NeoToken;
 import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 
-import java.io.IOException;
-import java.security.interfaces.ECPublicKey;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.stream.Collectors;
 
 import static io.neow3j.types.ContractParameter.array;
@@ -33,7 +28,7 @@ public class DeployConfig {
 
     /**
      * Gets the deploy configuration for the governance contract. Requires that there is a
-     * 'resources/deploy.properties' file that contains the initial members in the following format:
+     * 'resources/[profile].deploy.properties' file that contains the initial members in the following format:
      * <pre>
      *  member1=03a140e068b2e1fffdd901acf96cdc35676687b25fba5f4ed267ad4ec463bf4dc3
      *  member2=0351408068b0e1f7fdd901acf96cdc35676687b25fba5f4ed267ad4ec483bc7ac5
@@ -64,10 +59,12 @@ public class DeployConfig {
 
     /**
      * Gets the deploy configuration for the treasurty contract. Requires that there is a
-     * 'resources/deploy.properties' file that contains the initial funders in the following format:
+     * 'resources/[profile].deploy.properties' file that contains the initial funders in the following format:
      * <pre>
-     *  funder1=03a140e068b2e1fffdd901acf96cdc35676687b25fba5f4ed267ad4ec463bf4dc3
-     *  funder2=0351408068b0e1f7fdd901acf96cdc35676687b25fba5f4ed267ad4ec483bc7ac5
+     *  funderAddress1=NXSMRK2NQ8ryQZkWj33DMEu1orZdDSUyu7
+     * funderPubKey11=039110e06fb2e1fffdd901acf96cdc35676687b25fba5f4ed2b7ad4e34638f4dc3
+     * funderPubKey12=0200aca48ddbefb61b813431b285c6f3b9486de3d1fbcd7645bd9626eff75426ca
+     * funderPubKey13=03dea7d79b4a77ca296ed2e8d7184b6933debd479a491c82521786173085931eca
      *  ...
      * </pre>
      * And the token maximum for NEO and GAS in the properties "neo_token_max" and "gas_token_max".
