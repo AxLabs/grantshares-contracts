@@ -39,7 +39,7 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @ManifestExtra(key = "Author", value = "AxLabs")
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The treasury of the GrantShares DAO")
-@ManifestExtra(key = "Website", value = "grantshares.io")
+@ManifestExtra(key = "Website", value = "https://grantshares.io")
 public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";
