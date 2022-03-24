@@ -33,7 +33,10 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 
 @Permission(contract = "*", methods = "*")
 @DisplayName("GrantSharesGov")
-@ManifestExtra(key = "author", value = "AxLabs")
+@ManifestExtra(key = "Author", value = "AxLabs")
+@ManifestExtra(key = "Email", value = "info@grantshares.io")
+@ManifestExtra(key = "Description", value = "The main contract of the GrantShares DAO")
+@ManifestExtra(key = "Website", value = "grantshares.io")
 @SuppressWarnings("unchecked")
 public class GrantSharesGov {
 

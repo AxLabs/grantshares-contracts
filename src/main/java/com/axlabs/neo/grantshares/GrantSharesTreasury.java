@@ -36,7 +36,10 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @Permission(contract = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5", methods = "vote") // NeoToken
 @Permission(contract = "*", methods = "transfer")
 @DisplayName("GrantSharesTreasury")
-@ManifestExtra(key = "author", value = "AxLabs")
+@ManifestExtra(key = "Author", value = "AxLabs")
+@ManifestExtra(key = "Email", value = "info@grantshares.io")
+@ManifestExtra(key = "Description", value = "The treasury of the GrantShares DAO")
+@ManifestExtra(key = "Website", value = "grantshares.io")
 public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";
