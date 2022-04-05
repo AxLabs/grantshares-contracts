@@ -25,7 +25,7 @@ public class IntentParam extends ContractParameter {
                 hash160(token), hash160(receiver), integer(amount));
     }
 
-    public static IntentParam changeParamProposal(Hash160 gov, String paramName, int value) {
+    public static IntentParam changeParamProposal(Hash160 gov, String paramName, BigInteger value) {
         return new IntentParam(gov, "changeParam",
                 string(paramName), integer(value));
     }

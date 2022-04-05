@@ -50,7 +50,7 @@ public class DeployConfig {
                         REVIEW_LENGTH_KEY, Config.getIntProperty(REVIEW_LENGTH_KEY),
                         VOTING_LENGTH_KEY, Config.getIntProperty(VOTING_LENGTH_KEY),
                         TIMELOCK_LENGTH_KEY, Config.getIntProperty(TIMELOCK_LENGTH_KEY),
-                        EXPIRATION_LENGTH_KEY, Config.getIntProperty(TIMELOCK_LENGTH_KEY),
+                        EXPIRATION_LENGTH_KEY, Config.getIntProperty(EXPIRATION_LENGTH_KEY),
                         MIN_ACCEPTANCE_RATE_KEY, Config.getIntProperty(MIN_ACCEPTANCE_RATE_KEY),
                         MIN_QUORUM_KEY, Config.getIntProperty(MIN_QUORUM_KEY),
                         THRESHOLD_KEY, Config.getIntProperty(THRESHOLD_KEY)
