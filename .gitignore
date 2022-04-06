@@ -174,3 +174,6 @@ gradle-app.setting
 gradle.properties
 **/gradle.properties
 .java-version
+
+*.deploy.properties
+!dev.deploy.properties
