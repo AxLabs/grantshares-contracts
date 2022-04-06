@@ -132,10 +132,6 @@ public class GrantSharesTreasury {
                 "GrantSharesTreasury: Non-whitelisted sender";
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted token";
-
-        if (Runtime.getCallingScriptHash() == NeoToken.getHash()) {
-            voteCommitteeMemberWithLeastVotes();
-        }
     }
 
     /**
