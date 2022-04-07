@@ -13,6 +13,7 @@ import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
+import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
@@ -35,8 +36,11 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @Permission(contract = "0xfffdc93764dbaddd97c48f252a53ea4643faa3fd", methods = "update") // ContractManagement
 @Permission(contract = "0xef4073a0f2b305a38ec4050e4d3d28bc40ea63f5", methods = "vote") // NeoToken
 @Permission(contract = "*", methods = "transfer")
-@DisplayName("GrantSharesTreasury")
-@ManifestExtra(key = "author", value = "AxLabs")
+@ManifestExtra(key = "Author", value = "AxLabs")
+@ManifestExtra(key = "Email", value = "info@grantshares.io")
+@ManifestExtra(key = "Description", value = "The treasury of the GrantShares DAO")
+@ManifestExtra(key = "Website", value = "https://grantshares.io")
+@ContractSourceCode("TODO: Set this to the URL of the release branch before deploying.")
 public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";

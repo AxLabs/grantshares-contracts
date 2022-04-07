@@ -12,6 +12,7 @@ import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.StringLiteralHelper;
+import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.ManifestExtra;
 import io.neow3j.devpack.annotations.OnDeployment;
@@ -32,8 +33,11 @@ import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
 
 @Permission(contract = "*", methods = "*")
-@DisplayName("GrantSharesGov")
-@ManifestExtra(key = "author", value = "AxLabs")
+@ManifestExtra(key = "Author", value = "AxLabs")
+@ManifestExtra(key = "Email", value = "info@grantshares.io")
+@ManifestExtra(key = "Description", value = "The governing contract of the GrantShares DAO")
+@ManifestExtra(key = "Website", value = "https://grantshares.io")
+@ContractSourceCode("TODO: Set this to the URL of the release branch before deploying.")
 @SuppressWarnings("unchecked")
 public class GrantSharesGov {
 
