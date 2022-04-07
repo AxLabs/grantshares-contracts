@@ -30,6 +30,7 @@ import io.neow3j.devpack.events.Event2Args;
 
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
+import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
@@ -239,7 +240,7 @@ public class GrantSharesTreasury {
      * @return The multi-sig account signing threshold.
      */
     private static int calcFundersMultiSigAddressThreshold(int count) {
-        int thresholdRatio = Storage.getInt(ctx, MULTI_SIG_THRESHOLD_KEY);
+        int thresholdRatio = Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
         if (thresholdTimes100 % 100 != 0) {
@@ -271,7 +272,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static boolean isPaused() {
-        return (boolean) Contract.call(new Hash160(Storage.get(ctx, OWNER_KEY)),
+        return (boolean) Contract.call(new Hash160(Storage.get(getReadOnlyContext(), OWNER_KEY)),
                 "isPaused", CallFlags.ReadOnly, new Object[]{});
     }
 
@@ -282,7 +283,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static int getFundersMultiSigThresholdRatio() {
-        return Storage.getInt(ctx, MULTI_SIG_THRESHOLD_KEY);
+        return Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
     }
 
     /**
@@ -427,7 +428,7 @@ public class GrantSharesTreasury {
 
     private static void assertCallerIsOwner() {
         assert Runtime.getCallingScriptHash().toByteString() ==
-                Storage.get(ctx, OWNER_KEY) : "GrantSharesTreasury: Not authorised";
+                Storage.get(getReadOnlyContext(), OWNER_KEY) : "GrantSharesTreasury: Not authorised";
     }
 
     private static void assertNotPaused() {

@@ -27,6 +27,8 @@ import io.neow3j.devpack.events.Event4Args;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
+import static io.neow3j.devpack.Storage.getReadOnlyContext;
+import static io.neow3j.devpack.Storage.getStorageContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
@@ -203,7 +205,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int getMembersCount() {
-        return Storage.getInt(ctx, MEMBERS_COUNT_KEY);
+        return Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
     }
 
     /**
@@ -213,7 +215,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int getProposalCount() {
-        return Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
+        return Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
     }
 
     /**
@@ -226,7 +228,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static Paginator.Paginated getProposals(int page, int itemsPerPage) {
-        int n = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
+        int n = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
         List<Object> list = new List<>();
         for (int i = pagination[0]; i < pagination[1]; i++) {
@@ -243,7 +245,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static boolean isPaused() {
-        return Storage.getBoolean(ctx, PAUSED_KEY);
+        return Storage.getBoolean(getReadOnlyContext(), PAUSED_KEY);
     }
 
 
@@ -267,7 +269,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int calcMembersMultiSigAccountThreshold() {
-        int count = Storage.getInt(ctx, MEMBERS_COUNT_KEY);
+        int count = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
         int thresholdRatio = parameters.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
@@ -320,7 +322,7 @@ public class GrantSharesGov {
         assert linkedProposal < 0 || proposals.get(linkedProposal) != null
                 : "GrantSharesGov: Linked proposal doesn't exist";
 
-        int id = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
+        int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         proposals.put(id, serialize(new Proposal(id)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
                 quorum, intents, offchainId)));
@@ -417,7 +419,7 @@ public class GrantSharesGov {
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
-        assert voteCount * 100 / Storage.getInt(ctx, MEMBERS_COUNT_KEY) >= data.quorum
+        assert voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) >= data.quorum
                 : "GrantSharesGov: Quorum not reached";
         int yesNoCount = votes.approve + votes.reject;
         assert votes.approve * 100 / yesNoCount > data.acceptanceRate
@@ -465,7 +467,7 @@ public class GrantSharesGov {
         Hash160 memberHash = createStandardAccount(memberPubKey);
         assert members.get(memberHash.toByteString()) == null : "GrantSharesGov: Already a member";
         members.put(memberHash.toByteString(), memberPubKey.toByteString());
-        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(ctx, MEMBERS_COUNT_KEY) + 1);
+        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) + 1);
         memberAdded.fire(memberHash);
     }
 
@@ -482,7 +484,7 @@ public class GrantSharesGov {
         Hash160 memberHash = createStandardAccount(memberPubKey);
         assert members.get(memberHash.toByteString()) != null : "GrantSharesGov: Not a member";
         members.delete(memberHash.toByteString());
-        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(ctx, MEMBERS_COUNT_KEY) - 1);
+        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) - 1);
         memberRemoved.fire(memberHash);
     }
 
