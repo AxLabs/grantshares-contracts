@@ -167,7 +167,7 @@ public class GrantSharesTreasuryTest {
 
     @Test
     @Order(0)
-    public void treasury_contract_votes_on_committee_member_when_receiving_neo() throws Throwable {
+    public void succeed_voting_on_committee_member() throws Throwable {
         NeoToken neo = new NeoToken(neow3j);
         // register alice as candidate (is already a committee member by default in neo-express)
         Hash256 hash = neo.registerCandidate(alice.getECKeyPair().getPublicKey())
@@ -177,22 +177,19 @@ public class GrantSharesTreasuryTest {
         hash = neo.vote(alice, alice.getECKeyPair().getPublicKey())
                 .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
-
         assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1000));
 
         // fund treasury
         hash = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
-        // treasury should vote for alice
+        // vote on Alice with treasury
+        hash = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.none(bob)).sign().send()
+                .getSendRawTransaction().getHash();
+        Await.waitUntilTransactionIsExecuted(hash, neow3j);
         assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1100));
 
-        // manually call the voting method
-        hash = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(hash, neow3j);
-        // nothing should change
-        assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1100));
+
     }
 
     @Test

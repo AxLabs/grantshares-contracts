@@ -22,12 +22,14 @@ import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.contracts.ContractManagement;
+import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
 import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 
 import static io.neow3j.devpack.Runtime.checkWitness;
+import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
@@ -130,7 +132,9 @@ public class GrantSharesTreasury {
     public static void onNep17Payment(Hash160 sender, int amount, Object data) throws Exception {
         assertNotPaused();
         if (sender == null) {
-            return; // If the sender is null the transfer is a GAS claim.
+            // We only allow null sender if the token is GAS because it is due to a GAS claim.
+            assert getCallingScriptHash() == GasToken.getHash() : "GrantSharesTreasury: Sender was null";
+            return;
         }
         assert funders.get(sender.toByteString()) != null :
                 "GrantSharesTreasury: Non-whitelisted sender";
