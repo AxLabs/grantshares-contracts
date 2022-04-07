@@ -19,7 +19,7 @@ public class ProposalDTO {
     public int queuedEnd;
     public boolean executed;
     public Intent[] intents;
-    public String discussionUrl;
+    public String offchainId;
     public int approve;
     public int reject;
     public int abstain;

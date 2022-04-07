@@ -151,7 +151,7 @@ public class GrantSharesGov {
             dto.acceptanceRate = p.acceptanceRate;
             dto.quorum = p.quorum;
             dto.intents = p.intents;
-            dto.discussionUrl = p.discussionUrl;
+            dto.offchainId = p.offchainId;
         } else {
             return null;
         }
@@ -280,15 +280,15 @@ public class GrantSharesGov {
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
      *
-     * @param proposer      The account set as the proposer.
-     * @param intents       The intents to be executed when the proposal is accepted.
-     * @param discussionUrl The proposal's discussion URL. Must not be larger than 1024 bytes.
+     * @param proposer   The account set as the proposer.
+     * @param intents    The intents to be executed when the proposal is accepted.
+     * @param offchainId The ID of the part of the proposal that is created off-chain. E.g., a unique discussion URL.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String discussionUrl,
+    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainId,
             int linkedProposal) {
 
-        return createProposal(proposer, intents, discussionUrl, linkedProposal,
+        return createProposal(proposer, intents, offchainId, linkedProposal,
                 parameters.getInt(MIN_ACCEPTANCE_RATE_KEY),
                 parameters.getInt(MIN_QUORUM_KEY));
     }
@@ -298,13 +298,14 @@ public class GrantSharesGov {
      *
      * @param proposer       The account set as the proposer.
      * @param intents        The intents to be executed when the proposal is accepted.
-     * @param discussionUrl  The proposal discussion URL. Must not be larger than 1024 bytes.
+     * @param offchainId     The ID of the part of the proposal that is created off-chain. E.g., a unique discussion
+     *                       URL.
      * @param linkedProposal A proposal that preceded this one.
      * @param acceptanceRate The desired acceptance rate.
      * @param quorum         The desired quorum.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String discussionUrl,
+    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainId,
             int linkedProposal, int acceptanceRate, int quorum) {
 
         assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
@@ -318,11 +319,11 @@ public class GrantSharesGov {
         int id = Storage.getInt(ctx, PROPOSALS_COUNT_KEY);
         proposals.put(id, serialize(new Proposal(id)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
-                quorum, intents, discussionUrl)));
+                quorum, intents, offchainId)));
         proposalVotes.put(id, serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
 
-        // An event can take max 1024 bytes state data. Thus, we're not passing the discussionUrl.
+        // An event can take max 1024 bytes state data. Thus, we're not passing the offchainId since it could be longer.
         created.fire(id, proposer, acceptanceRate, quorum);
         return id;
     }

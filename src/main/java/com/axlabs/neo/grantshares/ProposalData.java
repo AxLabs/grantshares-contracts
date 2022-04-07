@@ -38,15 +38,15 @@ public class ProposalData {
     /**
      * The URL of the GitHub issue where this proposal is discussed.
      */
-    public String discussionUrl;
+    public String offchainId;
 
     public ProposalData(Hash160 proposer, int linkedProposal, int acceptanceRate,
-            int quorum, Intent[] intents, String discussionUrl) {
+            int quorum, Intent[] intents, String offchainId) {
         this.proposer = proposer;
         this.linkedProposal = linkedProposal;
         this.acceptanceRate = acceptanceRate;
         this.quorum = quorum;
         this.intents = intents;
-        this.discussionUrl = discussionUrl;
+        this.offchainId = offchainId;
     }
 }
