@@ -407,11 +407,9 @@ public class GrantSharesTreasury {
 
         while (it.next()) {
             Hash160 token = new Hash160(it.get());
-            int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadStates,
-                    new Object[]{selfHash});
+            int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadOnly, new Object[]{selfHash});
             if (balance > 0) {
-                Object[] params = new Object[]{selfHash, fundersMultiAddress, balance,
-                        new Object[]{}};
+                Object[] params = new Object[]{selfHash, fundersMultiAddress, balance, new Object[]{}};
                 Contract.call(token, "transfer", CallFlags.All, params);
             }
         }
