@@ -243,7 +243,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static boolean isPaused() {
-        return Storage.get(ctx, PAUSED_KEY) == StringLiteralHelper.hexToBytes("01");
+        return Storage.getBoolean(ctx, PAUSED_KEY);
     }
 
 

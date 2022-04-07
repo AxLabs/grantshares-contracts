@@ -271,8 +271,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static boolean isPaused() {
-        return (boolean) Contract.call(
-                new Hash160(Storage.get(ctx, OWNER_KEY)),
+        return (boolean) Contract.call(new Hash160(Storage.get(ctx, OWNER_KEY)),
                 "isPaused", CallFlags.ReadOnly, new Object[]{});
     }
 
