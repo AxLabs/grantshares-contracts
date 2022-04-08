@@ -35,16 +35,23 @@ public class Proposal {
     public int timeLockEnd;
 
     /**
+     * The time at which this proposal expires. Expiration can happen before a proposal is endorsed or after a proposal
+     * was accepted but not yet executed.
+     */
+    public int expiration;
+
+    /**
      * Tells if this proposal was already executed.
      */
     public boolean executed;
 
-    public Proposal(int id) {
+    public Proposal(int id, int expiration) {
         this.id = id;
         endorser = null;
         reviewEnd = 0;
         votingEnd = 0;
         timeLockEnd = 0;
+        this.expiration = expiration;
         executed = false;
     }
 }

@@ -47,6 +47,7 @@ public class GrantSharesGov {
     static final String REVIEW_LENGTH_KEY = "review_len"; // milliseconds
     static final String VOTING_LENGTH_KEY = "voting_len"; // milliseconds
     static final String TIMELOCK_LENGTH_KEY = "timelock_len"; // milliseconds
+    static final String EXPIRATION_LENGTH_KEY = "expiration_len"; // milliseconds
     static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate"; // percentage
     static final String MIN_QUORUM_KEY = "min_quorum"; // percentage
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold"; // percentage
@@ -166,6 +167,7 @@ public class GrantSharesGov {
             dto.reviewEnd = p.reviewEnd;
             dto.votingEnd = p.votingEnd;
             dto.queuedEnd = p.timeLockEnd;
+            dto.expiration = p.expiration;
             dto.executed = p.executed;
         }
         bytes = proposalVotes.get(id);
@@ -319,7 +321,9 @@ public class GrantSharesGov {
                 : "GrantSharesGov: Linked proposal doesn't exist";
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
-        proposals.put(id, serialize(new Proposal(id)));
+        // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
+        int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + currentIndex() + 1;
+        proposals.put(id, serialize(new Proposal(id, expiration)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
                 quorum, intents, offchainUri)));
         proposalVotes.put(id, serialize(new ProposalVotes()));
@@ -344,15 +348,15 @@ public class GrantSharesGov {
         ByteString proposalBytes = proposals.get(id);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
+        // TODO: For deployment replace `currentIndex()` with `getTime()`.
+        assert proposal.expiration > currentIndex() : "GrantSharesGov: Proposal expired";
         assert proposal.endorser == null : "GrantSharesGov: Proposal already endorsed";
         proposal.endorser = endorser;
-
-        // TODO: When deploying the contract, `currentIndex()+1` has to be replaced with getTime().
-        //  For testing purposes we're using the block number for the phase length but in production
-        //  the contract should use the actual time.
+        // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
         proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
+        proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
         proposals.put(id, serialize(proposal));
         endorsed.fire(id, endorser);
     }
@@ -375,7 +379,7 @@ public class GrantSharesGov {
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed";
-        // TODO: `currentIndex` has to be replaced with `getTime`
+        // TODO: For deployment replace `currentIndex()` with `getTime()`.
         int time = currentIndex();
         assert time >= proposal.reviewEnd && time < proposal.votingEnd
                 : "GrantSharesGov: Proposal not active";
@@ -411,18 +415,18 @@ public class GrantSharesGov {
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed yet";
-        // TODO: `currentIndex` has to be replaced with `getTime`
-        assert currentIndex() >= proposal.timeLockEnd
-                : "GrantSharesGov: Proposal not in execution phase";
+        // TODO: For deployment replace `currentIndex()` with `getTime()`.
+        assert currentIndex() >= proposal.timeLockEnd : "GrantSharesGov: Proposal not in execution phase";
         assert !proposal.executed : "GrantSharesGov: Proposal already executed";
+        // TODO: For deployment replace `currentIndex()` with `getTime()`.
+        assert proposal.expiration > currentIndex() : "GrantSharesGov: Proposal expired";
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
         assert voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) >= data.quorum
                 : "GrantSharesGov: Quorum not reached";
         int yesNoCount = votes.approve + votes.reject;
-        assert votes.approve * 100 / yesNoCount > data.acceptanceRate
-                : "GrantSharesGov: Proposal rejected";
+        assert votes.approve * 100 / yesNoCount > data.acceptanceRate : "GrantSharesGov: Proposal rejected";
 
         proposal.executed = true;
         Object[] returnVals = new Object[data.intents.length];

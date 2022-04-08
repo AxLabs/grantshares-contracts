@@ -17,6 +17,7 @@ public class ProposalDTO {
     public int reviewEnd;
     public int votingEnd;
     public int queuedEnd;
+    public int expiration;
     public boolean executed;
     public Intent[] intents;
     public String offchainUri;

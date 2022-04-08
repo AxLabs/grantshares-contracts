@@ -95,7 +95,7 @@ public class GrantSharesGovContract extends SmartContract {
 
     public Date getProposalTimeLockEnd(int id) throws IOException {
         ProposalStruct proposal = getProposal(id);
-        return new Date(proposal.queuedEnd.longValue());
+        return new Date(proposal.timelockEnd.longValue());
     }
 
     public Date getProposalVoteEnd(int id) throws IOException {
