@@ -1,10 +1,13 @@
 package com.axlabs.neo.grantshares.util;
 
+import io.neow3j.contract.NefFile;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.contract.exceptions.UnexpectedReturnTypeException;
 import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.crypto.ECKeyPair.ECPublicKey;
+import io.neow3j.devpack.ByteString;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.types.Hash160;
@@ -15,7 +18,9 @@ import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
@@ -135,6 +140,10 @@ public class GrantSharesGovContract extends SmartContract {
         int threshold = calcMembersMultiSigAccountThreshold();
         List<ECKeyPair.ECPublicKey> members = getMembers();
         return Account.createMultiSigAccount(members, threshold);
+    }
+
+    public TransactionBuilder updateContract(byte[] nef, String manifest, Object data) {
+        return invokeFunction(getMethodName(), byteArray(nef), string(manifest), any(data));
     }
 
     private String getMethodName() {

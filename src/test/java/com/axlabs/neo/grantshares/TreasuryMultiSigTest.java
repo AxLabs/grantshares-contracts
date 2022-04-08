@@ -168,27 +168,27 @@ public class TreasuryMultiSigTest {
     }
 
     @Test
-    @Order(1)
+    @Order(0)
     public void calc_funders_multisig_threshold() throws Throwable {
         int th = treasury.calcFundersMultiSigAddressThreshold();
         assertThat(th, is(2));
     }
 
     @Test
-    @Order(1)
+    @Order(0)
     public void calc_funders_multisig_address() throws Throwable {
         Hash160 hash = treasury.calcFundersMultiSigAddress();
         assertThat(hash, is(createMultiSigAccount(2, bob, denise, eve).getScriptHash()));
     }
 
     @Test
-    @Order(1)
+    @Order(0)
     public void fail_execute_drain_on_unpaused_contract() throws Throwable {
         String exception = treasury.drain().callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Contract is not paused"));
     }
 
-    @Order(2)
+    @Order(10)
     @Test
     public void succeed_pausing_contract() throws Throwable {
         assertFalse(treasury.callInvokeFunction(IS_PAUSED).getInvocationResult()
@@ -208,7 +208,7 @@ public class TreasuryMultiSigTest {
                 .getStack().get(0).getBoolean());
     }
 
-    @Order(3)
+    @Order(11)
     @Test
     public void fail_execute_drain_with_non_funder() throws IOException {
         String exception = treasury.drain().signers(AccountSigner.calledByEntry(bob))
@@ -216,29 +216,7 @@ public class TreasuryMultiSigTest {
         assertThat(exception, containsString("Not authorized"));
     }
 
-    @Order(3)
-    @Test
-    public void fail_execute_proposal_with_drain_contract() throws Throwable {
-        ContractParameter intent = IntentParam.drainProposal(treasury.getScriptHash());
-        String offchainId = "execute_proposal_with_drain_contract";
-
-        // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
-
-        // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
-        voteForProposal(gov, neow3j, id, alice);
-
-        // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
-        Account membersAccount = createMultiSigAccount(1, bob, denise);
-        String exception = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(bob))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorized"));
-    }
-
-    @Order(4)
+    @Order(12)
     @Test
     public void successfully_drain_with_funders_account() throws Throwable {
         Account membersAccount = createMultiSigAccount(2, bob, denise, eve);

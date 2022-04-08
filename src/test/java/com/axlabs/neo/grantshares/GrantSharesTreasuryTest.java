@@ -188,8 +188,6 @@ public class GrantSharesTreasuryTest {
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
         assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1100));
-
-
     }
 
     @Test
@@ -665,6 +663,22 @@ public class GrantSharesTreasuryTest {
     }
 
     @Order(26)
+    @Test
+    public void fail_vote_on_committee_member_on_paused_contract() throws Throwable {
+        String exception = treasury.voteCommitteeMemberWithLeastVotes()
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(27)
+    @Test
+    public void fail_update_contract_on_paused_contract() throws Throwable {
+        String exception = gov.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null).callInvokeScript()
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Contract is paused"));
+    }
+
+    @Order(28)
     @Test
     public void succeed_unpausing_contract() throws Throwable {
         assertTrue(treasury.callInvokeFunction(IS_PAUSED).getInvocationResult()

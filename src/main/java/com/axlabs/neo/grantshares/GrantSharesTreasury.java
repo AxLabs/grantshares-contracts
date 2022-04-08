@@ -149,6 +149,7 @@ public class GrantSharesTreasury {
      * @throws Exception if voting was not successful.
      */
     public static void voteCommitteeMemberWithLeastVotes() throws Exception {
+        assertNotPaused();
         ECPoint c = getCommitteeMemberWithLeastVotes();
         if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c)) {
             throw new Exception("Tried to vote on candidate " + c.toByteString().toString() + " but failed.");
@@ -422,6 +423,7 @@ public class GrantSharesTreasury {
      * in case the contract needs a fix.
      */
     public static void updateContract(ByteString nef, String manifest, Object data) {
+        assertNotPaused();
         assertCallerIsOwner();
         ContractManagement.update(nef, manifest, data);
     }

@@ -15,9 +15,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
+import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 
 public class GrantSharesTreasuryContract extends SmartContract {
@@ -113,6 +116,10 @@ public class GrantSharesTreasuryContract extends SmartContract {
 
     public TransactionBuilder voteCommitteeMemberWithLeastVotes() {
         return invokeFunction(getMethodName());
+    }
+
+    public TransactionBuilder updateContract(byte[] nef, String manifest, Object data) {
+        return invokeFunction(getMethodName(), byteArray(nef), string(manifest), any(data));
     }
 
 }

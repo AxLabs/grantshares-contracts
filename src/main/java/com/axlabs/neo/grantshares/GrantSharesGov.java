@@ -342,6 +342,7 @@ public class GrantSharesGov {
      * @param endorser The script hash of the endorsing DAO member.
      */
     public static void endorseProposal(int id, Hash160 endorser) {
+        assertNotPaused();
         assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
                 : "GrantSharesGov: Not authorised";
         ByteString proposalBytes = proposals.get(id);
@@ -370,6 +371,7 @@ public class GrantSharesGov {
      *              invoking script must hold a witness of the voter.
      */
     public static void vote(int id, int vote, Hash160 voter) {
+        assertNotPaused();
         assert vote >= -1 && vote <= 1 : "GrantSharesGov: Invalid vote";
         assert members.get(voter.toByteString()) != null && checkWitness(voter)
                 : "GrantSharesGov: Not authorised";
@@ -408,6 +410,7 @@ public class GrantSharesGov {
      * @return the values returned by the proposal's intents.
      */
     public static Object[] execute(int id) {
+        assertNotPaused();
         ByteString proposalBytes = proposals.get(id);
         assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
         Proposal proposal = (Proposal) deserialize(proposalBytes);
@@ -499,6 +502,7 @@ public class GrantSharesGov {
      * @param data     Optional data passed to the update (_deploy) method.
      */
     public static void updateContract(ByteString nef, String manifest, Object data) {
+        assertNotPaused();
         assertCallerIsSelf();
         ContractManagement.update(nef, manifest, data);
     }
