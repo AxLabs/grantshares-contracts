@@ -11,7 +11,6 @@ import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
-import io.neow3j.devpack.StringLiteralHelper;
 import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
 import io.neow3j.devpack.annotations.ManifestExtra;
@@ -28,7 +27,6 @@ import io.neow3j.devpack.events.Event4Args;
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Storage.getReadOnlyContext;
-import static io.neow3j.devpack.Storage.getStorageContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
@@ -157,7 +155,7 @@ public class GrantSharesGov {
             dto.acceptanceRate = p.acceptanceRate;
             dto.quorum = p.quorum;
             dto.intents = p.intents;
-            dto.offchainId = p.offchainId;
+            dto.offchainUri = p.offchainUri;
         } else {
             return null;
         }
@@ -286,15 +284,14 @@ public class GrantSharesGov {
     /**
      * Creates a proposal with the default settings for the acceptance rate and quorum.
      *
-     * @param proposer   The account set as the proposer.
-     * @param intents    The intents to be executed when the proposal is accepted.
-     * @param offchainId The ID of the part of the proposal that is created off-chain. E.g., a unique discussion URL.
+     * @param proposer    The account set as the proposer.
+     * @param intents     The intents to be executed when the proposal is accepted.
+     * @param offchainUri The URI of the part of the proposal that exists off-chain. E.g., a unique discussion URL.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainId,
-            int linkedProposal) {
+    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal) {
 
-        return createProposal(proposer, intents, offchainId, linkedProposal,
+        return createProposal(proposer, intents, offchainUri, linkedProposal,
                 parameters.getInt(MIN_ACCEPTANCE_RATE_KEY),
                 parameters.getInt(MIN_QUORUM_KEY));
     }
@@ -304,15 +301,14 @@ public class GrantSharesGov {
      *
      * @param proposer       The account set as the proposer.
      * @param intents        The intents to be executed when the proposal is accepted.
-     * @param offchainId     The ID of the part of the proposal that is created off-chain. E.g., a unique discussion
-     *                       URL.
+     * @param offchainUri    The URI of the part of the proposal that exists off-chain. E.g., a unique discussion URL.
      * @param linkedProposal A proposal that preceded this one.
      * @param acceptanceRate The desired acceptance rate.
      * @param quorum         The desired quorum.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainId,
-            int linkedProposal, int acceptanceRate, int quorum) {
+    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal,
+            int acceptanceRate, int quorum) {
 
         assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
         assert acceptanceRate >= parameters.getInt(MIN_ACCEPTANCE_RATE_KEY)
@@ -325,11 +321,11 @@ public class GrantSharesGov {
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         proposals.put(id, serialize(new Proposal(id)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
-                quorum, intents, offchainId)));
+                quorum, intents, offchainUri)));
         proposalVotes.put(id, serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
 
-        // An event can take max 1024 bytes state data. Thus, we're not passing the offchainId since it could be longer.
+        // An event can take max 1024 bytes data. Thus, we're not passing the offchainUri since it could be longer.
         created.fire(id, proposer, acceptanceRate, quorum);
         return id;
     }

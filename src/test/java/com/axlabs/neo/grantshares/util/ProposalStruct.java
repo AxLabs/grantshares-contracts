@@ -21,7 +21,7 @@ public class ProposalStruct {
     public BigInteger queuedEnd;
     public boolean executed;
     public List<IntentStruct> intents;
-    public String offchainId;
+    public String offchainUri;
     public int approve;
     public int reject;
     public int abstain;
@@ -51,7 +51,7 @@ public class ProposalStruct {
     public ProposalStruct(int id, Hash160 proposer, int linkedProposal, int acceptanceRate, int quorum,
             Hash160 endorser, BigInteger reviewEnd, BigInteger votingEnd, BigInteger queuedEnd, boolean executed,
             List<IntentStruct> intents,
-            String offchainId, int approve, int reject, int abstain, Map<StackItem, StackItem> voters) {
+            String offchainUri, int approve, int reject, int abstain, Map<StackItem, StackItem> voters) {
         this.id = id;
         this.proposer = proposer;
         this.linkedProposal = linkedProposal;
@@ -63,7 +63,7 @@ public class ProposalStruct {
         this.queuedEnd = queuedEnd;
         this.executed = executed;
         this.intents = intents;
-        this.offchainId = offchainId;
+        this.offchainUri = offchainUri;
         this.approve = approve;
         this.reject = reject;
         this.abstain = abstain;

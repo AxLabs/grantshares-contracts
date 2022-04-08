@@ -144,10 +144,10 @@ public class TreasuryMultiSigTest {
     @Order(0)
     public void execute_proposal_with_modify_threshold() throws Throwable {
         ContractParameter intent = IntentParam.setFundersMultiSigThresholdRatioProposal(treasury.getScriptHash(), 51);
-        String offchainId = "execute_proposal_with_modify_threshold";
+        String offchainUri = "execute_proposal_with_modify_threshold";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);

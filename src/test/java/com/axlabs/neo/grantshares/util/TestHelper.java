@@ -105,7 +105,7 @@ public class TestHelper {
     }
 
     public static Hash256 createSimpleProposal(SmartContract contract, Account proposer,
-            String offchainId) throws Throwable {
+            String offchainUri) throws Throwable {
 
         return contract.invokeFunction(CREATE, hash160(proposer),
                         array(
@@ -115,7 +115,7 @@ public class TestHelper {
                                         array(new Hash160(defaultAccountScriptHash()))
                                 )
                         ),
-                        string(offchainId),
+                        string(offchainUri),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
@@ -123,18 +123,18 @@ public class TestHelper {
 
 
     public static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
-            Account endorser, ContractParameter intents, String offchainId) throws Throwable {
+            Account endorser, ContractParameter intents, String offchainUri) throws Throwable {
         // 1. create proposal
-        TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(offchainId),
+        TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(offchainUri),
                 integer(-1));
         return sendAndEndorseProposal(contract, neow3j, proposer, endorser, b);
     }
 
     public static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
-            Account endorser, ContractParameter intents, String offchainId, int acceptanceRate, int quorum)
+            Account endorser, ContractParameter intents, String offchainUri, int acceptanceRate, int quorum)
             throws Throwable {
         // 1. create proposal
-        TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(offchainId),
+        TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(offchainUri),
                 integer(-1), integer(acceptanceRate), integer(quorum));
 
         return sendAndEndorseProposal(contract, neow3j, proposer, endorser, b);

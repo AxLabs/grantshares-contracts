@@ -147,11 +147,11 @@ public class GrantSharesGovTest {
         int targetParam3 = 1;
         ContractParameter intent = array(targetContract, targetMethod,
                 array(targetParam1, targetParam2, targetParam3));
-        String offchainId = "offchainId of the proposal";
+        String offchainUri = "offchainUri of the proposal";
         Hash256 proposalCreationTx = gov.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(offchainId),
+                        string(offchainUri),
                         integer(-1)) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice))
                 .sign().send().getSendRawTransaction().getHash();
@@ -194,13 +194,13 @@ public class GrantSharesGovTest {
     public void fail_creating_with_missing_linked_proposal() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
-        String offchainId = "fail_creating_with_missing_linked_proposal";
+        String offchainUri = "fail_creating_with_missing_linked_proposal";
         byte[] linkedProposal = Hash256.ZERO.toArray();
 
         String exception = gov.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(offchainId),
+                        string(offchainUri),
                         byteArray(linkedProposal))
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
@@ -212,12 +212,12 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_quorum() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
-        String offchainId = "fail_creating_with_bad_quorum";
+        String offchainUri = "fail_creating_with_bad_quorum";
 
         String exception = gov.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(offchainId),
+                        string(offchainUri),
                         any(null), // linked proposal
                         integer(MIN_ACCEPTANCE_RATE),
                         integer(MIN_QUORUM - 1))
@@ -232,12 +232,12 @@ public class GrantSharesGovTest {
     public void fail_creating_with_bad_acceptance_rate() throws Throwable {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
-        String offchainId = "fail_creating_with_bad_acceptance_rate";
+        String offchainUri = "fail_creating_with_bad_acceptance_rate";
 
         String exception = gov.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
                         array(intent),
-                        string(offchainId),
+                        string(offchainUri),
                         any(null), // linked proposal
                         integer(MIN_ACCEPTANCE_RATE - 1),
                         integer(MIN_QUORUM))
@@ -522,8 +522,8 @@ public class GrantSharesGovTest {
 
     @Test
     @Order(0)
-    public void create_proposal_with_large_intents_and_offchainId() throws Throwable {
-        String offchainId =
+    public void create_proposal_with_large_intents_and_offchainUri() throws Throwable {
+        String offchainUri =
                 "aabcababcababcababcabbcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcaabcabcabcabcabcabca";
         Hash256 tx = gov.invokeFunction(CREATE, hash160(bob),
                         array(
@@ -581,7 +581,7 @@ public class GrantSharesGovTest {
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
                                         ))
                         ),
-                        string(offchainId),
+                        string(offchainUri),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -598,7 +598,7 @@ public class GrantSharesGovTest {
         assertThat(p.acceptanceRate, is(MIN_ACCEPTANCE_RATE));
         assertThat(p.quorum, is(MIN_QUORUM));
         assertThat(p.intents.size(), is(9));
-        assertThat(p.offchainId, is(offchainId));
+        assertThat(p.offchainUri, is(offchainUri));
     }
 
     @Test
@@ -783,10 +783,10 @@ public class GrantSharesGovTest {
         ContractParameter intents = array(
                 array(gov.getScriptHash(), UPDATE_CONTRACT,
                         array(nef.toArray(), manifestBytes, data)));
-        String offchainId = "execute_proposal_with_update_contract";
+        String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);

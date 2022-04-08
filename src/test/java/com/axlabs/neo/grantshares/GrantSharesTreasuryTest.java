@@ -259,10 +259,10 @@ public class GrantSharesTreasuryTest {
         final Hash160 someToken = new Hash160("1a1512528147558851b39c2cd8aa47da7418aba1");
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), someToken,
                 alice.getScriptHash(), BigInteger.TEN);
-        String offchainId = "fail_release_tokens_with_non_whitelisted_token";
+        String offchainUri = "fail_release_tokens_with_non_whitelisted_token";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -282,10 +282,10 @@ public class GrantSharesTreasuryTest {
     public void fail_release_tokens_with_to_high_amount() throws Throwable {
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), GasToken.SCRIPT_HASH,
                 alice.getScriptHash(), GAS_MAX_AMOUNT.add(BigInteger.ONE));
-        String offchainId = "fail_release_tokens_with_to_high_amount";
+        String offchainUri = "fail_release_tokens_with_to_high_amount";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -312,10 +312,10 @@ public class GrantSharesTreasuryTest {
     public void execute_proposal_with_add_single_sig_funder() throws Throwable {
         IntentParam intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash(),
                 alice.getECKeyPair().getPublicKey());
-        String offchainId = "execute_proposal_with_add_single_sig_funder";
+        String offchainUri = "execute_proposal_with_add_single_sig_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -346,10 +346,10 @@ public class GrantSharesTreasuryTest {
                 asList(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()), 1);
         IntentParam intent = IntentParam.addFunderProposal(treasury.getScriptHash(), multiSigFunder.getScriptHash(),
                 denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey());
-        String offchainId = "execute_proposal_with_add_multi_sig_funder";
+        String offchainUri = "execute_proposal_with_add_multi_sig_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -378,10 +378,10 @@ public class GrantSharesTreasuryTest {
     public void fail_adding_already_added_funder() throws Throwable {
         ContractParameter intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash(),
                 alice.getECKeyPair().getPublicKey());
-        String offchainId = "fail_adding_already_added_funder";
+        String offchainUri = "fail_adding_already_added_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -399,10 +399,10 @@ public class GrantSharesTreasuryTest {
     @Order(4)
     public void execute_proposal_with_remove_funder() throws Throwable {
         ContractParameter intent = IntentParam.removeFunderProposal(treasury.getScriptHash(), alice.getScriptHash());
-        String offchainId = "execute_proposal_with_remove_funder";
+        String offchainUri = "execute_proposal_with_remove_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -428,10 +428,10 @@ public class GrantSharesTreasuryTest {
     @Order(5)
     public void fail_removing_nonexistant_funder() throws Throwable {
         IntentParam intent = IntentParam.removeFunderProposal(treasury.getScriptHash(), charlie.getScriptHash());
-        String offchainId = "fail_execution_remove_funder";
+        String offchainUri = "fail_execution_remove_funder";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -449,10 +449,10 @@ public class GrantSharesTreasuryTest {
     @Order(10)
     public void execute_proposal_with_remove_whitelisted_token() throws Throwable {
         IntentParam intent = IntentParam.removeWhitelistedTokenProposal(treasury.getScriptHash(), NeoToken.SCRIPT_HASH);
-        String offchainId = "execute_proposal_with_remove_whitelisted_token";
+        String offchainUri = "execute_proposal_with_remove_whitelisted_token";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -487,10 +487,10 @@ public class GrantSharesTreasuryTest {
     public void execute_proposal_with_add_whitelisted_token() throws Throwable {
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
                 NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT_CHANGED);
-        String offchainId = "execute_proposal_with_add_whitelisted_token";
+        String offchainUri = "execute_proposal_with_add_whitelisted_token";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -521,10 +521,10 @@ public class GrantSharesTreasuryTest {
 
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
                 NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT);
-        String offchainId = "execute_proposal_with_change_whitelisted_token_max_amount";
+        String offchainUri = "execute_proposal_with_change_whitelisted_token_max_amount";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -578,10 +578,10 @@ public class GrantSharesTreasuryTest {
         final BigInteger fundingAmount = BigInteger.TEN;
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), GasToken.SCRIPT_HASH,
                 acc.getScriptHash(), fundingAmount);
-        String offchainId = "execute_proposal_with_release_tokens";
+        String offchainUri = "execute_proposal_with_release_tokens";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -716,10 +716,10 @@ public class GrantSharesTreasuryTest {
         ContractParameter intents = array(
                 array(treasury.getScriptHash(), UPDATE_CONTRACT,
                         array(nef.toArray(), manifestBytes, data)));
-        String offchainId = "execute_proposal_with_update_contract";
+        String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);

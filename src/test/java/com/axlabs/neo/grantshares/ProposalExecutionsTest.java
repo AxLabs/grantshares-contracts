@@ -95,10 +95,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_that_wasnt_endorsed() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 51)));
-        String offchainId = "fail_executing_proposal_that_wasnt_endorsed";
+        String offchainUri = "fail_executing_proposal_that_wasnt_endorsed";
 
         // 1. Create proposal then skip till after the queued phase without endorsing.
-        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob), intents, string(offchainId),
+        Hash256 tx = contract.invokeFunction(CREATE, hash160(bob), intents, string(offchainUri),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
@@ -119,10 +119,10 @@ public class ProposalExecutionsTest {
         int newValue = 60;
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, newValue)));
-        String offchainId = "fail_executing_proposal_without_votes";
+        String offchainUri = "fail_executing_proposal_without_votes";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
@@ -136,10 +136,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_accepted_proposal_multiple_times() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String offchainId = "fail_executing_accepted_proposal_multiple_times";
+        String offchainUri = "fail_executing_accepted_proposal_multiple_times";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
@@ -170,10 +170,10 @@ public class ProposalExecutionsTest {
                         bob.getScriptHash(), 1, any(null))),
                 array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
                         bob.getScriptHash(), 1, any(null))));
-        String offchainId = "execute_proposal_with_multiple_intents";
+        String offchainUri = "execute_proposal_with_multiple_intents";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForward(PHASE_LENGTH);
@@ -215,10 +215,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_quorum_reached_but_rejected() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String offchainId = "fail_executing_proposal_quorum_reached_but_rejected";
+        String offchainUri = "fail_executing_proposal_quorum_reached_but_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
@@ -241,10 +241,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String offchainId = "fail_executing_proposal_quorum_not_reached";
+        String offchainUri = "fail_executing_proposal_quorum_not_reached";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
@@ -264,10 +264,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_with_different_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String offchainId = "fail_executing_proposal_with_different_quorum_not_reached";
+        String offchainUri = "fail_executing_proposal_with_different_quorum_not_reached";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId, 50, 75);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri, 50, 75);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
@@ -288,10 +288,10 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_with_different_quorum_reached_different_rate_rejected() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String offchainId = "fail_executing_proposal_with_different_quorum_reached_different_rate_rejected";
+        String offchainUri = "fail_executing_proposal_with_different_quorum_reached_different_rate_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId, 60, 75);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri, 60, 75);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
@@ -314,10 +314,10 @@ public class ProposalExecutionsTest {
     public void succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40)));
-        String offchainId = "succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted";
+        String offchainUri = "succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted";
 
         // 1. Create and endorse proposal, then skip till voting phase.
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainId, 60, 75);
+        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri, 60, 75);
         ext.fastForward(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.

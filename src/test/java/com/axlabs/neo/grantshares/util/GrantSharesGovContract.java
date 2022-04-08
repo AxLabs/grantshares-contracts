@@ -67,10 +67,10 @@ public class GrantSharesGovContract extends SmartContract {
         return callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0).getBoolean();
     }
 
-    public TransactionBuilder createProposal(Hash160 proposer, String offchainId, int linkedProposal,
+    public TransactionBuilder createProposal(Hash160 proposer, String offchainUri, int linkedProposal,
             IntentParam... intents) {
         return invokeFunction(getMethodName(), hash160(proposer), array(asList(intents)),
-                string(offchainId), integer(linkedProposal));
+                string(offchainUri), integer(linkedProposal));
     }
 
     public TransactionBuilder endorseProposal(int id, Hash160 endorser) {
