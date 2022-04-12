@@ -13,27 +13,30 @@ import io.neow3j.types.Hash256;
 import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
 
+import static com.axlabs.neo.grantshares.Config.getNeow3j;
+
 public class Deployment {
 
-    static final Neow3j NEOW3J = Config.getNeow3j();
-    static final AccountSigner signer = AccountSigner.none(Config.getDeployAccount());
+    public static final String PROFILE = "dev";
 
     public static void main(String[] args) throws Throwable {
-        Hash160 grantSharesGovHash = deployGrantSharesGov();
-        deployGrantSharesTreasury(grantSharesGovHash);
+        Config.setProfile(PROFILE);
+        AccountSigner signer = AccountSigner.none(Config.getDeployAccount());
+        Hash160 grantSharesGovHash = deployGrantSharesGov(signer);
+        deployGrantSharesTreasury(grantSharesGovHash, signer);
     }
 
-    private static Hash160 deployGrantSharesGov() throws Throwable {
+    private static Hash160 deployGrantSharesGov(AccountSigner signer) throws Throwable {
         CompilationUnit res = new Compiler().compile(GrantSharesGov.class.getCanonicalName());
-        TransactionBuilder builder = new ContractManagement(NEOW3J)
+        TransactionBuilder builder = new ContractManagement(getNeow3j())
                 .deploy(res.getNefFile(), res.getManifest(), DeployConfig.getGovDeployConfig())
                 .signers(signer);
 
         Hash256 txHash = builder.sign().send().getSendRawTransaction().getHash();
         System.out.println("GrantSharesGov Deploy Transaction Hash: " + txHash.toString());
-        Await.waitUntilTransactionIsExecuted(txHash, NEOW3J);
+        Await.waitUntilTransactionIsExecuted(txHash, getNeow3j());
 
-        NeoApplicationLog log = NEOW3J.getApplicationLog(txHash).send().getApplicationLog();
+        NeoApplicationLog log = getNeow3j().getApplicationLog(txHash).send().getApplicationLog();
         if (log.getExecutions().get(0).getState().equals(NeoVMStateType.FAULT)) {
             throw new Exception("Failed to deploy smart contract. NeoVM " +
                     "error message: " + log.getExecutions().get(0).getException());
@@ -44,18 +47,18 @@ public class Deployment {
         return contractHash;
     }
 
-    private static void deployGrantSharesTreasury(Hash160 grantSharesGovHash) throws Throwable {
+    private static void deployGrantSharesTreasury(Hash160 grantSharesGovHash, AccountSigner signer) throws Throwable {
         CompilationUnit res = new Compiler().compile(GrantSharesTreasury.class.getCanonicalName());
-        TransactionBuilder builder = new ContractManagement(NEOW3J)
+        TransactionBuilder builder = new ContractManagement(getNeow3j())
                 .deploy(res.getNefFile(), res.getManifest(),
                         DeployConfig.getTreasuryDeployConfig(grantSharesGovHash))
                 .signers(signer);
 
         Hash256 txHash = builder.sign().send().getSendRawTransaction().getHash();
         System.out.println("GrantSharesTreasury Deploy Transaction Hash: " + txHash.toString());
-        Await.waitUntilTransactionIsExecuted(txHash, NEOW3J);
+        Await.waitUntilTransactionIsExecuted(txHash, getNeow3j());
 
-        NeoApplicationLog log = NEOW3J.getApplicationLog(txHash).send().getApplicationLog();
+        NeoApplicationLog log = getNeow3j().getApplicationLog(txHash).send().getApplicationLog();
         if (log.getExecutions().get(0).getState().equals(NeoVMStateType.FAULT)) {
             throw new Exception("Failed to deploy smart contract. NeoVM " +
                     "error message: " + log.getExecutions().get(0).getException());
