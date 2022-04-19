@@ -227,7 +227,7 @@ public class GrantSharesGov {
      * proposals on the given page.
      */
     @Safe
-    public static Paginator.Paginated getProposals(int page, int itemsPerPage) {
+    public static Paginator.Paginated getProposals(int page, int itemsPerPage) throws Exception {
         int n = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
         List<Object> list = new List<>();
@@ -291,7 +291,8 @@ public class GrantSharesGov {
      * @param offchainUri The URI of the part of the proposal that exists off-chain. E.g., a unique discussion URL.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal) {
+    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal)
+            throws Exception {
 
         return createProposal(proposer, intents, offchainUri, linkedProposal,
                 parameters.getInt(MIN_ACCEPTANCE_RATE_KEY),
@@ -310,15 +311,16 @@ public class GrantSharesGov {
      * @return The id of the proposal.
      */
     public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal,
-            int acceptanceRate, int quorum) {
+            int acceptanceRate, int quorum) throws Exception {
 
-        assert checkWitness(proposer) : "GrantSharesGov: Not authorised";
-        assert acceptanceRate >= parameters.getInt(MIN_ACCEPTANCE_RATE_KEY)
-                : "GrantSharesGov: Acceptance rate not allowed";
-        assert quorum >= parameters.getInt(MIN_QUORUM_KEY)
-                : "GrantSharesGov: Quorum not allowed";
-        assert linkedProposal < 0 || proposals.get(linkedProposal) != null
-                : "GrantSharesGov: Linked proposal doesn't exist";
+        if (!checkWitness(proposer))
+            throw new Exception("[GrantSharesGov.createProposal] Not authorised");
+        if (acceptanceRate < parameters.getInt(MIN_ACCEPTANCE_RATE_KEY))
+            throw new Exception("[GrantSharesGov.createProposal] Acceptance rate not allowed");
+        if (quorum < parameters.getInt(MIN_QUORUM_KEY))
+            throw new Exception("[GrantSharesGov.createProposal] Quorum not allowed");
+        if (linkedProposal >= 0 && proposals.get(linkedProposal) == null)
+            throw new Exception("[GrantSharesGov.createProposal] Linked proposal doesn't exist");
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
@@ -341,16 +343,20 @@ public class GrantSharesGov {
      * @param id       The ID of the proposal to endorse.
      * @param endorser The script hash of the endorsing DAO member.
      */
-    public static void endorseProposal(int id, Hash160 endorser) {
-        assertNotPaused();
-        assert members.get(endorser.toByteString()) != null && checkWitness(endorser)
-                : "GrantSharesGov: Not authorised";
+    public static void endorseProposal(int id, Hash160 endorser) throws Exception {
+        throwIfPaused();
+        if (members.get(endorser.toByteString()) == null || !checkWitness(endorser))
+            throw new Exception("[GrantSharesGov.endorseProposal] Not authorised");
         ByteString proposalBytes = proposals.get(id);
-        assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
+        if (proposalBytes == null)
+            throw new Exception("[GrantSharesGov.endorseProposal] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
         // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        assert proposal.expiration > currentIndex() : "GrantSharesGov: Proposal expired";
-        assert proposal.endorser == null : "GrantSharesGov: Proposal already endorsed";
+        if (proposal.expiration <= currentIndex())
+            throw new Exception("[GrantSharesGov.endorseProposal] Proposal expired");
+        if (proposal.endorser != null)
+            throw new Exception("[GrantSharesGov.endorseProposal] Proposal already endorsed");
+
         proposal.endorser = endorser;
         // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
         proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
@@ -370,24 +376,24 @@ public class GrantSharesGov {
      * @param voter The script hash of the voter. Must be a member of the DAO and the
      *              invoking script must hold a witness of the voter.
      */
-    public static void vote(int id, int vote, Hash160 voter) {
-        assertNotPaused();
-        assert vote >= -1 && vote <= 1 : "GrantSharesGov: Invalid vote";
-        assert members.get(voter.toByteString()) != null && checkWitness(voter)
-                : "GrantSharesGov: Not authorised";
+    public static void vote(int id, int vote, Hash160 voter) throws Exception {
+        throwIfPaused();
+        if (vote < -1 || vote > 1)
+            throw new Exception("[GrantSharesGov.vote] Invalid vote");
+        if (members.get(voter.toByteString()) == null || !checkWitness(voter))
+            throw new Exception("[GrantSharesGov.vote] Not authorised");
         ByteString proposalBytes = proposals.get(id);
-        assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
+        if (proposalBytes == null)
+            throw new Exception("[GrantSharesGov.vote] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed";
         // TODO: For deployment replace `currentIndex()` with `getTime()`.
         int time = currentIndex();
-        assert time >= proposal.reviewEnd && time < proposal.votingEnd
-                : "GrantSharesGov: Proposal not active";
-
-        // No need for null check. This map was created in the endorsement, and we know the
-        // endorsement happened because the proposal phases were set.
+        if (proposal.endorser == null || time < proposal.reviewEnd || time >= proposal.votingEnd)
+            throw new Exception("[GrantSharesGov.vote] Proposal not active");
         ProposalVotes pv = (ProposalVotes) deserialize(proposalVotes.get(id));
-        assert !pv.voters.containsKey(voter) : "GrantSharesGov: Already voted on this proposal";
+        if (pv.voters.containsKey(voter))
+            throw new Exception("[GrantSharesGov.vote] Already voted on this proposal");
+
         pv.voters.put(voter, vote);
         if (vote < 0) {
             pv.reject += 1;
@@ -409,24 +415,28 @@ public class GrantSharesGov {
      * @param id The proposal id.
      * @return the values returned by the proposal's intents.
      */
-    public static Object[] execute(int id) {
-        assertNotPaused();
+    public static Object[] execute(int id) throws Exception {
+        throwIfPaused();
         ByteString proposalBytes = proposals.get(id);
-        assert proposalBytes != null : "GrantSharesGov: Proposal doesn't exist";
+        if (proposalBytes == null)
+            throw new Exception("[GrantSharesGov.execute] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        assert proposal.endorser != null : "GrantSharesGov: Proposal wasn't endorsed yet";
         // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        assert currentIndex() >= proposal.timeLockEnd : "GrantSharesGov: Proposal not in execution phase";
-        assert !proposal.executed : "GrantSharesGov: Proposal already executed";
+        if (proposal.endorser == null || currentIndex() < proposal.timeLockEnd)
+            throw new Exception("[GrantSharesGov.execute] Proposal not in execution phase");
+        if (proposal.executed)
+            throw new Exception("[GrantSharesGov.execute] Proposal already executed");
         // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        assert proposal.expiration > currentIndex() : "GrantSharesGov: Proposal expired";
+        if (proposal.expiration <= currentIndex())
+            throw new Exception("[GrantSharesGov.execute] Proposal expired");
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
-        assert voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) >= data.quorum
-                : "GrantSharesGov: Quorum not reached";
+        if (voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum)
+            throw new Exception("[GrantSharesGov.execute] Quorum not reached");
         int yesNoCount = votes.approve + votes.reject;
-        assert votes.approve * 100 / yesNoCount > data.acceptanceRate : "GrantSharesGov: Proposal rejected";
+        if (votes.approve * 100 / yesNoCount <= data.acceptanceRate)
+            throw new Exception("[GrantSharesGov.execute] Proposal rejected");
 
         proposal.executed = true;
         Object[] returnVals = new Object[data.intents.length];
@@ -450,9 +460,9 @@ public class GrantSharesGov {
      * @param paramKey The parameter's storage key.
      * @param value    The new parameter value.
      */
-    public static void changeParam(String paramKey, Object value) {
-        assertNotPaused();
-        assertCallerIsSelf();
+    public static void changeParam(String paramKey, Object value) throws Exception {
+        throwIfPaused();
+        throwIfCallerIsNotSelf();
         parameters.put(paramKey, (byte[]) value);
         paramChanged.fire(paramKey, (byte[]) value);
     }
@@ -464,11 +474,12 @@ public class GrantSharesGov {
      *
      * @param memberPubKey The new member's public key.
      */
-    public static void addMember(ECPoint memberPubKey) {
-        assertNotPaused();
-        assertCallerIsSelf();
+    public static void addMember(ECPoint memberPubKey) throws Exception {
+        throwIfPaused();
+        throwIfCallerIsNotSelf();
         Hash160 memberHash = createStandardAccount(memberPubKey);
-        assert members.get(memberHash.toByteString()) == null : "GrantSharesGov: Already a member";
+        if (members.get(memberHash.toByteString()) != null)
+            throw new Exception("[GrantSharesGov.addMember] Already a member");
         members.put(memberHash.toByteString(), memberPubKey.toByteString());
         Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) + 1);
         memberAdded.fire(memberHash);
@@ -481,11 +492,12 @@ public class GrantSharesGov {
      *
      * @param memberPubKey The member to remove.
      */
-    public static void removeMember(ECPoint memberPubKey) {
-        assertNotPaused();
-        assertCallerIsSelf();
+    public static void removeMember(ECPoint memberPubKey) throws Exception {
+        throwIfPaused();
+        throwIfCallerIsNotSelf();
         Hash160 memberHash = createStandardAccount(memberPubKey);
-        assert members.get(memberHash.toByteString()) != null : "GrantSharesGov: Not a member";
+        if (members.get(memberHash.toByteString()) == null)
+            throw new Exception("[GrantSharesGov.removeMember] Not a member");
         members.delete(memberHash.toByteString());
         Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) - 1);
         memberRemoved.fire(memberHash);
@@ -501,30 +513,35 @@ public class GrantSharesGov {
      * @param manifest The new contract manifest.
      * @param data     Optional data passed to the update (_deploy) method.
      */
-    public static void updateContract(ByteString nef, String manifest, Object data) {
-        assertNotPaused();
-        assertCallerIsSelf();
+    public static void updateContract(ByteString nef, String manifest, Object data) throws Exception {
+        throwIfPaused();
+        throwIfCallerIsNotSelf();
         ContractManagement.update(nef, manifest, data);
     }
     //endregion PROPOSAL-INVOKED METHODS
 
-    public static void pause() {
-        assert checkWitness(calcMembersMultiSigAccount()) : "GrantSharesGov: Not authorized";
+    public static void pause() throws Exception {
+        if (!checkWitness(calcMembersMultiSigAccount()))
+            throw new Exception("[GrantSharesGov.pause] Not authorized");
         Storage.put(ctx, PAUSED_KEY, 1);
     }
 
-    public static void unpause() {
-        assert checkWitness(calcMembersMultiSigAccount()) : "GrantSharesGov: Not authorized";
+    public static void unpause() throws Exception {
+        if (!checkWitness(calcMembersMultiSigAccount()))
+            throw new Exception("[GrantSharesGov.unpause] Not authorized");
         Storage.put(ctx, PAUSED_KEY, 0);
     }
 
-    private static void assertCallerIsSelf() {
-        assert Runtime.getCallingScriptHash() == Runtime.getExecutingScriptHash() :
-                "GrantSharesGov: Method only callable by the contract itself";
+    private static void throwIfCallerIsNotSelf() throws Exception {
+        if (Runtime.getCallingScriptHash() != Runtime.getExecutingScriptHash()) {
+            throw new Exception("[GrantSharesGov] Method only callable by the contract itself");
+        }
     }
 
-    public static void assertNotPaused() {
-        assert !isPaused() : "GrantSharesGov: Contract is paused";
+    public static void throwIfPaused() throws Exception {
+        if (Storage.getBoolean(getReadOnlyContext(), PAUSED_KEY)) {
+            throw new Exception("[GrantSharesGov] Contract is paused");
+        }
     }
 
 }

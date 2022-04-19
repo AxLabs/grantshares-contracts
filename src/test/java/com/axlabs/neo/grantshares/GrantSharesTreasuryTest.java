@@ -10,6 +10,7 @@ import io.neow3j.contract.SmartContract;
 import io.neow3j.crypto.ECKeyPair.ECPublicKey;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.ContractManifest;
+import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -22,6 +23,7 @@ import io.neow3j.transaction.Witness;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
+import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
@@ -81,6 +83,7 @@ public class GrantSharesTreasuryTest {
     private final static Path TESTCONTRACT_NEF_FILE = Paths.get("TestContract.nef");
     private final static Path TESTCONTRACT_MANIFEST_FILE =
             Paths.get("TestGrantSharesTreasury.manifest.json");
+    private final static String ASSERT_EXCEPTION = "ASSERT is executed with false result";
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
@@ -195,7 +198,7 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_add_whitelisted_token_directly() throws IOException {
         String exception = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1)
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
+        assertThat(exception, containsString("Not authorised"));
     }
 
     @Test
@@ -203,7 +206,7 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_remove_whitelisted_token_directly() throws IOException {
         String exception = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH)
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
+        assertThat(exception, containsString("Not authorised"));
     }
 
     @Test
@@ -211,7 +214,7 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_add_funder_directly() throws Exception {
         String exception = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
                 .signers(AccountSigner.calledByEntry(alice)).callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
+        assertThat(exception, containsString("Not authorised"));
     }
 
     @Test
@@ -219,17 +222,16 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_remove_funder_directly() throws Exception {
         String exception = treasury.removeFunder(charlie.getScriptHash())
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Not authorised"));
+        assertThat(exception, containsString("Not authorised"));
     }
 
     @Test
     @Order(0)
     public void fail_funding_treasury_with_non_funder() throws Throwable {
-        String exception = new GasToken(neow3j).transfer(alice, treasury.getScriptHash(),
-                        BigInteger.valueOf(10))
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted sender"));
+        InvocationResult res = new GasToken(neow3j).transfer(alice, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(alice)).callInvokeScript().getInvocationResult();
+        assertThat(res.getState(), is(NeoVMStateType.FAULT));
+        assertThat(res.getException(), containsString(ASSERT_EXCEPTION));
     }
 
     @Test
@@ -392,7 +394,7 @@ public class GrantSharesTreasuryTest {
         String exception = gov.execute(id)
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Already a funder"));
+        assertThat(exception, containsString("Already a funder"));
     }
 
     @Test
@@ -442,7 +444,7 @@ public class GrantSharesTreasuryTest {
         String exception = gov.execute(id)
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Not a funder"));
+        assertThat(exception, containsString("Not a funder"));
     }
 
     @Test
@@ -477,9 +479,10 @@ public class GrantSharesTreasuryTest {
     @Test
     @Order(11)
     public void fail_funding_treasury_with_non_whitelisted_token() throws Throwable {
-        String exception = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesTreasury: Non-whitelisted token"));
+        InvocationResult res = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .callInvokeScript().getInvocationResult();
+        assertThat(res.getState(), is(NeoVMStateType.FAULT));
+        assertThat(res.getException(), containsString(ASSERT_EXCEPTION));
     }
 
     @Test
@@ -679,6 +682,15 @@ public class GrantSharesTreasuryTest {
     }
 
     @Order(28)
+    @Test
+    public void fail_funding_treasury_on_paused_contract() throws Throwable {
+        InvocationResult res = new GasToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(10))
+                .signers(AccountSigner.calledByEntry(bob)).callInvokeScript().getInvocationResult();
+        assertThat(res.getState(), is(NeoVMStateType.FAULT));
+        assertThat(res.getException(), containsString(ASSERT_EXCEPTION));
+    }
+
+    @Order(29)
     @Test
     public void succeed_unpausing_contract() throws Throwable {
         assertTrue(treasury.callInvokeFunction(IS_PAUSED).getInvocationResult()

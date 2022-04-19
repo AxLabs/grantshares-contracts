@@ -511,7 +511,7 @@ public class GrantSharesGovTest {
                         integer(-1), hash160(charlie.getScriptHash()))
                 .signers(AccountSigner.calledByEntry(charlie)).callInvokeScript().getInvocationResult()
                 .getException();
-        assertThat(exception, containsString("Proposal wasn't endorsed"));
+        assertThat(exception, containsString("Proposal not active"));
     }
 
     @Test

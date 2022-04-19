@@ -112,7 +112,7 @@ public class ProposalExecutionsTest {
         String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Proposal wasn't endorsed yet"));
+        assertThat(exception, containsString("Proposal not in execution phase"));
     }
 
     @Test

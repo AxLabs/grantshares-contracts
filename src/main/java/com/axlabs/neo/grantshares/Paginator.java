@@ -16,7 +16,7 @@ public class Paginator {
      * @return The start and end index of items on the desired page, plus the total number of pages available given
      * that there are {@code n} items.
      */
-    static int[] calcPagination(int n, int page, int itemsPerPage) {
+    static int[] calcPagination(int n, int page, int itemsPerPage) throws Exception {
         int pages;
         if (n < itemsPerPage) {
             pages = 1;
@@ -25,7 +25,8 @@ public class Paginator {
         } else {
             pages = (n / itemsPerPage) + 1;
         }
-        assert page < pages : "GrantSharesGov: Page out of bounds";
+        if (page >= pages)
+            throw new Exception("[Paginator.calcPagination] Page out of bounds");
         int startAt = itemsPerPage * page;
         int endAt = startAt + itemsPerPage;
         if (startAt + itemsPerPage > n) {

@@ -170,7 +170,7 @@ public class GovernanceMembersTest {
         String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesGov: Already a member"));
+        assertThat(exception, containsString("Already a member"));
     }
 
     @Test
@@ -276,7 +276,7 @@ public class GovernanceMembersTest {
         String exception = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("GrantSharesGov: Not a member"));
+        assertThat(exception, containsString("Not a member"));
     }
 
     //endregion REMOVE MEMBER
