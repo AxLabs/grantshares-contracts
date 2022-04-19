@@ -1,8 +1,10 @@
 package com.axlabs.neo.grantshares;
 
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
+import com.axlabs.neo.grantshares.util.IntentParam;
 import com.axlabs.neo.grantshares.util.ProposalStruct;
 import com.axlabs.neo.grantshares.util.TestHelper;
+import io.neow3j.contract.ContractManagement;
 import io.neow3j.contract.NefFile;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.protocol.Neow3j;
@@ -691,6 +693,39 @@ public class GrantSharesGovTest {
                 .getStack().get(0).getBoolean());
     }
 
+    @Test
+    @Order(0)
+    public void fail_execute_update_contract_directly() throws Throwable {
+        File nefFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
+        NefFile nef = NefFile.readFromFile(nefFile);
+
+        File manifestFile = new File(this.getClass().getClassLoader()
+                .getResource(TESTCONTRACT_MANIFEST_FILE.toString()).toURI());
+        ContractManifest manifest = getObjectMapper()
+                .readValue(manifestFile, ContractManifest.class);
+        byte[] manifestBytes = getObjectMapper().writeValueAsBytes(manifest);
+
+        ContractParameter data = string("update contract");
+
+        String exception =
+                gov.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                        .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Method only callable by the contract itself"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_create_proposal_calling_contract_management() throws Throwable {
+        IntentParam intent1 = IntentParam.addMemberProposal(gov.getScriptHash(), alice.getECKeyPair().getPublicKey());
+        IntentParam intent2 = new IntentParam(ContractManagement.SCRIPT_HASH, "destroy");
+        String exception = gov.createProposal(alice.getScriptHash(), "fail_create_proposal_calling_contract_management",
+                        -1, intent1, intent2)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Calls to ContractManagement not allowed"));
+    }
+
     @Order(11)
     @Test
     public void fail_change_param_on_paused_contract() throws Throwable {
@@ -811,24 +846,4 @@ public class GrantSharesGovTest {
         assertThat(n.getEventName(), is("Update"));
     }
 
-    @Test
-    @Order(0)
-    public void fail_execute_update_contract_directly() throws Throwable {
-        File nefFile = new File(this.getClass().getClassLoader()
-                .getResource(TESTCONTRACT_NEF_FILE.toString()).toURI());
-        NefFile nef = NefFile.readFromFile(nefFile);
-
-        File manifestFile = new File(this.getClass().getClassLoader()
-                .getResource(TESTCONTRACT_MANIFEST_FILE.toString()).toURI());
-        ContractManifest manifest = getObjectMapper()
-                .readValue(manifestFile, ContractManifest.class);
-        byte[] manifestBytes = getObjectMapper().writeValueAsBytes(manifest);
-
-        ContractParameter data = string("update contract");
-
-        String exception =
-                gov.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
-                        .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Method only callable by the contract itself"));
-    }
 }

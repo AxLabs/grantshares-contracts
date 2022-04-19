@@ -321,6 +321,8 @@ public class GrantSharesGov {
             throw new Exception("[GrantSharesGov.createProposal] Quorum not allowed");
         if (linkedProposal >= 0 && proposals.get(linkedProposal) == null)
             throw new Exception("[GrantSharesGov.createProposal] Linked proposal doesn't exist");
+        if (containsCallsToContractManagement(intents))
+            throw new Exception("[GrantSharesGov.createProposal] Calls to ContractManagement not allowed");
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
@@ -334,6 +336,15 @@ public class GrantSharesGov {
         // An event can take max 1024 bytes data. Thus, we're not passing the offchainUri since it could be longer.
         created.fire(id, proposer, acceptanceRate, quorum);
         return id;
+    }
+
+    private static boolean containsCallsToContractManagement(Intent[] intents) {
+        for (Intent i : intents) {
+            if (i.targetContract == ContractManagement.getHash()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
