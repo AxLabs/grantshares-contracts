@@ -60,8 +60,10 @@ import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
 import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
+import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.map;
+import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.types.ContractParameter.string;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -307,6 +309,145 @@ public class GrantSharesTreasuryTest {
         String exception = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Not authorised"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_adding_invalid_funder() throws Throwable {
+        ContractParameter intent = new IntentParam(treasury.getScriptHash(), "addFunder",
+                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), array(asList(alice.getECKeyPair().getPublicKey())));
+        String offchainUri = "fail_adding_invalid_funder";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.execute(id)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid funder hash"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_adding_funder_with_no_public_keys() throws Throwable {
+        ContractParameter intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash());
+        String offchainUri = "fail_adding_funder_with_no_public_keys";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.execute(id)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("List of public keys is empty"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_adding_funder_with_invalid_public_key() throws Throwable {
+        IntentParam intent = new IntentParam(treasury.getScriptHash(), "addFunder", hash160(alice.getScriptHash()),
+                array(publicKey(alice.getECKeyPair().getPublicKey()),
+                        byteArray("03dab84c1243ec01ab2500e1a8c7a1546a26d734628180b0cf64e72bf776")));
+        String offchainUri = "fail_adding_funder_with_invalid_public_key";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.execute(id)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid public key"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_setting_funders_multisig_threshold_ratio_with_invalid_value() throws Throwable {
+        IntentParam intent1 = IntentParam.setFundersMultiSigThresholdRatioProposal(treasury.getScriptHash(), -5);
+        String offchainUri1 = "fail_setting_funders_multisig_threshold_ratio_with_invalid_value1";
+        IntentParam intent2 = IntentParam.setFundersMultiSigThresholdRatioProposal(treasury.getScriptHash(), 110);
+        String offchainUri2 = "fail_setting_funders_multisig_threshold_ratio_with_invalid_value2";
+
+        // 1. Create and endorse proposal
+        int id1 = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent1), offchainUri1);
+        int id2 = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent2), offchainUri2);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id1, alice);
+        voteForProposal(gov, neow3j, id2, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.execute(id1)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid threshold ratio"));
+        exception = gov.execute(id2)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid threshold ratio"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_adding_whitelisted_token_with_invalid_token() throws Throwable {
+        ContractParameter intent = new IntentParam(treasury.getScriptHash(), "addWhitelistedToken",
+                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), integer(100));
+        String offchainUri = "fail_adding_whitelisted_token_with_invalid_token";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.execute(id)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid token hash"));
+    }
+
+    @Test
+    @Order(0)
+    public void fail_adding_whitelisted_token_with_invalid_max_funding_amount() throws Throwable {
+        ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
+                NeoToken.SCRIPT_HASH, BigInteger.ONE.negate());
+        String offchainUri = "fail_adding_whitelisted_token_with_invalid_max_funding_amount";
+
+        // 1. Create and endorse proposal
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        String exception = gov.execute(id)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid max funding amount"));
     }
 
     @Test

@@ -30,6 +30,8 @@ import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
 
+import static io.neow3j.devpack.Hash160.isValid;
+import static io.neow3j.devpack.Hash160.zero;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.Storage.getReadOnlyContext;
@@ -101,13 +103,19 @@ public class GrantSharesTreasury {
         if (!update) {
             Object[] config = (Object[]) data;
             // Set owner
-            Storage.put(ctx, OWNER_KEY, (Hash160) config[0]);
+            Hash160 ownerHash = (Hash160) config[0];
+            assert isValid(ownerHash) && ownerHash != Hash160.zero();
+            Storage.put(ctx, OWNER_KEY, ownerHash);
 
             // Set initial funders.
             Object[][] accounts = (Object[][]) config[1]; // [  [hash, [keys...]],  [hash, [keys...]]  ]
             for (Object[] account : accounts) {
                 Hash160 accountHash = (Hash160) account[0];
+                assert isValid(accountHash) && accountHash != Hash160.zero();
                 ECPoint[] accountKeys = (ECPoint[]) account[1];
+                for (ECPoint key : accountKeys) {
+                    assert ECPoint.isValid(key);
+                }
                 funders.put(accountHash.toByteString(), StdLib.serialize(accountKeys));
             }
 
@@ -116,11 +124,14 @@ public class GrantSharesTreasury {
             Hash160[] hashes = tokens.keys();
             Integer[] maxes = tokens.values();
             for (int i = 0; i < hashes.length; i++) {
+                assert isValid(hashes[i]) && hashes[i] != zero() && maxes[i] > 0;
                 whitelistedTokens.put(hashes[i].toByteString(), maxes[i]);
             }
 
             // set parameter
-            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, (int) config[3]);
+            int thresholdRatio = (int) config[3];
+            assert thresholdRatio > 0 && thresholdRatio <= 100;
+            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, thresholdRatio);
         }
     }
 
@@ -302,6 +313,8 @@ public class GrantSharesTreasury {
     public static void setFundersMultiSigThresholdRatio(Integer value) throws Exception {
         throwIfPaused();
         throwIfCallerIsNotOwner();
+        if (value <= 0 || value > 100)
+            throw new Exception("[GrantSharesTreasury.setFundersMultiSigThresholdRatio] Invalid threshold ratio");
         Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
         thresholdChanged.fire(value);
     }
@@ -323,6 +336,14 @@ public class GrantSharesTreasury {
         throwIfCallerIsNotOwner();
         if (funders.get(accountHash.toByteString()) != null)
             throw new Exception("[GrantSharesTreasury.addFunder] Already a funder");
+        if (!isValid(accountHash) || accountHash == zero())
+            throw new Exception("[GrantSharesTreasury.addFunder] Invalid funder hash");
+        if (publicKeys.length == 0)
+            throw new Exception("[GrantSharesTreasury.addFunder] List of public keys is empty");
+        for (ECPoint key : publicKeys) {
+            if (!ECPoint.isValid(key))
+                throw new Exception("[GrantSharesTreasury.addFunder] Invalid public key");
+        }
         funders.put(accountHash.toByteString(), StdLib.serialize(publicKeys));
         funderAdded.fire(accountHash);
     }
@@ -355,6 +376,10 @@ public class GrantSharesTreasury {
     public static void addWhitelistedToken(Hash160 token, int maxFundingAmount) throws Exception {
         throwIfPaused();
         throwIfCallerIsNotOwner();
+        if (!isValid(token) || token == zero())
+            throw new Exception("[GrantSharesTreasury.addWhitelistedToken] Invalid token hash");
+        if (maxFundingAmount <= 0)
+            throw new Exception("[GrantSharesTreasury.addWhitelistedToken] Invalid max funding amount");
         whitelistedTokens.put(token.toByteString(), maxFundingAmount);
         whitelistedTokenAdded.fire(token, maxFundingAmount);
     }
