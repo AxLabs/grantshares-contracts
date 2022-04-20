@@ -2,6 +2,7 @@ package com.axlabs.neo.grantshares;
 
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import com.axlabs.neo.grantshares.util.IntentParam;
+import com.axlabs.neo.grantshares.util.ProposalPaginatedStruct;
 import com.axlabs.neo.grantshares.util.ProposalStruct;
 import com.axlabs.neo.grantshares.util.TestHelper;
 import io.neow3j.contract.ContractManagement;
@@ -12,7 +13,6 @@ import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoInvokeFunction;
-import io.neow3j.protocol.core.stackitem.ByteStringStackItem;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -40,7 +40,6 @@ import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
 
 import static com.axlabs.neo.grantshares.util.TestHelper.ADD_MEMBER;
 import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
@@ -51,7 +50,6 @@ import static com.axlabs.neo.grantshares.util.TestHelper.CREATE;
 import static com.axlabs.neo.grantshares.util.TestHelper.ENDORSE;
 import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.util.TestHelper.GET_PROPOSAL;
-import static com.axlabs.neo.grantshares.util.TestHelper.GET_PROPOSALS;
 import static com.axlabs.neo.grantshares.util.TestHelper.GET_PROPOSAL_COUNT;
 import static com.axlabs.neo.grantshares.util.TestHelper.IS_PAUSED;
 import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE;
@@ -73,7 +71,6 @@ import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
 import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
 import static io.neow3j.test.TestProperties.defaultAccountScriptHash;
-import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
@@ -218,17 +215,16 @@ public class GrantSharesGovTest {
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
         String offchainUri = "fail_creating_with_bad_quorum";
 
-        String exception = gov.invokeFunction(CREATE,
-                        hash160(alice.getScriptHash()),
-                        array(intent),
-                        string(offchainUri),
-                        any(null), // linked proposal
-                        integer(MIN_ACCEPTANCE_RATE),
-                        integer(MIN_QUORUM - 1))
+        String exception = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE,
+                        MIN_QUORUM - 1, intent)
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid quorum"));
 
-        assertThat(exception, containsString("Quorum not allowed"));
+        exception = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, 101, intent)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid quorum"));
     }
 
     @Test
@@ -238,17 +234,16 @@ public class GrantSharesGovTest {
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
         String offchainUri = "fail_creating_with_bad_acceptance_rate";
 
-        String exception = gov.invokeFunction(CREATE,
-                        hash160(alice.getScriptHash()),
-                        array(intent),
-                        string(offchainUri),
-                        any(null), // linked proposal
-                        integer(MIN_ACCEPTANCE_RATE - 1),
-                        integer(MIN_QUORUM))
+        String exception = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE-1, MIN_QUORUM,
+                        intent)
                 .signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid acceptance rate"));
 
-        assertThat(exception, containsString("Acceptance rate not allowed"));
+        exception = gov.createProposal(alice.getScriptHash(), offchainUri, -1, 101, MIN_QUORUM, intent)
+                .signers(AccountSigner.calledByEntry(alice))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(exception, containsString("Invalid acceptance rate"));
     }
 
     @Test
@@ -629,20 +624,23 @@ public class GrantSharesGovTest {
                 array(new Hash160(defaultAccountScriptHash()))));
         TestHelper.createAndEndorseProposal(gov, neow3j, bob, alice, intents, "some_proposal");
 
-        List<StackItem> page = gov.callInvokeFunction(GET_PROPOSALS,
-                        asList(integer(0), integer(1))) // get page 0 with page size 1
-                .getInvocationResult().getStack().get(0).getList();
-        assertThat(page.get(0).getInteger().intValue(), is(0));
-        assertThat(page.get(1).getInteger().intValue(), is(greaterThanOrEqualTo(2))); // at least
-        // two pages
-        assertThat(page.get(2).getList().size(), is(1)); // the list of proposals should be 1
-        ProposalStruct prop = new ProposalStruct(page.get(2).getList().get(0).getList());
-        assertThat(prop.id, is(defaultProposalId));
+        ProposalPaginatedStruct page = gov.getProposals(0, 1);
+        assertThat(page.page, is(0));
+        assertThat(page.pages, is(greaterThanOrEqualTo(2)));
+        assertThat(page.items.size(), is(1));
+        ProposalStruct proposal = page.items.get(0);
+        assertThat(proposal.id, is(defaultProposalId));
 
-        prop = new ProposalStruct(gov.callInvokeFunction(GET_PROPOSALS,
-                        asList(integer(1), integer(1))) // get page 1 with page size 1
-                .getInvocationResult().getStack().get(0).getList().get(2).getList().get(0).getList());
-        assertThat(prop.id, is(greaterThanOrEqualTo(1)));
+        proposal = gov.getProposals(1, 1).items.get(0);
+        assertThat(proposal.id, is(greaterThanOrEqualTo(1)));
+
+        String exception = gov.callInvokeFunction("getProposals", asList(integer(-1), integer(1)))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Page number was negative"));
+
+        exception = gov.callInvokeFunction("getProposals", asList(integer(0), integer(0)))
+                .getInvocationResult().getException();
+        assertThat(exception, containsString("Page number was negative or zero"));
     }
 
     @Test

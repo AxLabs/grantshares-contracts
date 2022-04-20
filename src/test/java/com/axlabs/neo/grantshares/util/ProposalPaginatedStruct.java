@@ -5,7 +5,7 @@ import io.neow3j.protocol.core.stackitem.StackItem;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class ProposalPaginatedStruct {
+public class ProposalPaginatedStruct {
 
     public int page;
     public int pages;

@@ -6,7 +6,9 @@ import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Iterator;
+import io.neow3j.devpack.Iterator.Struct;
 import io.neow3j.devpack.List;
+import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
@@ -18,6 +20,7 @@ import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
+import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -105,7 +108,7 @@ public class GrantSharesGov {
      * @param update Tells if the method is called for updating this contract.
      */
     @OnDeployment
-    public static void deploy(Object data, boolean update) {
+    public static void deploy(Object data, boolean update) throws Exception {
         if (!update) {
             List<Object> config = (List<Object>) data;
             // Set parameters
@@ -116,9 +119,14 @@ public class GrantSharesGov {
 
             // Set members
             ECPoint[] pubKeys = (ECPoint[]) config.get(0);
+            if (pubKeys.length == 0)
+                throw new Exception("[GrantSharesGov.deploy] Member list was empty");
             for (ECPoint pubKey : pubKeys) {
+                if (!ECPoint.isValid(pubKey))
+                    throw new Exception("[GrantSharesGov.deploy] Invalid member public key");
                 members.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
             }
+
             Storage.put(ctx, MEMBERS_COUNT_KEY, pubKeys.length);
             Storage.put(ctx, PAUSED_KEY, 0);
             Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
@@ -136,6 +144,20 @@ public class GrantSharesGov {
     @Safe
     public static Object getParameter(String paramName) {
         return parameters.get(paramName);
+    }
+
+    /**
+     * @return all parameters and their values.
+     */
+    @Safe
+    public static Map<String, Object> getParameters() {
+        Iterator<Struct<String, Object>> it = parameters.find(FindOptions.RemovePrefix);
+        Map<String, Object> params = new Map<>();
+        while (it.next()) {
+            Struct<String, Object> param = it.get();
+            params.put(param.key, param.value);
+        }
+        return params;
     }
 
     /**
@@ -228,6 +250,10 @@ public class GrantSharesGov {
      */
     @Safe
     public static Paginator.Paginated getProposals(int page, int itemsPerPage) throws Exception {
+        if (page < 0)
+            throw new Exception("[GrantSharesGov.getProposals] Page number was negative");
+        if (itemsPerPage <= 0)
+            throw new Exception("[GrantSharesGov.getProposals] Page number was negative or zero");
         int n = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
         List<Object> list = new List<>();
@@ -315,10 +341,10 @@ public class GrantSharesGov {
 
         if (!checkWitness(proposer))
             throw new Exception("[GrantSharesGov.createProposal] Not authorised");
-        if (acceptanceRate < parameters.getInt(MIN_ACCEPTANCE_RATE_KEY))
-            throw new Exception("[GrantSharesGov.createProposal] Acceptance rate not allowed");
-        if (quorum < parameters.getInt(MIN_QUORUM_KEY))
-            throw new Exception("[GrantSharesGov.createProposal] Quorum not allowed");
+        if (acceptanceRate < parameters.getInt(MIN_ACCEPTANCE_RATE_KEY) || acceptanceRate > 100)
+            throw new Exception("[GrantSharesGov.createProposal] Invalid acceptance rate");
+        if (quorum < parameters.getInt(MIN_QUORUM_KEY) || quorum > 100)
+            throw new Exception("[GrantSharesGov.createProposal] Invalid quorum");
         if (linkedProposal >= 0 && proposals.get(linkedProposal) == null)
             throw new Exception("[GrantSharesGov.createProposal] Linked proposal doesn't exist");
         if (containsCallsToContractManagement(intents))
@@ -474,6 +500,8 @@ public class GrantSharesGov {
     public static void changeParam(String paramKey, Object value) throws Exception {
         throwIfPaused();
         throwIfCallerIsNotSelf();
+        if (parameters.get(paramKey) == null)
+            throw new Exception("[GrantSharesGov.changeParam] Unknown parameter");
         parameters.put(paramKey, (byte[]) value);
         paramChanged.fire(paramKey, (byte[]) value);
     }

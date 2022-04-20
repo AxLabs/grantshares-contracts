@@ -1,21 +1,21 @@
 package com.axlabs.neo.grantshares.util;
 
-import io.neow3j.contract.NefFile;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.contract.exceptions.UnexpectedReturnTypeException;
 import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.crypto.ECKeyPair.ECPublicKey;
-import io.neow3j.devpack.ByteString;
 import io.neow3j.protocol.Neow3j;
-import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.transaction.TransactionBuilder;
+import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.wallet.Account;
 
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static io.neow3j.types.ContractParameter.any;
@@ -35,6 +35,14 @@ public class GrantSharesGovContract extends SmartContract {
     public StackItem getParameter(String paramName) throws IOException, UnexpectedReturnTypeException {
         return callInvokeFunction(getMethodName(), asList(string(paramName)))
                 .getInvocationResult().getStack().get(0);
+    }
+
+    public Map<String, BigInteger> getParameters() throws IOException, UnexpectedReturnTypeException {
+        Map<StackItem, StackItem> map = callInvokeFunction(getMethodName()).getInvocationResult().getStack().get(0)
+                .getMap();
+        return map.entrySet().stream().collect(Collectors.toMap(
+                i -> i.getKey().getString(),
+                i -> i.getValue().getInteger()));
     }
 
     public ProposalStruct getProposal(int id) throws IOException, UnexpectedReturnTypeException {
@@ -68,9 +76,15 @@ public class GrantSharesGovContract extends SmartContract {
     }
 
     public TransactionBuilder createProposal(Hash160 proposer, String offchainUri, int linkedProposal,
-            IntentParam... intents) {
+            ContractParameter... intents) {
         return invokeFunction(getMethodName(), hash160(proposer), array(asList(intents)),
                 string(offchainUri), integer(linkedProposal));
+    }
+
+    public TransactionBuilder createProposal(Hash160 proposer, String offchainUri, int linkedProposal,
+            int acceptanceRate, int quorum, ContractParameter... intents) {
+        return invokeFunction(getMethodName(), hash160(proposer), array(asList(intents)),
+                string(offchainUri), integer(linkedProposal), integer(acceptanceRate), integer(quorum));
     }
 
     public TransactionBuilder endorseProposal(int id, Hash160 endorser) {
