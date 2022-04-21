@@ -58,11 +58,14 @@ artifacts{
 
 publishing {
     publications {
-        mavenJava(MavenPublication) {
+        myLibrary(MavenPublication) {
             groupId project.group
             artifactId "${project.name}"
-
             from components.java
+            artifact sourcesJar
+            artifact testJar {
+                appendix 'test'
+            }
         }
     }
 }
