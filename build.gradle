@@ -59,8 +59,8 @@ artifacts{
 publishing {
     publications {
         myLibrary(MavenPublication) {
-            groupId = "${project.group}"
-            artifactId = "${project.name}"
+            groupId "com.axlabs.neo"
+            artifactId "${project.name}"
 
             from components.java
         }
