@@ -57,7 +57,6 @@ publishing {
         myLibraryTest(MavenPublication) {
             groupId project.group
             artifactId "${project.name}-test-fixtures"
-            version project.version
 
             artifact testJar
         }
