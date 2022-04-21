@@ -42,13 +42,13 @@ neow3jCompile {
 }
 
 task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier 'sources'
+    archiveClassifier 'sources'
     from sourceSets.main.allSource
 }
 
 task testJar(type: Jar, dependsOn: testClasses) {
+    archiveClassifier "tests"
     from sourceSets.test.output
-    appendix 'test'
 }
 
 artifacts{
@@ -64,15 +64,7 @@ publishing {
 
             from components.java
             artifact sourcesJar
-        }
-
-        myLibraryTest(MavenPublication) {
-            groupId "${project.group}"
-            artifactId "${project.name}-test"
-
-            artifact testJar {
-                appendix 'test'
-            }
+            artifact testJar
         }
     }
 }
