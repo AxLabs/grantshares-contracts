@@ -1,5 +1,5 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'io.neow3j.gradle-plugin' version '3.17.0-SNAPSHOT'
     id 'maven-publish'
 }
@@ -41,21 +41,6 @@ neow3jCompile {
     className = "com.axlabs.neo.grantshares.GrantSharesTreasury"
 }
 
-task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier 'sources'
-    from sourceSets.main.allSource
-}
-
-task testJar(type: Jar, dependsOn: testClasses) {
-    classifier 'tests'
-    from sourceSets.test.output
-}
-
-artifacts{
-    archives sourcesJar
-    archives testJar
-}
-
 publishing {
     publications {
         myLibrary(MavenPublication) {
@@ -63,8 +48,6 @@ publishing {
             artifactId "${project.name}"
 
             from components.java
-            artifact sourcesJar
-            artifact testJar
         }
     }
 }
