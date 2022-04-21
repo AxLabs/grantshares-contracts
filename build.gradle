@@ -38,7 +38,7 @@ tasks.withType(Test) {
 }
 
 neow3jCompile {
-    className="com.axlabs.neo.grantshares.GrantSharesTreasury"
+    className = "com.axlabs.neo.grantshares.GrantSharesTreasury"
 }
 
 publishing {
