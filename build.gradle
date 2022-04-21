@@ -63,6 +63,10 @@ publishing {
             artifactId "${project.name}"
 
             from components.java
+            artifact sourcesJar
+            artifact testJar {
+                appendix 'test'
+            }
         }
     }
 }
