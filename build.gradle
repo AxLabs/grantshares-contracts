@@ -41,13 +41,26 @@ neow3jCompile {
     className="com.axlabs.neo.grantshares.GrantSharesTreasury"
 }
 
+// Create JAR with test fixtures
+task testJar(type: Jar, dependsOn: testClasses) {
+    archiveClassifier 'test-fixtures'
+    from sourceSets.test.output
+}
+
 publishing {
     publications {
         myLibrary(MavenPublication) {
-            groupId = 'com.axlabs.neo'
-            artifactId = 'grantshares-contracts'
+            groupId project.group
+            artifactId "${project.name}"
 
             from components.java
+        }
+        myLibraryTest(MavenPublication) {
+            groupId project.group
+            artifactId "${project.name}-test-fixtures"
+            version project.version
+
+            artifact testJar
         }
     }
 }
