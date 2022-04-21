@@ -1,5 +1,5 @@
 plugins {
-    id 'java-library'
+    id 'java'
     id 'io.neow3j.gradle-plugin' version '3.17.0-SNAPSHOT'
     id 'maven-publish'
 }
