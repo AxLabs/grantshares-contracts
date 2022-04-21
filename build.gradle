@@ -1,10 +1,14 @@
 plugins {
     id 'java'
     id 'io.neow3j.gradle-plugin' version '3.17.0-SNAPSHOT'
+    id 'maven-publish'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
 targetCompatibility = JavaVersion.VERSION_1_8
+
+group 'com.axlabs.neo'
+version '1.0.0'
 
 repositories {
     mavenCentral()
@@ -36,4 +40,15 @@ tasks.withType(Test) {
 
 neow3jCompile {
     className="com.axlabs.neo.grantshares.GrantSharesTreasury"
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            groupId = 'com.axlabs.neo'
+            artifactId = 'grantshares-contracts'
+
+            from components.java
+        }
+    }
 }
