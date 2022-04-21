@@ -22,6 +22,7 @@ import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
+import io.neow3j.devpack.events.Event;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
@@ -83,6 +84,12 @@ public class GrantSharesGov {
     static Event1Arg<Hash160> memberRemoved;
     @DisplayName("ParameterChanged")
     static Event2Args<String, byte[]> paramChanged;
+    @DisplayName("UpdatingContract")
+    static Event updating;
+    @DisplayName("ContractPaused")
+    static Event paused;
+    @DisplayName("ContractUnpaused")
+    static Event unpaused;
     //endregion EVENTS
 
     /**
@@ -555,6 +562,7 @@ public class GrantSharesGov {
     public static void updateContract(ByteString nef, String manifest, Object data) throws Exception {
         throwIfPaused();
         throwIfCallerIsNotSelf();
+        updating.fire();
         ContractManagement.update(nef, manifest, data);
     }
     //endregion PROPOSAL-INVOKED METHODS
@@ -563,12 +571,14 @@ public class GrantSharesGov {
         if (!checkWitness(calcMembersMultiSigAccount()))
             throw new Exception("[GrantSharesGov.pause] Not authorized");
         Storage.put(ctx, PAUSED_KEY, 1);
+        paused.fire();
     }
 
     public static void unpause() throws Exception {
         if (!checkWitness(calcMembersMultiSigAccount()))
             throw new Exception("[GrantSharesGov.unpause] Not authorized");
         Storage.put(ctx, PAUSED_KEY, 0);
+        unpaused.fire();
     }
 
     private static void throwIfCallerIsNotSelf() throws Exception {

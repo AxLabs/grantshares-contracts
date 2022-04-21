@@ -841,7 +841,8 @@ public class GrantSharesGovTest {
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
         NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
-        assertThat(n.getEventName(), is("Update"));
+        assertThat(n.getEventName(), is("UpdatingContract"));
+        assertThat(n.getContract(), is(gov.getScriptHash()));
     }
 
 }

@@ -5,7 +5,6 @@ import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.Helper;
 import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.Iterator.Struct;
 import io.neow3j.devpack.List;
@@ -26,6 +25,7 @@ import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
 import io.neow3j.devpack.contracts.StdLib;
+import io.neow3j.devpack.events.Event;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
 import io.neow3j.devpack.events.Event3Args;
@@ -73,6 +73,14 @@ public class GrantSharesTreasury {
     static Event3Args<Hash160, Hash160, Integer> tokensReleased;
     @DisplayName("TokenReleaseFailed")
     static Event3Args<Hash160, Hash160, Integer> releaseFailed;
+    @DisplayName("VotedOnCommitteeMember")
+    static Event1Arg<ECPoint> voted;
+    @DisplayName("DrainedTokens")
+    static Event drained;
+    @DisplayName("DrainingTokenFailed")
+    static Event1Arg<Hash160> drainingFailed;
+    @DisplayName("UpdatingContract")
+    static Event updating;
 
     /**
      * Initialises this contract on deployment.
@@ -156,39 +164,6 @@ public class GrantSharesTreasury {
             return;
         }
         assert funders.get(sender.toByteString()) != null;
-    }
-
-    /**
-     * Places the treasuries vote on the committee member with the least votes.
-     *
-     * @throws Exception if voting was not successful.
-     */
-    public static void voteCommitteeMemberWithLeastVotes() throws Exception {
-        throwIfPaused();
-        ECPoint c = getCommitteeMemberWithLeastVotes();
-        if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c))
-            throw new Exception("[GrantSharesTreasury.voteCommitteeMemberWithLeastVotes] Failed voting on candidate " +
-                    c.toByteString().toString());
-    }
-
-    private static ECPoint getCommitteeMemberWithLeastVotes() {
-        NeoToken.Candidate[] candidates = NeoToken.getCandidates();
-        List<ECPoint> committee = new List<>(NeoToken.getCommittee());
-        int leastVotes = 100000000; // just a large number for initialisation
-        ECPoint leastVotesMember = null;
-        for (int i = 0; i < candidates.length; i++) {
-            NeoToken.Candidate candidate = candidates[i];
-            for (int j = 0; j < committee.size(); j++) {
-                if (committee.get(j) == candidate.publicKey) {
-                    committee.remove(j); // Remove the committee member from list to shorten the loop.
-                    if (candidate.votes < leastVotes) {
-                        leastVotesMember = candidate.publicKey;
-                        leastVotes = candidate.votes;
-                    }
-                }
-            }
-        }
-        return leastVotesMember;
     }
 
     /**
@@ -449,9 +424,48 @@ public class GrantSharesTreasury {
             int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadOnly, new Object[]{selfHash});
             if (balance > 0) {
                 Object[] params = new Object[]{selfHash, fundersMultiAddress, balance, new Object[]{}};
-                Contract.call(token, "transfer", CallFlags.All, params);
+                try {
+                    Contract.call(token, "transfer", CallFlags.All, params);
+                } catch (Exception e) {
+                    drainingFailed.fire(token);
+                }
             }
         }
+        drained.fire();
+    }
+
+    /**
+     * Places the treasury's vote on the committee member with the least votes.
+     *
+     * @throws Exception if voting was not successful.
+     */
+    public static void voteCommitteeMemberWithLeastVotes() throws Exception {
+        throwIfPaused();
+        ECPoint c = getCommitteeMemberWithLeastVotes();
+        if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c))
+            throw new Exception("[GrantSharesTreasury.voteCommitteeMemberWithLeastVotes] Failed voting on candidate " +
+                    c.toByteString().toString());
+        voted.fire(c);
+    }
+
+    private static ECPoint getCommitteeMemberWithLeastVotes() {
+        NeoToken.Candidate[] candidates = NeoToken.getCandidates();
+        List<ECPoint> committee = new List<>(NeoToken.getCommittee());
+        int leastVotes = 100000000; // just a large number for initialisation
+        ECPoint leastVotesMember = null;
+        for (int i = 0; i < candidates.length; i++) {
+            NeoToken.Candidate candidate = candidates[i];
+            for (int j = 0; j < committee.size(); j++) {
+                if (committee.get(j) == candidate.publicKey) {
+                    committee.remove(j); // Remove the committee member from list to shorten the loop.
+                    if (candidate.votes < leastVotes) {
+                        leastVotesMember = candidate.publicKey;
+                        leastVotes = candidate.votes;
+                    }
+                }
+            }
+        }
+        return leastVotesMember;
     }
 
     /**
@@ -463,6 +477,7 @@ public class GrantSharesTreasury {
     public static void updateContract(ByteString nef, String manifest, Object data) throws Exception {
         throwIfPaused();
         throwIfCallerIsNotOwner();
+        updating.fire();
         ContractManagement.update(nef, manifest, data);
     }
 
