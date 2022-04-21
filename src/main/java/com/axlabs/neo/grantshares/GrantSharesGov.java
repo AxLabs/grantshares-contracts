@@ -83,7 +83,7 @@ public class GrantSharesGov {
     @DisplayName("MemberRemoved")
     static Event1Arg<Hash160> memberRemoved;
     @DisplayName("ParameterChanged")
-    static Event2Args<String, byte[]> paramChanged;
+    static Event2Args<String, Integer> paramChanged;
     @DisplayName("UpdatingContract")
     static Event updating;
     @DisplayName("ContractPaused")
@@ -121,7 +121,10 @@ public class GrantSharesGov {
             // Set parameters
             List<Object> params = (List<Object>) config.get(1);
             for (int i = 0; i < params.size(); i += 2) {
-                parameters.put((ByteString) params.get(i), (int) params.get(i + 1));
+                String paramKey = (String) params.get(i);
+                int value = (int) params.get(i+1);
+                throwOnInvalidValue(paramKey, value);
+                parameters.put(paramKey, value);
             }
 
             // Set members
@@ -290,7 +293,7 @@ public class GrantSharesGov {
      * @return The multi-sig account hash.
      */
     @Safe
-    public static Hash160 calcMembersMultiSigAccount() {
+    public static Hash160 calcMembersMultiSigAccount() throws Exception {
         return Account.createMultiSigAccount(calcMembersMultiSigAccountThreshold(), getMembers().toArray());
     }
 
@@ -301,7 +304,7 @@ public class GrantSharesGov {
      * @return The multi-sig account signing threshold.
      */
     @Safe
-    public static int calcMembersMultiSigAccountThreshold() {
+    public static int calcMembersMultiSigAccountThreshold() throws Exception {
         int count = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
         int thresholdRatio = parameters.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
@@ -309,6 +312,8 @@ public class GrantSharesGov {
         if (thresholdTimes100 % 100 != 0) {
             threshold += 1; // Always round up.
         }
+        if (threshold == 0)
+            throw new Exception("[GrantSharesGov.calcMembersMultiSigAccountThreshold] Threshold was zero");
         return threshold;
     }
 
@@ -504,13 +509,35 @@ public class GrantSharesGov {
      * @param paramKey The parameter's storage key.
      * @param value    The new parameter value.
      */
-    public static void changeParam(String paramKey, Object value) throws Exception {
+    public static void changeParam(String paramKey, int value) throws Exception {
         throwIfPaused();
         throwIfCallerIsNotSelf();
-        if (parameters.get(paramKey) == null)
-            throw new Exception("[GrantSharesGov.changeParam] Unknown parameter");
-        parameters.put(paramKey, (byte[]) value);
-        paramChanged.fire(paramKey, (byte[]) value);
+        throwOnInvalidValue(paramKey, value);
+        parameters.put(paramKey, value);
+        paramChanged.fire(paramKey, value);
+    }
+
+    private static void throwOnInvalidValue(String paramKey, int value) throws Exception {
+        switch (paramKey) {
+            case REVIEW_LENGTH_KEY:
+            case VOTING_LENGTH_KEY:
+            case TIMELOCK_LENGTH_KEY:
+            case EXPIRATION_LENGTH_KEY:
+                if (value < 0)
+                    throw new Exception("[GrantSharesGov.changeParam] Invalid parameter value");
+                break;
+            case MIN_ACCEPTANCE_RATE_KEY:
+            case MIN_QUORUM_KEY:
+                if (value < 0 || value > 100)
+                    throw new Exception("[GrantSharesGov.changeParam] Invalid parameter value");
+                break;
+            case MULTI_SIG_THRESHOLD_KEY:
+                if (value <= 0 || value > 100)
+                    throw new Exception("[GrantSharesGov.changeParam] Invalid parameter value");
+                break;
+            default:
+                throw new Exception("[GrantSharesGov.changeParam] Unknown parameter");
+        }
     }
 
     /**

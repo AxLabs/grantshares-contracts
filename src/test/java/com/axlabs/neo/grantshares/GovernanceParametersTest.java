@@ -27,17 +27,15 @@ import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.util.TestHelper.CHANGE_PARAM;
 import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.util.TestHelper.EXPIRATION_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE;
+import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.MIN_QUORUM;
 import static com.axlabs.neo.grantshares.util.TestHelper.MIN_QUORUM_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.MULTI_SIG_THRESHOLD_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.MULTI_SIG_THRESHOLD_RATIO;
-import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.util.TestHelper.GET_PARAMETER;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.PARAMETER_CHANGED;
+import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
 import static com.axlabs.neo.grantshares.util.TestHelper.REVIEW_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.TIMELOCK_LENGTH_KEY;
@@ -166,6 +164,102 @@ public class GovernanceParametersTest {
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Unknown parameter"));
     }
+
+    @Test
+    public void fail_changing_voting_length_to_negative_value() throws Throwable {
+        IntentParam i = IntentParam.changeParamProposal(gov.getScriptHash(), VOTING_LENGTH_KEY, -1);
+        String uri = "fail_changing_voting_length_to_negative_value";
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(e, containsString("Invalid parameter value"));
+        assertThat(gov.getParameter(VOTING_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH));
+    }
+
+    @Test
+    public void fail_changing_min_acceptance_rate_to_negative_value() throws Throwable {
+        ContractParameter i = IntentParam.changeParamProposal(gov.getScriptHash(), MIN_ACCEPTANCE_RATE_KEY, -1);
+        String uri = "fail_changing_min_acceptance_rate_to_negative_value";
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(e, containsString("Invalid parameter value"));
+        assertThat(gov.getParameter(MIN_ACCEPTANCE_RATE_KEY).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
+    }
+
+    @Test
+    public void fail_changing_min_acceptance_rate_to_more_than_hundred() throws Throwable {
+        ContractParameter i = IntentParam.changeParamProposal(gov.getScriptHash(), MIN_ACCEPTANCE_RATE_KEY, 101);
+        String uri = "fail_changing_min_acceptance_rate_to_more_than_hundred";
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(e, containsString("Invalid parameter value"));
+        assertThat(gov.getParameter(MIN_ACCEPTANCE_RATE_KEY).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
+    }
+
+    @Test
+    public void fail_changing_multisig_threshold_to_zero() throws Throwable {
+        ContractParameter i = IntentParam.changeParamProposal(gov.getScriptHash(), MULTI_SIG_THRESHOLD_KEY, 0);
+        String uri = "fail_changing_multisig_threshold_to_zero";
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(e, containsString("Invalid parameter value"));
+        assertThat(gov.getParameter(MULTI_SIG_THRESHOLD_KEY).getInteger().intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
+    }
+
+    @Test
+    public void fail_changing_multisig_threshold_to_more_than_hundred() throws Throwable {
+        ContractParameter i = IntentParam.changeParamProposal(gov.getScriptHash(), MULTI_SIG_THRESHOLD_KEY, 101);
+        String uri = "fail_changing_multisig_threshold_to_more_than_hundred";
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
+
+        // 2. Skip to voting phase and vote
+        ext.fastForward(PHASE_LENGTH);
+        voteForProposal(gov, neow3j, id, alice);
+
+        // 3. Skip till after vote and queued phase, then execute.
+        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+
+        String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .callInvokeScript().getInvocationResult().getException();
+        assertThat(e, containsString("Invalid parameter value"));
+        assertThat(gov.getParameter(MULTI_SIG_THRESHOLD_KEY).getInteger().intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
+    }
+
     //endregion CHANGE PARAMETER
 
 }

@@ -203,7 +203,7 @@ public class GrantSharesTreasury {
      * @return The multi-sig account hash.
      */
     @Safe
-    public static Hash160 calcFundersMultiSigAddress() {
+    public static Hash160 calcFundersMultiSigAddress() throws Exception {
         List<ECPoint> funderPublicKeys = getFunderPublicKeys();
         return Account.createMultiSigAccount(calcFundersMultiSigAddressThreshold(funderPublicKeys.size()),
                 funderPublicKeys.toArray());
@@ -218,7 +218,7 @@ public class GrantSharesTreasury {
      * @return The multi-sig account signing threshold.
      */
     @Safe
-    public static int calcFundersMultiSigAddressThreshold() {
+    public static int calcFundersMultiSigAddressThreshold() throws Exception {
         return calcFundersMultiSigAddressThreshold(getFunderPublicKeys().size());
     }
 
@@ -230,13 +230,15 @@ public class GrantSharesTreasury {
      * @param count The number of public keys involved in the treasury as funders.
      * @return The multi-sig account signing threshold.
      */
-    private static int calcFundersMultiSigAddressThreshold(int count) {
+    private static int calcFundersMultiSigAddressThreshold(int count) throws Exception {
         int thresholdRatio = Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
         if (thresholdTimes100 % 100 != 0) {
             threshold += 1; // Always round up.
         }
+        if (threshold == 0)
+            throw new Exception("[GrantSharesTreasury.calcFundersMultiSigAddressThreshold] Threshold was zero");
         return threshold;
     }
 
