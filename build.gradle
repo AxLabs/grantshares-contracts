@@ -63,10 +63,6 @@ publishing {
             artifactId "${project.name}"
             from components.java
             artifact sourcesJar
-        }
-        mavenTest(MavenPublication) {
-            groupId project.group
-            artifactId "${project.name}-test"
             artifact testJar {
                 appendix 'test'
             }
