@@ -41,11 +41,26 @@ neow3jCompile {
     className = "com.axlabs.neo.grantshares.GrantSharesTreasury"
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier 'sources'
+    from sourceSets.main.allSource
+}
+
+task testJar(type: Jar, dependsOn: testClasses) {
+    from sourceSets.test.output
+    appendix 'test'
+}
+
+artifacts{
+    archives sourcesJar
+    archives testJar
+}
+
 publishing {
     publications {
         myLibrary(MavenPublication) {
-            groupId "com.axlabs.neo"
-            artifactId "grantshares-gov"
+            groupId "${project.group}"
+            artifactId "${project.name}"
 
             from components.java
         }
