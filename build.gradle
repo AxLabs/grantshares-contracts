@@ -64,6 +64,12 @@ publishing {
 
             from components.java
             artifact sourcesJar
+        }
+
+        myLibraryTest(MavenPublication) {
+            groupId "${project.group}"
+            artifactId "${project.name}-test"
+
             artifact testJar {
                 appendix 'test'
             }
