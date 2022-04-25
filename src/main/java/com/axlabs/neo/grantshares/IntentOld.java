@@ -6,7 +6,7 @@ import io.neow3j.devpack.Hash160;
  * Represents an action of a proposal. Proposals are made up of one or more intents that are executed once the
  * proposal is accepted.
  */
-public class Intent {
+public class IntentOld {
 
     /**
      * The contract to be called.
@@ -23,15 +23,9 @@ public class Intent {
      */
     public Object[] params;
 
-    /**
-     * Call flags to use when executing the intent.
-     */
-    public byte callFlags;
-
-    public Intent(Hash160 targetContract, String method, Object[] params, byte callFlags) {
+    public IntentOld(Hash160 targetContract, String method, Object[] params) {
         this.targetContract = targetContract;
         this.method = method;
         this.params = params;
-        this.callFlags = callFlags;
     }
 }

@@ -6,7 +6,7 @@ import io.neow3j.devpack.Map;
 /**
  * Used to return all proposal information as one structure in getter methods of the {@link GrantSharesGovOld} contract.
  */
-public class ProposalDTO {
+public class ProposalDTOOld {
 
     public int id;
     public Hash160 proposer;
@@ -19,13 +19,13 @@ public class ProposalDTO {
     public int queuedEnd;
     public int expiration;
     public boolean executed;
-    public Intent[] intents;
+    public IntentOld[] intents;
     public String offchainUri;
     public int approve;
     public int reject;
     public int abstain;
     public Map<Hash160, Integer> voters;
 
-    public ProposalDTO() {
+    public ProposalDTOOld() {
     }
 }

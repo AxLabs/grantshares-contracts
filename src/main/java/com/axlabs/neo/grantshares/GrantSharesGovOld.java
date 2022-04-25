@@ -22,7 +22,6 @@ import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
-import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -43,8 +42,9 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 @ManifestExtra(key = "Description", value = "The governing contract of the GrantShares DAO")
 @ManifestExtra(key = "Website", value = "https://grantshares.io")
 @ContractSourceCode("TODO: Set this to the URL of the release branch before deploying.")
+@DisplayName("GrantSharesGov")
 @SuppressWarnings("unchecked")
-public class GrantSharesGov {
+public class GrantSharesGovOld {
 
     //region CONTRACT VARIABLES
 
@@ -91,8 +91,6 @@ public class GrantSharesGov {
     static Event paused;
     @DisplayName("ContractUnpaused")
     static Event unpaused;
-    @DisplayName("ProposalMigrated")
-    static Event1Arg<Integer> migrated;
     //endregion EVENTS
 
     /**
@@ -143,21 +141,6 @@ public class GrantSharesGov {
             Storage.put(ctx, MEMBERS_COUNT_KEY, pubKeys.length);
             Storage.put(ctx, PAUSED_KEY, 0);
             Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
-        } else {
-            Iterator<Struct<ByteString, ByteString>> it = proposalData.find(FindOptions.RemovePrefix);
-            while (it.next()) {
-                Struct<ByteString, ByteString> item = it.get();
-                int proposalId = item.key.toInt();
-                ProposalDataOld pd = (ProposalDataOld) deserialize(item.value);
-                List<Intent> newIntents = new List<>();
-                for (IntentOld intent : pd.intents) {
-                    newIntents.add(new Intent(intent.targetContract, intent.method, intent.params, CallFlags.All));
-                }
-                ProposalData pdn = new ProposalData(pd.proposer, pd.linkedProposal, pd.acceptanceRate,
-                        pd.quorum, newIntents.toArray(), pd.offchainUri);
-                proposalData.put(proposalId, serialize(pdn));
-                migrated.fire(proposalId);
-            }
         }
     }
 
@@ -195,12 +178,12 @@ public class GrantSharesGov {
      * @return the proposal.
      */
     @Safe
-    public static ProposalDTO getProposal(int id) {
-        ProposalDTO dto = new ProposalDTO();
+    public static ProposalDTOOld getProposal(int id) {
+        ProposalDTOOld dto = new ProposalDTOOld();
         dto.id = id;
         ByteString bytes = proposalData.get(id);
         if (bytes != null) {
-            ProposalData p = (ProposalData) deserialize(bytes);
+            ProposalDataOld p = (ProposalDataOld) deserialize(bytes);
             dto.proposer = p.proposer;
             dto.linkedProposal = p.linkedProposal;
             dto.acceptanceRate = p.acceptanceRate;
@@ -305,7 +288,7 @@ public class GrantSharesGov {
 
     /**
      * Calculates the hash of the multi-sig account made up of the governance members. The signing threshold is
-     * calculated from the value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of
+     * calculated from the value of the {@link GrantSharesGovOld#MULTI_SIG_THRESHOLD_KEY} parameter and the number of
      * members.
      *
      * @return The multi-sig account hash.
@@ -317,7 +300,7 @@ public class GrantSharesGov {
 
     /**
      * Calculates the threshold of the multi-sig account made up of the governance members. It is calculated from the
-     * value of the {@link GrantSharesGov#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
+     * value of the {@link GrantSharesGovOld#MULTI_SIG_THRESHOLD_KEY} parameter and the number of members.
      *
      * @return The multi-sig account signing threshold.
      */
@@ -347,7 +330,7 @@ public class GrantSharesGov {
      * @param offchainUri The URI of the part of the proposal that exists off-chain. E.g., a unique discussion URL.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal)
+    public static int createProposal(Hash160 proposer, IntentOld[] intents, String offchainUri, int linkedProposal)
             throws Exception {
 
         return createProposal(proposer, intents, offchainUri, linkedProposal,
@@ -366,7 +349,7 @@ public class GrantSharesGov {
      * @param quorum         The desired quorum.
      * @return The id of the proposal.
      */
-    public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal,
+    public static int createProposal(Hash160 proposer, IntentOld[] intents, String offchainUri, int linkedProposal,
             int acceptanceRate, int quorum) throws Exception {
 
         if (!checkWitness(proposer))
@@ -379,15 +362,13 @@ public class GrantSharesGov {
             throw new Exception("[GrantSharesGov.createProposal] Linked proposal doesn't exist");
         if (containsCallsToContractManagement(intents))
             throw new Exception("[GrantSharesGov.createProposal] Calls to ContractManagement not allowed");
-        if (!areIntentsValid(intents))
-            throw new Exception(("[GrantSharesGov.createProposal] Invalid intents"));
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + currentIndex() + 1;
         proposals.put(id, serialize(new Proposal(id, expiration)));
-        proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
-                quorum, intents, offchainUri)));
+        proposalData.put(id, serialize(new ProposalDataOld(proposer, linkedProposal, acceptanceRate, quorum, intents,
+                offchainUri)));
         proposalVotes.put(id, serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
 
@@ -396,21 +377,8 @@ public class GrantSharesGov {
         return id;
     }
 
-    private static boolean areIntentsValid(Intent[] intents) {
-        for (Intent intent : intents) {
-            if (!Hash160.isValid(intent.targetContract) ||
-                    intent.targetContract == Hash160.zero() ||
-                    intent.method == null ||
-                    intent.method == "" ||
-                    intent.callFlags == 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static boolean containsCallsToContractManagement(Intent[] intents) {
-        for (Intent i : intents) {
+    private static boolean containsCallsToContractManagement(IntentOld[] intents) {
+        for (IntentOld i : intents) {
             if (i.targetContract == ContractManagement.getHash()) {
                 return true;
             }
@@ -511,7 +479,7 @@ public class GrantSharesGov {
         // TODO: For deployment replace `currentIndex()` with `getTime()`.
         if (proposal.expiration <= currentIndex())
             throw new Exception("[GrantSharesGov.execute] Proposal expired");
-        ProposalData data = (ProposalData) deserialize(proposalData.get(id));
+        ProposalDataOld data = (ProposalDataOld) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
         if (voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum)
@@ -524,7 +492,7 @@ public class GrantSharesGov {
         Object[] returnVals = new Object[data.intents.length];
         proposals.put(id, serialize(proposal));
         for (int i = 0; i < data.intents.length; i++) {
-            Intent t = data.intents[i];
+            IntentOld t = data.intents[i];
             returnVals[i] = Contract.call(t.targetContract, t.method, CallFlags.All, t.params);
         }
         executed.fire(id);

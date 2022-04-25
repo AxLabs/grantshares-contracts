@@ -6,6 +6,7 @@ import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.TransactionBuilder;
+import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
@@ -114,7 +115,8 @@ public class TestHelper {
                                 array(
                                         NeoToken.SCRIPT_HASH,
                                         "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))
+                                        array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()
                                 )
                         ),
                         string(offchainUri),

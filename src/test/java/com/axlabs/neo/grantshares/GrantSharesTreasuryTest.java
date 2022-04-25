@@ -20,6 +20,7 @@ import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.Transaction;
 import io.neow3j.transaction.Witness;
+import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
@@ -866,9 +867,8 @@ public class GrantSharesTreasuryTest {
 
         ContractParameter data = string("update contract");
 
-        ContractParameter intents = array(
-                array(treasury.getScriptHash(), UPDATE_CONTRACT,
-                        array(nef.toArray(), manifestBytes, data)));
+        ContractParameter intents = array(array(treasury.getScriptHash(), UPDATE_CONTRACT,
+                array(nef.toArray(), manifestBytes, data), CallFlags.ALL.getValue()));
         String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal

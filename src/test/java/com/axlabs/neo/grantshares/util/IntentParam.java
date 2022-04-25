@@ -5,6 +5,7 @@ import io.neow3j.contract.NefFile;
 import io.neow3j.crypto.ECKeyPair.ECPublicKey;
 import io.neow3j.protocol.ObjectMapperFactory;
 import io.neow3j.protocol.core.response.ContractManifest;
+import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.ContractParameterType;
 import io.neow3j.types.Hash160;
@@ -17,10 +18,11 @@ public class IntentParam extends ContractParameter {
 
     public IntentParam(Hash160 targetContract, String method, ContractParameter... params) {
         super(ContractParameterType.ARRAY, new ContractParameter[]{
-                hash160(targetContract), string(method), array(asList(params))});
+                hash160(targetContract), string(method), array(asList(params)), integer(CallFlags.ALL.getValue())});
     }
 
-    public static IntentParam releaseTokenProposal(Hash160 treasury, Hash160 token, Hash160 receiver, BigInteger amount) {
+    public static IntentParam releaseTokenProposal(Hash160 treasury, Hash160 token, Hash160 receiver,
+            BigInteger amount) {
         return new IntentParam(treasury, "releaseTokens",
                 hash160(token), hash160(receiver), integer(amount));
     }

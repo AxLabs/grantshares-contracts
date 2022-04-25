@@ -9,6 +9,7 @@ import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
+import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
@@ -95,7 +96,7 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_proposal_that_wasnt_endorsed() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 51)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 51), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_proposal_that_wasnt_endorsed";
 
         // 1. Create proposal then skip till after the queued phase without endorsing.
@@ -119,7 +120,7 @@ public class ProposalExecutionsTest {
     public void fail_executing_proposal_without_votes() throws Throwable {
         int newValue = 60;
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, newValue)));
+                array(MIN_ACCEPTANCE_RATE_KEY, newValue), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_proposal_without_votes";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
@@ -127,16 +128,15 @@ public class ProposalExecutionsTest {
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
-        String exception = contract.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(bob))
-                .callInvokeScript().getInvocationResult().getException();
+        String exception = contract.execute(id).signers(AccountSigner.calledByEntry(bob)).callInvokeScript()
+                .getInvocationResult().getException();
         assertThat(exception, containsString("Quorum not reached"));
     }
 
     @Test
     public void fail_executing_accepted_proposal_multiple_times() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_accepted_proposal_multiple_times";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -168,9 +168,9 @@ public class ProposalExecutionsTest {
     public void execute_proposal_with_multiple_intents() throws Throwable {
         ContractParameter intents = array(
                 array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
-                        bob.getScriptHash(), 1, any(null))),
+                        bob.getScriptHash(), 1, any(null)), CallFlags.ALL.getValue()),
                 array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
-                        bob.getScriptHash(), 1, any(null))));
+                        bob.getScriptHash(), 1, any(null)), CallFlags.ALL.getValue()));
         String offchainUri = "execute_proposal_with_multiple_intents";
 
         // 1. Create and endorse proposal
@@ -215,7 +215,7 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_proposal_quorum_reached_but_rejected() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_proposal_quorum_reached_but_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -241,7 +241,7 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_proposal_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_proposal_quorum_not_reached";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -264,7 +264,7 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_proposal_with_different_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_proposal_with_different_quorum_not_reached";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -288,7 +288,7 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_proposal_with_different_quorum_reached_different_rate_rejected() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
         String offchainUri = "fail_executing_proposal_with_different_quorum_reached_different_rate_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -304,9 +304,8 @@ public class ProposalExecutionsTest {
         ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        String exception = contract.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(bob))
-                .callInvokeScript().getInvocationResult().getException();
+        String exception = contract.execute(id).signers(AccountSigner.calledByEntry(bob)).callInvokeScript()
+                .getInvocationResult().getException();
 
         assertThat(exception, containsString("Proposal rejected"));
     }
@@ -314,7 +313,7 @@ public class ProposalExecutionsTest {
     @Test
     public void succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted() throws Throwable {
         ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40)));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
         String offchainUri = "succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -337,7 +336,8 @@ public class ProposalExecutionsTest {
 
     @Test
     public void fail_executing_expired_proposal() throws Throwable {
-        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM, array(REVIEW_LENGTH_KEY, 1)));
+        ContractParameter intents = array(array(contract.getScriptHash(), CHANGE_PARAM, array(REVIEW_LENGTH_KEY, 1),
+                CallFlags.ALL.getValue()));
         String discUrl = "fail_executing_expired_proposal";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.

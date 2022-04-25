@@ -79,19 +79,22 @@ public class ProposalStruct {
         public Hash160 targetContract;
         public String method;
         public List<StackItem> params;
+        public int callFlags;
 
         public IntentStruct(List<StackItem> list) {
             this(
                     Hash160.fromAddress(list.get(0).getAddress()),
                     list.get(1).getString(),
-                    list.get(2).getList()
+                    list.get(2).getList(),
+                    list.get(3).getInteger().intValue()
             );
         }
 
-        public IntentStruct(Hash160 targetContract, String method, List<StackItem> params) {
+        public IntentStruct(Hash160 targetContract, String method, List<StackItem> params, int callFlags) {
             this.targetContract = targetContract;
             this.method = method;
             this.params = params;
+            this.callFlags = callFlags;
         }
     }
 }

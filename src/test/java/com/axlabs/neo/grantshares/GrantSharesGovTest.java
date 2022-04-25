@@ -21,6 +21,7 @@ import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.Transaction;
 import io.neow3j.transaction.Witness;
+import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
@@ -124,8 +125,8 @@ public class GrantSharesGovTest {
         charlie = ext.getAccount(CHARLIE);
 
         Hash256 creationTx = gov.invokeFunction(CREATE, hash160(alice.getScriptHash()),
-                        array(array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                array(new Hash160(defaultAccountScriptHash())))),
+                        array(array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                integer(CallFlags.ALL.getValue()))),
                         string("default_proposal"),
                         integer(-1))
                 .signers(AccountSigner.calledByEntry(alice))
@@ -145,7 +146,7 @@ public class GrantSharesGovTest {
         Hash160 targetParam2 = alice.getScriptHash();
         int targetParam3 = 1;
         ContractParameter intent = array(targetContract, targetMethod,
-                array(targetParam1, targetParam2, targetParam3));
+                array(targetParam1, targetParam2, targetParam3), integer(CallFlags.ALL.getValue()));
         String offchainUri = "offchainUri of the proposal";
         Hash256 proposalCreationTx = gov.invokeFunction(CREATE,
                         hash160(alice.getScriptHash()),
@@ -234,10 +235,11 @@ public class GrantSharesGovTest {
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
         String offchainUri = "fail_creating_with_bad_acceptance_rate";
 
-        String exception = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE-1, MIN_QUORUM,
-                        intent)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
+        String exception =
+                gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE - 1, MIN_QUORUM,
+                                intent)
+                        .signers(AccountSigner.calledByEntry(alice))
+                        .callInvokeScript().getInvocationResult().getException();
         assertThat(exception, containsString("Invalid acceptance rate"));
 
         exception = gov.createProposal(alice.getScriptHash(), offchainUri, -1, 101, MIN_QUORUM, intent)
@@ -529,18 +531,18 @@ public class GrantSharesGovTest {
                 "aabcababcababcababcabbcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcaabcabcabcabcabcabca";
         Hash256 tx = gov.invokeFunction(CREATE, hash160(bob),
                         array(
-                                array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))),
-                                array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))),
-                                array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))),
-                                array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))),
-                                array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))),
-                                array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                        array(new Hash160(defaultAccountScriptHash()))),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()),
+                                array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                        CallFlags.ALL.getValue()),
                                 array(NeoToken.SCRIPT_HASH, "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
                                                 "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
                                         array(
@@ -550,7 +552,7 @@ public class GrantSharesGovTest {
                                                 new Hash160(defaultAccountScriptHash()),
                                                 new Hash160(defaultAccountScriptHash()),
                                                 new Hash160(defaultAccountScriptHash())
-                                        )),
+                                        ), CallFlags.ALL.getValue()),
                                 array(NeoToken.SCRIPT_HASH, "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
                                                 "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
                                         array(
@@ -562,7 +564,7 @@ public class GrantSharesGovTest {
                                                 new Hash160(defaultAccountScriptHash()),
                                                 new Hash160(defaultAccountScriptHash()),
                                                 new Hash160(defaultAccountScriptHash())
-                                        )),
+                                        ), CallFlags.ALL.getValue()),
                                 array(NeoToken.SCRIPT_HASH, "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
                                                 "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
                                         array(
@@ -581,7 +583,7 @@ public class GrantSharesGovTest {
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
                                                         "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
-                                        ))
+                                        ), CallFlags.ALL.getValue())
                         ),
                         string(offchainUri),
                         integer(-1))
@@ -608,8 +610,8 @@ public class GrantSharesGovTest {
     public void succeed_creating_exact_same_proposal_that_already_exists() throws IOException {
         // Recreate default proposal
         InvocationResult result = gov.invokeFunction(CREATE, hash160(alice.getScriptHash()),
-                        array(array(NeoToken.SCRIPT_HASH, "balanceOf",
-                                array(new Hash160(defaultAccountScriptHash())))),
+                        array(array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
+                                CallFlags.ALL.getValue())),
                         string("default_proposal"),
                         integer(-1)).signers(AccountSigner.calledByEntry(alice))
                 .callInvokeScript().getInvocationResult();
@@ -621,7 +623,7 @@ public class GrantSharesGovTest {
     @Order(0)
     public void get_proposals() throws Throwable {
         ContractParameter intents = array(array(NeoToken.SCRIPT_HASH, "balanceOf",
-                array(new Hash160(defaultAccountScriptHash()))));
+                array(new Hash160(defaultAccountScriptHash())), CallFlags.ALL.getValue()));
         TestHelper.createAndEndorseProposal(gov, neow3j, bob, alice, intents, "some_proposal");
 
         ProposalPaginatedStruct page = gov.getProposals(0, 1);
@@ -819,8 +821,12 @@ public class GrantSharesGovTest {
         ContractParameter data = string("some data");
 
         ContractParameter intents = array(
-                array(gov.getScriptHash(), UPDATE_CONTRACT,
-                        array(nef.toArray(), manifestBytes, data)));
+                array(
+                        gov.getScriptHash(),
+                        UPDATE_CONTRACT,
+                        array(nef.toArray(), manifestBytes, data),
+                        CallFlags.ALL.getValue()
+                ));
         String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal
