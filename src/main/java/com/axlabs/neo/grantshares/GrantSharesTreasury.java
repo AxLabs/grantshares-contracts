@@ -48,6 +48,7 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @ManifestExtra(key = "Description", value = "The treasury of the GrantShares DAO")
 @ManifestExtra(key = "Website", value = "https://grantshares.io")
 @ContractSourceCode("TODO: Set this to the URL of the release branch before deploying.")
+@DisplayName("GrantSharesTreasury")
 public class GrantSharesTreasury {
 
     static final String OWNER_KEY = "owner";
@@ -81,6 +82,8 @@ public class GrantSharesTreasury {
     static Event1Arg<Hash160> drainingFailed;
     @DisplayName("UpdatingContract")
     static Event updating;
+    @DisplayName("TokensReceived")
+    static Event3Args<Hash160, Integer, Hash160> tokensReceived;
 
     /**
      * Initialises this contract on deployment.
@@ -164,6 +167,7 @@ public class GrantSharesTreasury {
             return;
         }
         assert funders.get(sender.toByteString()) != null;
+        tokensReceived.fire(sender, amount, Runtime.getCallingScriptHash());
     }
 
     /**
