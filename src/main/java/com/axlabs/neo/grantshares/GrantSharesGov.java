@@ -402,7 +402,8 @@ public class GrantSharesGov {
                     intent.targetContract == Hash160.zero() ||
                     intent.method == null ||
                     intent.method == "" ||
-                    intent.callFlags == 0) {
+                    !Helper.within(intent.callFlags, 1, 256)
+            ) {
                 return false;
             }
         }
