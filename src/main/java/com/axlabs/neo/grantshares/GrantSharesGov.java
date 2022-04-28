@@ -5,6 +5,7 @@ import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
+import io.neow3j.devpack.Helper;
 import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.Iterator.Struct;
 import io.neow3j.devpack.List;
@@ -22,7 +23,6 @@ import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.constants.CallFlags;
 import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
-import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event;
 import io.neow3j.devpack.events.Event1Arg;
 import io.neow3j.devpack.events.Event2Args;
@@ -31,9 +31,9 @@ import io.neow3j.devpack.events.Event4Args;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
+import static io.neow3j.devpack.Runtime.getTime;
 import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
-import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
 
@@ -43,6 +43,7 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 @ManifestExtra(key = "Description", value = "The governing contract of the GrantShares DAO")
 @ManifestExtra(key = "Website", value = "https://grantshares.io")
 @ContractSourceCode("TODO: Set this to the URL of the release branch before deploying.")
+@DisplayName("GrantSharesGov")
 @SuppressWarnings("unchecked")
 public class GrantSharesGov {
 
@@ -383,8 +384,7 @@ public class GrantSharesGov {
             throw new Exception(("[GrantSharesGov.createProposal] Invalid intents"));
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
-        // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
-        int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + currentIndex() + 1;
+        int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
         proposals.put(id, serialize(new Proposal(id, expiration)));
         proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
                 quorum, intents, offchainUri)));
@@ -434,15 +434,13 @@ public class GrantSharesGov {
         if (proposalBytes == null)
             throw new Exception("[GrantSharesGov.endorseProposal] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        if (proposal.expiration <= currentIndex())
+        if (proposal.expiration <= getTime())
             throw new Exception("[GrantSharesGov.endorseProposal] Proposal expired");
         if (proposal.endorser != null)
             throw new Exception("[GrantSharesGov.endorseProposal] Proposal already endorsed");
 
         proposal.endorser = endorser;
-        // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
-        proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
+        proposal.reviewEnd = getTime() + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
@@ -469,8 +467,7 @@ public class GrantSharesGov {
         if (proposalBytes == null)
             throw new Exception("[GrantSharesGov.vote] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        int time = currentIndex();
+        int time = getTime();
         if (proposal.endorser == null || time < proposal.reviewEnd || time >= proposal.votingEnd)
             throw new Exception("[GrantSharesGov.vote] Proposal not active");
         ProposalVotes pv = (ProposalVotes) deserialize(proposalVotes.get(id));
@@ -504,13 +501,11 @@ public class GrantSharesGov {
         if (proposalBytes == null)
             throw new Exception("[GrantSharesGov.execute] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        if (proposal.endorser == null || currentIndex() < proposal.timeLockEnd)
+        if (proposal.endorser == null || getTime() < proposal.timeLockEnd)
             throw new Exception("[GrantSharesGov.execute] Proposal not in execution phase");
         if (proposal.executed)
             throw new Exception("[GrantSharesGov.execute] Proposal already executed");
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        if (proposal.expiration <= currentIndex())
+        if (proposal.expiration <= getTime())
             throw new Exception("[GrantSharesGov.execute] Proposal expired");
         ProposalData data = (ProposalData) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));

@@ -105,7 +105,7 @@ public class ProposalExecutionsTest {
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
         int id = neow3j.getApplicationLog(tx).send().getApplicationLog().getExecutions().get(0)
                 .getStack().get(0).getInteger().intValue();
 
@@ -125,7 +125,7 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
         String exception = contract.execute(id).signers(AccountSigner.calledByEntry(bob)).callInvokeScript()
@@ -141,13 +141,13 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
         voteForProposal(contract, neow3j, id, eve);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute the first time
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
@@ -177,13 +177,13 @@ public class ProposalExecutionsTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
         voteForProposal(contract, neow3j, id, eve);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(alice)
                         .setAllowedContracts(GasToken.SCRIPT_HASH))
@@ -220,7 +220,7 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, -1, alice);
@@ -228,7 +228,7 @@ public class ProposalExecutionsTest {
         voteForProposal(contract, neow3j, id, 0, denise);
         voteForProposal(contract, neow3j, id, 0, florian);
         voteForProposal(contract, neow3j, id, 0, eve);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
         String exception = contract.invokeFunction(EXECUTE, integer(id))
@@ -246,12 +246,12 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, 1, alice);
         voteForProposal(contract, neow3j, id, 1, charlie);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
         String exception = contract.invokeFunction(EXECUTE, integer(id))
@@ -269,13 +269,13 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri, 50, 75);
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, 1, alice);
         voteForProposal(contract, neow3j, id, 1, charlie);
         voteForProposal(contract, neow3j, id, 1, eve);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
         String exception = contract.invokeFunction(EXECUTE, integer(id))
@@ -293,7 +293,7 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri, 60, 75);
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, 1, alice);
@@ -301,7 +301,7 @@ public class ProposalExecutionsTest {
         voteForProposal(contract, neow3j, id, -1, eve);
         voteForProposal(contract, neow3j, id, -1, denise);
         voteForProposal(contract, neow3j, id, 0, florian);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
         String exception = contract.execute(id).signers(AccountSigner.calledByEntry(bob)).callInvokeScript()
@@ -318,7 +318,7 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till voting phase.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri, 60, 75);
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 2. Vote such that the proposal is accepted.
         voteForProposal(contract, neow3j, id, 1, alice);
@@ -326,7 +326,7 @@ public class ProposalExecutionsTest {
         voteForProposal(contract, neow3j, id, -1, eve);
         voteForProposal(contract, neow3j, id, 0, denise);
         voteForProposal(contract, neow3j, id, 0, florian);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
         assertThat(contract.invokeFunction(EXECUTE, integer(id))
@@ -342,12 +342,12 @@ public class ProposalExecutionsTest {
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, discUrl);
-        ext.fastForward(PHASE_LENGTH); // skip review phase
+        ext.fastForwardOneBlock(PHASE_LENGTH); // skip review phase
         voteForProposal(contract, neow3j, id, 1, alice);
         voteForProposal(contract, neow3j, id, 1, charlie);
         voteForProposal(contract, neow3j, id, 1, denise);
 
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH); // skip voting, time lock, expiration phase
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH); // skip voting, time lock, expiration phase
 
         // 2. Call execute
         String exception = contract.execute(id).signers(AccountSigner.calledByEntry(bob))

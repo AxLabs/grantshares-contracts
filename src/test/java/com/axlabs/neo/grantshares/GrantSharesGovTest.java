@@ -165,8 +165,9 @@ public class GrantSharesGovTest {
         ProposalStruct p = new ProposalStruct(r.getInvocationResult().getStack().get(0).getList());
         assertThat(p.id, is(id));
         assertThat(p.proposer, is(alice.getScriptHash()));
-        int n = neow3j.getTransactionHeight(proposalCreationTx).send().getHeight().intValue();
-        assertThat(p.expiration.intValue(), is(n + PHASE_LENGTH));
+        BigInteger n = neow3j.getTransactionHeight(proposalCreationTx).send().getHeight();
+        long time = neow3j.getBlock(n, false).send().getBlock().getTime();
+        assertThat(p.expiration.longValue(), is(time + PHASE_LENGTH * 1000));
         assertThat(p.linkedProposal, is(-1));
         assertThat(p.acceptanceRate, is(MIN_ACCEPTANCE_RATE));
         assertThat(p.quorum, is(MIN_QUORUM));
@@ -275,11 +276,13 @@ public class GrantSharesGovTest {
         // 4. Test the right setup of the proposal phases
         p = gov.getProposal(id);
         assertThat(p.endorser, is(alice.getScriptHash()));
-        int n = neow3j.getTransactionHeight(endorseTx).send().getHeight().intValue();
-        assertThat(p.reviewEnd.intValue(), is(n + PHASE_LENGTH));
-        assertThat(p.votingEnd.intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH));
-        assertThat(p.timelockEnd.intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH));
-        assertThat(p.expiration.intValue(), is(n + PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH));
+        BigInteger n = neow3j.getTransactionHeight(endorseTx).send().getHeight();
+        long time = neow3j.getBlock(n, false).send().getBlock().getTime();
+        long phase = PHASE_LENGTH * 1000;
+        assertThat(p.reviewEnd.longValue(), is(time + phase));
+        assertThat(p.votingEnd.longValue(), is(time + 2 * phase));
+        assertThat(p.timelockEnd.longValue(), is(time + 3 * phase));
+        assertThat(p.expiration.longValue(), is(time + 4 * phase));
 
         // 5. Test the right setup of the votes map
         p = gov.getProposal(id);
@@ -356,7 +359,7 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
         int id = neow3j.getApplicationLog(creationTx).send()
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getInteger().intValue();
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         InvocationResult res = gov.endorseProposal(id, alice.getScriptHash())
                 .signers(AccountSigner.calledByEntry(alice)).callInvokeScript().getInvocationResult();
         assertThat(res.getState(), is(NeoVMStateType.FAULT));
@@ -380,7 +383,7 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Wait till review phase ends.
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 4. Vote
         Hash256 voteTx = gov.invokeFunction(VOTE, integer(id), integer(-1),
@@ -430,7 +433,7 @@ public class GrantSharesGovTest {
         assertThat(exception, containsString("Proposal not active"));
 
         // 5. Fast-forward till after the voting phase.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 4. Vote in queued or later phase
         exception = gov.invokeFunction(VOTE, integer(id), integer(-1),
@@ -456,7 +459,7 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Fast-forward to the voting phase.
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
 
         // 4. Vote the first time
         Hash256 voteTx = gov.invokeFunction(VOTE, integer(id), integer(-1),
@@ -833,12 +836,12 @@ public class GrantSharesGovTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
         voteForProposal(gov, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();

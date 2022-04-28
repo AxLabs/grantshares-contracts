@@ -98,9 +98,9 @@ public class GovernanceStorageMigrationTest {
         ContractParameter i = array(hash160(gov.getScriptHash()), string("updateContract"),
             array(byteArray(res.getNefFile().toArray()), string(manifestString), any(null)));
         int id = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, array(i), "updateContract");
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         TestHelper.voteForProposal(gov, neow3j, id, alice);
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = gov.execute(id).signers(AccountSigner.none(bob)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 

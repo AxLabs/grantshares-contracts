@@ -66,7 +66,7 @@ public class TestHelper {
     public static final String PARAMETER_CHANGED = "ParameterChanged";
 
     // governance parameters values
-    public static final int PHASE_LENGTH = 10; // blocks instead of time for testing
+    public static final int PHASE_LENGTH = 60; // seconds
     public static final int MIN_ACCEPTANCE_RATE = 50;
     public static final int MIN_QUORUM = 50;
     public static final int MULTI_SIG_THRESHOLD_RATIO = 50;
@@ -96,10 +96,10 @@ public class TestHelper {
                         .map(m -> publicKey(m.getECKeyPair().getPublicKey().getEncoded(true)))
                         .collect(Collectors.toList())),
                 array(
-                        REVIEW_LENGTH_KEY, PHASE_LENGTH,
-                        VOTING_LENGTH_KEY, PHASE_LENGTH,
-                        TIMELOCK_LENGTH_KEY, PHASE_LENGTH,
-                        EXPIRATION_LENGTH_KEY, PHASE_LENGTH,
+                        REVIEW_LENGTH_KEY, PHASE_LENGTH * 1000,
+                        VOTING_LENGTH_KEY, PHASE_LENGTH * 1000,
+                        TIMELOCK_LENGTH_KEY, PHASE_LENGTH * 1000,
+                        EXPIRATION_LENGTH_KEY, PHASE_LENGTH * 1000,
                         MIN_ACCEPTANCE_RATE_KEY, MIN_ACCEPTANCE_RATE,
                         MIN_QUORUM_KEY, MIN_QUORUM,
                         MULTI_SIG_THRESHOLD_KEY, MULTI_SIG_THRESHOLD_RATIO

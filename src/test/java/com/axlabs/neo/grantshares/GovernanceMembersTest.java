@@ -117,12 +117,12 @@ public class GovernanceMembersTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -160,11 +160,11 @@ public class GovernanceMembersTest {
         // 1. Create and endorse proposal
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Already a member"));
@@ -184,11 +184,11 @@ public class GovernanceMembersTest {
         // 1. Create and endorse proposal
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Incorrect length"));
@@ -221,12 +221,12 @@ public class GovernanceMembersTest {
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -262,11 +262,11 @@ public class GovernanceMembersTest {
         // 1. Create and endorse proposal
         int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(contract, neow3j, id, alice);
         voteForProposal(contract, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         String exception = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Not a member"));

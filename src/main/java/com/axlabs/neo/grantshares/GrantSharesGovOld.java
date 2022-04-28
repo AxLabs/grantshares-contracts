@@ -30,6 +30,7 @@ import io.neow3j.devpack.events.Event4Args;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
+import static io.neow3j.devpack.Runtime.getTime;
 import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
@@ -364,8 +365,7 @@ public class GrantSharesGovOld {
             throw new Exception("[GrantSharesGov.createProposal] Calls to ContractManagement not allowed");
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
-        // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
-        int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + currentIndex() + 1;
+        int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
         proposals.put(id, serialize(new Proposal(id, expiration)));
         proposalData.put(id, serialize(new ProposalDataOld(proposer, linkedProposal, acceptanceRate, quorum, intents,
                 offchainUri)));
@@ -401,15 +401,13 @@ public class GrantSharesGovOld {
         if (proposalBytes == null)
             throw new Exception("[GrantSharesGov.endorseProposal] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        if (proposal.expiration <= currentIndex())
+        if (proposal.expiration <= getTime())
             throw new Exception("[GrantSharesGov.endorseProposal] Proposal expired");
         if (proposal.endorser != null)
             throw new Exception("[GrantSharesGov.endorseProposal] Proposal already endorsed");
 
         proposal.endorser = endorser;
-        // TODO: For deployment replace `currentIndex() + 1` with `getTime()`.
-        proposal.reviewEnd = currentIndex() + 1 + parameters.getInt(REVIEW_LENGTH_KEY);
+        proposal.reviewEnd = getTime() + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
@@ -436,8 +434,7 @@ public class GrantSharesGovOld {
         if (proposalBytes == null)
             throw new Exception("[GrantSharesGov.vote] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        int time = currentIndex();
+        int time = getTime();
         if (proposal.endorser == null || time < proposal.reviewEnd || time >= proposal.votingEnd)
             throw new Exception("[GrantSharesGov.vote] Proposal not active");
         ProposalVotes pv = (ProposalVotes) deserialize(proposalVotes.get(id));
@@ -471,13 +468,11 @@ public class GrantSharesGovOld {
         if (proposalBytes == null)
             throw new Exception("[GrantSharesGov.execute] Proposal doesn't exist");
         Proposal proposal = (Proposal) deserialize(proposalBytes);
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        if (proposal.endorser == null || currentIndex() < proposal.timeLockEnd)
+        if (proposal.endorser == null || getTime() < proposal.timeLockEnd)
             throw new Exception("[GrantSharesGov.execute] Proposal not in execution phase");
         if (proposal.executed)
             throw new Exception("[GrantSharesGov.execute] Proposal already executed");
-        // TODO: For deployment replace `currentIndex()` with `getTime()`.
-        if (proposal.expiration <= currentIndex())
+        if (proposal.expiration <= getTime())
             throw new Exception("[GrantSharesGov.execute] Proposal expired");
         ProposalDataOld data = (ProposalDataOld) deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));

@@ -84,16 +84,16 @@ public class GovernanceParametersTest {
 
     @Test
     public void get_parameter() throws IOException {
-        assertThat(gov.getParameter(REVIEW_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH));
+        assertThat(gov.getParameter(REVIEW_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH * 1000));
     }
 
     @Test
     public void get_parameters() throws IOException {
         Map<String, BigInteger> params = gov.getParameters();
-        assertThat(params.get(REVIEW_LENGTH_KEY).intValue(), is(PHASE_LENGTH));
-        assertThat(params.get(VOTING_LENGTH_KEY).intValue(), is(PHASE_LENGTH));
-        assertThat(params.get(TIMELOCK_LENGTH_KEY).intValue(), is(PHASE_LENGTH));
-        assertThat(params.get(EXPIRATION_LENGTH_KEY).intValue(), is(PHASE_LENGTH));
+        assertThat(params.get(REVIEW_LENGTH_KEY).intValue(), is(PHASE_LENGTH * 1000));
+        assertThat(params.get(VOTING_LENGTH_KEY).intValue(), is(PHASE_LENGTH * 1000));
+        assertThat(params.get(TIMELOCK_LENGTH_KEY).intValue(), is(PHASE_LENGTH * 1000));
+        assertThat(params.get(EXPIRATION_LENGTH_KEY).intValue(), is(PHASE_LENGTH * 1000));
         assertThat(params.get(MIN_ACCEPTANCE_RATE_KEY).intValue(), is(MIN_ACCEPTANCE_RATE));
         assertThat(params.get(MIN_QUORUM_KEY).intValue(), is(MIN_QUORUM));
         assertThat(params.get(MULTI_SIG_THRESHOLD_KEY).intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
@@ -110,11 +110,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -154,11 +154,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         String exception = gov.execute(id).signers(AccountSigner.calledByEntry(bob)).callInvokeScript()
                 .getInvocationResult().getException();
@@ -172,16 +172,16 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
         assertThat(e, containsString("Invalid parameter value"));
-        assertThat(gov.getParameter(VOTING_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH));
+        assertThat(gov.getParameter(VOTING_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH * 1000));
     }
 
     @Test
@@ -191,11 +191,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
@@ -210,11 +210,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
@@ -229,11 +229,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();
@@ -248,11 +248,11 @@ public class GovernanceParametersTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, alice, array(i), uri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, alice);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         String e = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
                 .callInvokeScript().getInvocationResult().getException();

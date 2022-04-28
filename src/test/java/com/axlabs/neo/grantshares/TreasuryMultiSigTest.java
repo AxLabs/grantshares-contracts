@@ -150,11 +150,11 @@ public class TreasuryMultiSigTest {
         int id = createAndEndorseProposal(gov, neow3j, bob, charlie, array(intent), offchainUri);
 
         // 2. Skip to voting phase and vote
-        ext.fastForward(PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
         voteForProposal(gov, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
-        ext.fastForward(PHASE_LENGTH + PHASE_LENGTH);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = gov.execute(id)
                 .signers(AccountSigner.calledByEntry(charlie))
                 .sign().send().getSendRawTransaction().getHash();
