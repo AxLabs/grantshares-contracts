@@ -33,8 +33,8 @@ public class Config {
         return props.getProperty(name);
     }
 
-    public static int getIntProperty(String name) {
-        return Integer.valueOf(getProperty(name));
+    public static long getIntProperty(String name) {
+        return Long.valueOf(getProperty(name));
     }
 
     public static Neow3j getNeow3j() {

@@ -70,7 +70,7 @@ public class DeployConfig {
      * And the token maximum for NEO and GAS in the properties "neo_token_max" and "gas_token_max".
      */
     static ContractParameter getTreasuryDeployConfig(Hash160 grantSharesGovHash) {
-        Map<Hash160, Integer> tokens = new HashMap<>();
+        Map<Hash160, Long> tokens = new HashMap<>();
         tokens.put(new Hash160(Config.getProperty("neo_token")), Config.getIntProperty("neo_token_max"));
         tokens.put(new Hash160(Config.getProperty("gas_token")), Config.getIntProperty("gas_token_max"));
 

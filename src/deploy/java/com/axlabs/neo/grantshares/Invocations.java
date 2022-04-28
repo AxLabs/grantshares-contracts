@@ -23,17 +23,36 @@ import static com.axlabs.neo.grantshares.Config.getNeow3j;
 public class Invocations {
 
     static {
-        Config.setProfile("dev");
+        Config.setProfile("test");
     }
 
     public static void main(String[] args) throws Throwable {
         GrantSharesGovContract gov = new GrantSharesGovContract(getGrantSharesGovHash(), getNeow3j());
         GrantSharesTreasuryContract tre = new GrantSharesTreasuryContract(getGrantSharesTreasuryHash(), getNeow3j());
-        Account acc = Account.fromWIF("");
-        IntentParam intent = IntentParam.releaseTokenProposal(tre.getScriptHash(), NeoToken.SCRIPT_HASH,
-                acc.getScriptHash(), BigInteger.TEN);
+        Account a = Config.getDeployAccount();
+
+        Hash256 txHash = gov.execute(0).signers(AccountSigner.calledByEntry(a)).sign().send()
+                .getSendRawTransaction().getHash();
+//        gov.printProposalTimes(0);
+    }
+
+    private static void vote(GrantSharesGovContract gov, Account a) throws Throwable {
+        Hash256 txHash = gov.vote(0, 1, a.getScriptHash()).signers(AccountSigner.calledByEntry(a)).sign().send()
+                .getSendRawTransaction().getHash();
+        System.out.println(txHash);
+    }
+
+    private static void endorseProposal(GrantSharesGovContract gov, Account a) throws Throwable {
+        Hash256 txHash = gov.endorseProposal(0, a.getScriptHash()).signers(AccountSigner.calledByEntry(a)).sign().send()
+                .getSendRawTransaction().getHash();
+        System.out.println(txHash.toString());
+    }
+
+    static void createProposal(GrantSharesTreasuryContract treasury, GrantSharesGovContract gov, Account a) throws Throwable {
+        IntentParam intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), NeoToken.SCRIPT_HASH,
+                a.getScriptHash(), BigInteger.ONE);
         NeoApplicationLog.Execution exec = signSendAwait(
-                gov.createProposal(acc.getScriptHash(), "discussionUrl", -1, intent), acc);
+                gov.createProposal(a.getScriptHash(), "https://github.com/axlabs/grantshares/issues/x", -1, intent), a);
     }
 
     static NeoApplicationLog.Execution signSendAwait(TransactionBuilder b, Account signer) throws Throwable {

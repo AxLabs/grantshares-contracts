@@ -17,7 +17,7 @@ import static com.axlabs.neo.grantshares.Config.getNeow3j;
 
 public class Deployment {
 
-    public static final String PROFILE = "dev";
+    public static final String PROFILE = "test";
 
     public static void main(String[] args) throws Throwable {
         Config.setProfile(PROFILE);
