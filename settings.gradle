@@ -14,4 +14,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'grantshares-gov'
+rootProject.name = 'grantshares-contracts'
