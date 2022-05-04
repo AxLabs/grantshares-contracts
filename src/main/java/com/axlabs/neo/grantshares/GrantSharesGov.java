@@ -506,7 +506,7 @@ public class GrantSharesGov {
         proposals.put(id, serialize(proposal));
         for (int i = 0; i < data.intents.length; i++) {
             Intent t = data.intents[i];
-            returnVals[i] = Contract.call(t.targetContract, t.method, CallFlags.All, t.params);
+            returnVals[i] = Contract.call(t.targetContract, t.method, t.callFlags, t.params);
         }
         executed.fire(id);
         return returnVals;
