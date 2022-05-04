@@ -66,6 +66,7 @@ public class GovernanceStorageMigrationTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
+        neow3j.allowTransmissionOnFault();
         gov = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGovOld.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);

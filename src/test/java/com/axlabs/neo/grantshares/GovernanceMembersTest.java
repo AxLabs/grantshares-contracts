@@ -1,7 +1,6 @@
 package com.axlabs.neo.grantshares;
 
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
-import io.neow3j.contract.SmartContract;
 import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
@@ -33,23 +32,20 @@ import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.util.TestHelper.CALC_MEMBER_MULTI_SIG_ACC;
 import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
 import static com.axlabs.neo.grantshares.util.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
 import static com.axlabs.neo.grantshares.util.TestHelper.GET_MEMBERS;
-import static com.axlabs.neo.grantshares.util.TestHelper.GET_MEMBERS_COUNT;
 import static com.axlabs.neo.grantshares.util.TestHelper.MEMBER_ADDED;
 import static com.axlabs.neo.grantshares.util.TestHelper.MEMBER_REMOVED;
 import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
 import static com.axlabs.neo.grantshares.util.TestHelper.REMOVE_MEMBER;
+import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.hash160;
-import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.publicKey;
-import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -66,7 +62,7 @@ public class GovernanceMembersTest {
     static ContractTestExtension ext = new ContractTestExtension();
 
     static Neow3j neow3j;
-    static GrantSharesGovContract contract;
+    static GrantSharesGovContract gov;
     static Account alice; // Set to be a DAO member.
     static Account bob;
     static Account charlie; // Set to be a DAO member.
@@ -83,7 +79,8 @@ public class GovernanceMembersTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        contract = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
+        neow3j.allowTransmissionOnFault();
+        gov = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
         charlie = ext.getAccount(CHARLIE);
@@ -92,38 +89,36 @@ public class GovernanceMembersTest {
 
     //region ADD MEMBER
     @Test
-    public void fail_calling_add_member_directly() throws IOException {
-        String exception = contract.callInvokeFunction(ADD_MEMBER,
-                asList(hash160(bob)),
-                AccountSigner.calledByEntry(alice)).getInvocationResult().getException();
-
-        assertThat(exception, containsString("Method only callable by the contract itself"));
+    public void fail_calling_add_member_directly() throws Throwable {
+        Hash256 tx = gov.invokeFunction(ADD_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Method only callable by the contract itself", neow3j);
     }
 
     @Order(1) // Is executed before the execute_remove_member test which removes bob from members.
     @Test
     public void execute_add_member() throws Throwable {
-        assertThat(contract.getMembersCount(), is(3));
-        List<ECKeyPair.ECPublicKey> initMembers = contract.getMembers();
+        assertThat(gov.getMembersCount(), is(3));
+        List<ECKeyPair.ECPublicKey> initMembers = gov.getMembers();
 
         ContractParameter intents = array(array(
-                contract.getScriptHash(),
+                gov.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))),
                 CallFlags.ALL.getValue()));
         String offchainUri = "execute_add_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForwardOneBlock(PHASE_LENGTH);
-        voteForProposal(contract, neow3j, id, alice);
-        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(gov, neow3j, id, alice);
+        voteForProposal(gov, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
@@ -137,7 +132,7 @@ public class GovernanceMembersTest {
                 is(bob.getAddress()));
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
-        List<ECKeyPair.ECPublicKey> newMembers = contract.getMembers();
+        List<ECKeyPair.ECPublicKey> newMembers = gov.getMembers();
         assertThat(newMembers.size(), is(initMembers.size() + 1));
         assertThat(newMembers, containsInAnyOrder(
                 bob.getECKeyPair().getPublicKey(),
@@ -145,29 +140,29 @@ public class GovernanceMembersTest {
                 alice.getECKeyPair().getPublicKey(),
                 denise.getECKeyPair().getPublicKey()));
 
-        assertThat(contract.getMembersCount(), is(4));
+        assertThat(gov.getMembersCount(), is(4));
     }
 
     @Test
     public void fail_execute_add_member_with_already_member() throws Throwable {
         ContractParameter intents = array(array(
-                contract.getScriptHash(),
+                gov.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(alice.getECKeyPair().getPublicKey().getEncoded(true))),
                 CallFlags.ALL.getValue()));
         String offchainUri = "fail_execute_add_member_with_already_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
         // 2. Skip to voting phase and vote
         ext.fastForwardOneBlock(PHASE_LENGTH);
-        voteForProposal(contract, neow3j, id, alice);
-        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(gov, neow3j, id, alice);
+        voteForProposal(gov, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Already a member"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Already a member", neow3j);
     }
 
     @Test
@@ -175,21 +170,21 @@ public class GovernanceMembersTest {
         // first byte is '04' instead of '03'
         String invalidPubKey = "043a4d051b04b7fc0230d2b1aaedfd5a84be279a5361a7358db665ad7857787f1b";
         ContractParameter intents = array(array(
-                contract.getScriptHash(),
+                gov.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(invalidPubKey)),
                 CallFlags.ALL.getValue()));
         String offchainUri = "fail_execute_add_member_with_invalid_public_key";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
         // 2. Skip to voting phase and vote
         ext.fastForwardOneBlock(PHASE_LENGTH);
-        voteForProposal(contract, neow3j, id, alice);
-        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(gov, neow3j, id, alice);
+        voteForProposal(gov, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
+        String exception = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
                 .getInvocationResult().getException();
         assertThat(exception, containsString("Incorrect length"));
     }
@@ -197,37 +192,35 @@ public class GovernanceMembersTest {
 
     //region REMOVE MEMBER
     @Test
-    public void fail_calling_remove_member_directly() throws IOException {
-        String exception = contract.callInvokeFunction(REMOVE_MEMBER,
-                asList(hash160(bob)),
-                AccountSigner.calledByEntry(alice)).getInvocationResult().getException();
-
-        assertThat(exception, containsString("Method only callable by the contract itself"));
+    public void fail_calling_remove_member_directly() throws Throwable {
+        Hash256 tx = gov.invokeFunction(REMOVE_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Method only callable by the contract itself", neow3j);
     }
 
     @Order(2) // Is executed right after the execute_add_member test to remove bob from members
     @Test
     public void execute_remove_member() throws Throwable {
-        List<ECKeyPair.ECPublicKey> initMembers = contract.getMembers();
+        List<ECKeyPair.ECPublicKey> initMembers = gov.getMembers();
 
         ContractParameter intents = array(array(
-                contract.getScriptHash(),
+                gov.getScriptHash(),
                 REMOVE_MEMBER,
                 array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))),
                 CallFlags.ALL.getValue()));
         String offchainUri = "execute_remove_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
 
         // 2. Skip to voting phase and vote
         ext.fastForwardOneBlock(PHASE_LENGTH);
-        voteForProposal(contract, neow3j, id, alice);
-        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(gov, neow3j, id, alice);
+        voteForProposal(gov, neow3j, id, charlie);
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send()
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
@@ -241,7 +234,7 @@ public class GovernanceMembersTest {
                 is(bob.getAddress()));
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
-        List<ECKeyPair.ECPublicKey> newMembers = contract.getMembers();
+        List<ECKeyPair.ECPublicKey> newMembers = gov.getMembers();
         assertThat(newMembers.size(), is(initMembers.size() - 1));
         assertThat(newMembers, containsInAnyOrder(
                 charlie.getECKeyPair().getPublicKey(),
@@ -253,30 +246,30 @@ public class GovernanceMembersTest {
     public void fail_execute_remove_member_with_non_member() throws Throwable {
         Account acc = Account.create();
         ContractParameter intents = array(array(
-                contract.getScriptHash(),
+                gov.getScriptHash(),
                 REMOVE_MEMBER,
                 array(publicKey(acc.getECKeyPair().getPublicKey().getEncoded(true))),
                 CallFlags.ALL.getValue()));
         String offchainUri = "fail_execute_remove_member_with_non_member";
 
         // 1. Create and endorse proposal
-        int id = createAndEndorseProposal(contract, neow3j, bob, alice, intents, offchainUri);
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
         // 2. Skip to voting phase and vote
         ext.fastForwardOneBlock(PHASE_LENGTH);
-        voteForProposal(contract, neow3j, id, alice);
-        voteForProposal(contract, neow3j, id, charlie);
+        voteForProposal(gov, neow3j, id, alice);
+        voteForProposal(gov, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = contract.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Not a member"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(charlie))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not a member", neow3j);
     }
 
     //endregion REMOVE MEMBER
 
     @Test
     public void get_members() throws IOException {
-        List<byte[]> members = contract.callInvokeFunction(GET_MEMBERS).getInvocationResult()
+        List<byte[]> members = gov.callInvokeFunction(GET_MEMBERS).getInvocationResult()
                 .getStack().get(0).getList().stream()
                 .map(StackItem::getByteArray).collect(Collectors.toList());
         assertThat(members, contains(
@@ -288,7 +281,7 @@ public class GovernanceMembersTest {
     @Test
     public void calc_members_multisig_account() throws IOException {
         Account membersAccount = createMultiSigAccount(2, alice, charlie, denise);
-        assertThat(contract.callInvokeFunction(CALC_MEMBER_MULTI_SIG_ACC).getInvocationResult()
+        assertThat(gov.callInvokeFunction(CALC_MEMBER_MULTI_SIG_ACC).getInvocationResult()
                 .getStack().get(0).getAddress(), is(membersAccount.getAddress()));
     }
 

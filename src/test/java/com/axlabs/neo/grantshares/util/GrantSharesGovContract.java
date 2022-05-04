@@ -156,8 +156,12 @@ public class GrantSharesGovContract extends SmartContract {
         return Account.createMultiSigAccount(members, threshold);
     }
 
-    public TransactionBuilder updateContract(byte[] nef, String manifest, Object data) {
-        return invokeFunction(getMethodName(), byteArray(nef), string(manifest), any(data));
+    public TransactionBuilder updateContract(byte[] nef, String manifest, ContractParameter data) {
+        if (data != null) {
+            return invokeFunction(getMethodName(), byteArray(nef), string(manifest), data);
+        } else {
+            return invokeFunction(getMethodName(), byteArray(nef), string(manifest), any(null));
+        }
     }
 
     private String getMethodName() {

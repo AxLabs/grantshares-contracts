@@ -54,6 +54,7 @@ import static com.axlabs.neo.grantshares.util.TestHelper.PAUSE;
 import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.UNPAUSE;
 import static com.axlabs.neo.grantshares.util.TestHelper.UPDATE_CONTRACT;
+import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
@@ -132,6 +133,7 @@ public class GrantSharesTreasuryTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
+        neow3j.allowTransmissionOnFault();
 
         // contracts
         gov = new GrantSharesGovContract(
@@ -198,34 +200,34 @@ public class GrantSharesTreasuryTest {
 
     @Test
     @Order(0)
-    public void fail_calling_add_whitelisted_token_directly() throws IOException {
-        String exception = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1)
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorised"));
+    public void fail_calling_add_whitelisted_token_directly() throws Throwable {
+        Hash256 tx = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not authorised", neow3j);
     }
 
     @Test
     @Order(0)
-    public void fail_calling_remove_whitelisted_token_directly() throws IOException {
-        String exception = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH)
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorised"));
+    public void fail_calling_remove_whitelisted_token_directly() throws Throwable {
+        Hash256 tx = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not authorised", neow3j);
     }
 
     @Test
     @Order(0)
-    public void fail_calling_add_funder_directly() throws Exception {
-        String exception = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
-                .signers(AccountSigner.calledByEntry(alice)).callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorised"));
+    public void fail_calling_add_funder_directly() throws Throwable {
+        Hash256 tx = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
+                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not authorised", neow3j);
     }
 
     @Test
     @Order(0)
-    public void fail_calling_remove_funder_directly() throws Exception {
-        String exception = treasury.removeFunder(charlie.getScriptHash())
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorised"));
+    public void fail_calling_remove_funder_directly() throws Throwable {
+        Hash256 tx = treasury.removeFunder(charlie.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not authorised", neow3j);
     }
 
     @Test
@@ -252,10 +254,9 @@ public class GrantSharesTreasuryTest {
 
         ContractParameter data = string("update contract");
 
-        String exception =
-                treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
-                        .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorised"));
+        Hash256 tx = treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not authorised", neow3j);
     }
 
     @Test
@@ -275,11 +276,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(bob))
-                .callInvokeScript().getInvocationResult().getException();
-
-        assertThat(exception, containsString("Token not whitelisted"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Token not whitelisted", neow3j);
     }
 
     @Test
@@ -298,18 +297,18 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(AccountSigner.calledByEntry(bob))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Above token's max funding amount"));
+
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Above token's max funding amount", neow3j);
     }
 
     @Test
     @Order(0)
-    public void fail_calling_release_tokens_directly() throws IOException {
-        String exception = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not authorised"));
+    public void fail_calling_release_tokens_directly() throws Throwable {
+        Hash256 tx = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
+                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Not authorised", neow3j);
     }
 
     @Test
@@ -328,10 +327,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Invalid funder hash"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Invalid funder hash", neow3j);
     }
 
     @Test
@@ -349,10 +347,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("List of public keys is empty"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "List of public keys is empty", neow3j);
     }
 
     @Test
@@ -372,10 +369,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Invalid public key"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Invalid public key", neow3j);
     }
 
     @Test
@@ -397,14 +393,12 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id1)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Invalid threshold ratio"));
-        exception = gov.execute(id2)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Invalid threshold ratio"));
+        Hash256 tx = gov.execute(id1).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Invalid threshold ratio", neow3j);
+        tx = gov.execute(id2).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Invalid threshold ratio", neow3j);
     }
 
     @Test
@@ -423,10 +417,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Invalid token hash"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Invalid token hash", neow3j);
     }
 
     @Test
@@ -445,10 +438,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Invalid max funding amount"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Invalid max funding amount", neow3j);
     }
 
     @Test
@@ -533,10 +525,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Already a funder"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Already a funder", neow3j);
     }
 
     @Test
@@ -583,10 +574,9 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        String exception = gov.execute(id)
-                .signers(AccountSigner.calledByEntry(alice))
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Not a funder"));
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
+                .getSendRawTransaction().getHash();
+        assertAborted(tx, "Not a funder", neow3j);
     }
 
     @Test
@@ -770,57 +760,57 @@ public class GrantSharesTreasuryTest {
     @Order(21)
     @Test
     public void fail_add_funder_on_paused_contract() throws Throwable {
-        String exception = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
+                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(22)
     @Test
     public void fail_remove_funder_on_paused_contract() throws Throwable {
-        String exception = treasury.removeFunder(alice.getScriptHash())
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.removeFunder(alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(23)
     @Test
     public void fail_add_whitelisted_token_on_paused_contract() throws Throwable {
-        String exception = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1)
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(24)
     @Test
     public void fail_remove_whitelisted_token_on_paused_contract() throws Throwable {
-        String exception = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH)
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(25)
     @Test
     public void fail_release_tokens_on_paused_contract() throws Throwable {
-        String exception = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
+                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(26)
     @Test
     public void fail_vote_on_committee_member_on_paused_contract() throws Throwable {
-        String exception = treasury.voteCommitteeMemberWithLeastVotes()
-                .callInvokeScript().getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(alice))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(27)
     @Test
     public void fail_update_contract_on_paused_contract() throws Throwable {
-        String exception = gov.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null).callInvokeScript()
-                .getInvocationResult().getException();
-        assertThat(exception, containsString("Contract is paused"));
+        Hash256 tx = treasury.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null)
+                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Contract is paused", neow3j);
     }
 
     @Order(28)

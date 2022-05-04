@@ -5,6 +5,7 @@ import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Contract;
 import io.neow3j.devpack.ECPoint;
 import io.neow3j.devpack.Hash160;
+import io.neow3j.devpack.Helper;
 import io.neow3j.devpack.Iterator;
 import io.neow3j.devpack.Iterator.Struct;
 import io.neow3j.devpack.List;
@@ -84,6 +85,8 @@ public class GrantSharesTreasury {
     static Event updating;
     @DisplayName("TokensReceived")
     static Event3Args<Hash160, Integer, Hash160> tokensReceived;
+    @DisplayName("Error")
+    static Event2Args<String, String> error;
 
     /**
      * Initialises this contract on deployment.
@@ -158,7 +161,7 @@ public class GrantSharesTreasury {
      * @param data   Data sent with the transfer.
      */
     @OnNEP17Payment
-    public static void onNep17Payment(Hash160 sender, int amount, Object data) throws Exception {
+    public static void onNep17Payment(Hash160 sender, int amount, Object data) {
         assert !isPaused();
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null;
         if (sender == null) {
@@ -291,15 +294,14 @@ public class GrantSharesTreasury {
      *
      * @param value The new threshold value.
      */
-    public static void setFundersMultiSigThresholdRatio(Integer value) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
+    public static void setFundersMultiSigThresholdRatio(Integer value) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
         if (value <= 0 || value > 100)
-            throw new Exception("[GrantSharesTreasury.setFundersMultiSigThresholdRatio] Invalid threshold ratio");
+            fireErrorAndAbort("Invalid threshold ratio", "setFundersMultiSigThresholdRatio");
         Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
         thresholdChanged.fire(value);
     }
-
 
     /**
      * Adds the given account as a whitelisted funder to the treasury. Only whitelisted funders can transfer tokens to
@@ -312,18 +314,14 @@ public class GrantSharesTreasury {
      * @param publicKeys  The public key(s) that are part of the account. One, in case of a single-sig account.
      *                    Multiple, in case of a multi-sig account.
      */
-    public static void addFunder(Hash160 accountHash, ECPoint[] publicKeys) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
-        if (funders.get(accountHash.toByteString()) != null)
-            throw new Exception("[GrantSharesTreasury.addFunder] Already a funder");
-        if (!isValid(accountHash) || accountHash == zero())
-            throw new Exception("[GrantSharesTreasury.addFunder] Invalid funder hash");
-        if (publicKeys.length == 0)
-            throw new Exception("[GrantSharesTreasury.addFunder] List of public keys is empty");
+    public static void addFunder(Hash160 accountHash, ECPoint[] publicKeys) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
+        if (funders.get(accountHash.toByteString()) != null) fireErrorAndAbort("Already a funder", "addFunder");
+        if (!isValid(accountHash) || accountHash == zero()) fireErrorAndAbort("Invalid funder hash", "addFunder");
+        if (publicKeys.length == 0) fireErrorAndAbort("List of public keys is empty", "addFunder");
         for (ECPoint key : publicKeys) {
-            if (!ECPoint.isValid(key))
-                throw new Exception("[GrantSharesTreasury.addFunder] Invalid public key");
+            if (!ECPoint.isValid(key)) fireErrorAndAbort("Invalid public key", "addFunder");
         }
         funders.put(accountHash.toByteString(), StdLib.serialize(publicKeys));
         funderAdded.fire(accountHash);
@@ -336,11 +334,10 @@ public class GrantSharesTreasury {
      *
      * @param accountHash The funder account to remove.
      */
-    public static void removeFunder(Hash160 accountHash) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
-        if (funders.get(accountHash.toByteString()) == null)
-            throw new Exception("[GrantSharesTreasury.addFunder] Not a funder");
+    public static void removeFunder(Hash160 accountHash) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
+        if (funders.get(accountHash.toByteString()) == null) fireErrorAndAbort("Not a funder", "removeFunder");
         funders.delete(accountHash.toByteString());
         funderRemoved.fire(accountHash);
     }
@@ -354,13 +351,11 @@ public class GrantSharesTreasury {
      * @param token            The token to add to the whitelist.
      * @param maxFundingAmount The max funding amount for the token.
      */
-    public static void addWhitelistedToken(Hash160 token, int maxFundingAmount) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
-        if (!isValid(token) || token == zero())
-            throw new Exception("[GrantSharesTreasury.addWhitelistedToken] Invalid token hash");
-        if (maxFundingAmount <= 0)
-            throw new Exception("[GrantSharesTreasury.addWhitelistedToken] Invalid max funding amount");
+    public static void addWhitelistedToken(Hash160 token, int maxFundingAmount) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
+        if (!isValid(token) || token == zero()) fireErrorAndAbort("Invalid token hash", "addWhitelistedToken");
+        if (maxFundingAmount <= 0) fireErrorAndAbort("Invalid max funding amount", "addWhitelistedToken");
         whitelistedTokens.put(token.toByteString(), maxFundingAmount);
         whitelistedTokenAdded.fire(token, maxFundingAmount);
     }
@@ -372,11 +367,11 @@ public class GrantSharesTreasury {
      *
      * @param token The token to remove from the whitelist.
      */
-    public static void removeWhitelistedToken(Hash160 token) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
+    public static void removeWhitelistedToken(Hash160 token) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
         if (whitelistedTokens.get(token.toByteString()) == null)
-            throw new Exception("[GrantSharesTreasury.removeWhitelistedToken] Not a whitelisted token");
+            fireErrorAndAbort("Not a whitelisted token", "removeWhitelistedToken");
         whitelistedTokens.delete(token.toByteString());
         whitelistedTokenRemoved.fire(token);
     }
@@ -391,16 +386,13 @@ public class GrantSharesTreasury {
      * @param to            The receiver of the transfer.
      * @param amount        The amount to transfer.
      */
-    public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
+    public static void releaseTokens(Hash160 tokenContract, Hash160 to, int amount) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
         int maxFundingAmount = whitelistedTokens.getIntOrZero(tokenContract.toByteString());
-        if (maxFundingAmount == 0)
-            throw new Exception("[GrantSharesTreasury.releaseTokens] Token not whitelisted");
-        if (amount > maxFundingAmount)
-            throw new Exception("[GrantSharesTreasury.releaseTokens] Above token's max funding amount");
-        Object[] params = new Object[]{
-                Runtime.getExecutingScriptHash(), to, amount, new Object[]{}};
+        if (maxFundingAmount == 0) fireErrorAndAbort("Token not whitelisted", "releaseTokens");
+        if (amount > maxFundingAmount) fireErrorAndAbort("Above token's max funding amount", "releaseTokens");
+        Object[] params = new Object[]{Runtime.getExecutingScriptHash(), to, amount, new Object[]{}};
         boolean success = (boolean) Contract.call(tokenContract, "transfer", CallFlags.All, params);
         if (success) {
             tokensReleased.fire(tokenContract, to, amount);
@@ -415,16 +407,17 @@ public class GrantSharesTreasury {
      * This method can only be called by the funders multi-sig account when the {@link GrantSharesGov} contract is
      * paused.
      */
-    public static void drain() throws Exception {
-        if (!isPaused())
-            throw new Exception("[GrantSharesTreasury.drain] Contract is not paused");
-        Hash160 fundersMultiAddress = calcFundersMultiSigAddress();
-        if (!checkWitness(fundersMultiAddress))
-            throw new Exception("[GrantSharesTreasury.drain] Not authorized");
-
+    public static void drain() {
+        if (!isPaused()) fireErrorAndAbort("Contract is not paused", "drain");
+        Hash160 fundersMultiAddress = null;
+        try {
+            fundersMultiAddress = calcFundersMultiSigAddress();
+        } catch (Exception e) {
+            fireErrorAndAbort(e.getMessage(), "drain");
+        }
+        if (!checkWitness(fundersMultiAddress)) fireErrorAndAbort("Not authorized", "drain");
         Hash160 selfHash = Runtime.getExecutingScriptHash();
         Iterator<ByteString> it = whitelistedTokens.find((byte) (RemovePrefix | KeysOnly));
-
         while (it.next()) {
             Hash160 token = new Hash160(it.get());
             int balance = (int) Contract.call(token, "balanceOf", CallFlags.ReadOnly, new Object[]{selfHash});
@@ -442,15 +435,12 @@ public class GrantSharesTreasury {
 
     /**
      * Places the treasury's vote on the committee member with the least votes.
-     *
-     * @throws Exception if voting was not successful.
      */
-    public static void voteCommitteeMemberWithLeastVotes() throws Exception {
-        throwIfPaused();
+    public static void voteCommitteeMemberWithLeastVotes() {
+        abortIfPaused();
         ECPoint c = getCommitteeMemberWithLeastVotes();
         if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c))
-            throw new Exception("[GrantSharesTreasury.voteCommitteeMemberWithLeastVotes] Failed voting on candidate " +
-                    c.toByteString().toString());
+            fireErrorAndAbort("Failed voting on candidate", "voteCommitteeMemberWithLeastVotes");
         voted.fire(c);
     }
 
@@ -480,21 +470,25 @@ public class GrantSharesTreasury {
      * This method can only be called by the owner. It can be called even if the contract is paused
      * in case the contract needs a fix.
      */
-    public static void updateContract(ByteString nef, String manifest, Object data) throws Exception {
-        throwIfPaused();
-        throwIfCallerIsNotOwner();
+    public static void updateContract(ByteString nef, String manifest, Object data) {
+        abortIfPaused();
+        abortIfCallerIsNotOwner();
         updating.fire();
         ContractManagement.update(nef, manifest, data);
     }
 
-    private static void throwIfCallerIsNotOwner() throws Exception {
+    private static void abortIfCallerIsNotOwner() {
         if (Runtime.getCallingScriptHash().toByteString() != Storage.get(getReadOnlyContext(), OWNER_KEY))
-            throw new Exception("[GrantSharesTreasury] Not authorised");
+            fireErrorAndAbort("Not authorised", "abortIfCallerIsNotOwner");
     }
 
-    private static void throwIfPaused() throws Exception {
-        if (isPaused())
-            throw new Exception("[GrantSharesTreasury] Contract is paused");
+    private static void abortIfPaused() {
+        if (isPaused()) fireErrorAndAbort("Contract is paused", "abortIfCallerIsNotOwner");
+    }
+
+    private static void fireErrorAndAbort(String msg, String method) {
+        error.fire(msg, method);
+        Helper.abort();
     }
 
 }

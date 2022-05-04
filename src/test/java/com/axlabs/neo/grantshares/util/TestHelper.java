@@ -4,15 +4,18 @@ import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.crypto.ECKeyPair;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
+import io.neow3j.types.NeoVMStateType;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 
+import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -25,6 +28,9 @@ import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.types.ContractParameter.string;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.is;
 
 public class TestHelper {
 
@@ -184,5 +190,13 @@ public class TestHelper {
                 .map(a -> a.getECKeyPair().getPublicKey())
                 .collect(Collectors.toList());
         return Account.createMultiSigAccount(pubKeys, threshold);
+    }
+
+    public static void assertAborted(Hash256 tx, String expectedError, Neow3j neow3j) throws IOException {
+        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        NeoApplicationLog.Execution e = neow3j.getApplicationLog(tx).send().getApplicationLog().getExecutions().get(0);
+        assertThat(e.getState(), is(NeoVMStateType.FAULT));
+        String exception = e.getNotifications().get(0).getState().getList().get(0).getString();
+        assertThat(exception, containsString(expectedError));
     }
 }

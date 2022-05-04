@@ -25,8 +25,7 @@ public class Paginator {
         } else {
             pages = (n / itemsPerPage) + 1;
         }
-        if (page >= pages)
-            throw new Exception("[Paginator.calcPagination] Page out of bounds");
+        if (page >= pages) throw new Exception("[Paginator.calcPagination] Page out of bounds");
         int startAt = itemsPerPage * page;
         int endAt = startAt + itemsPerPage;
         if (startAt + itemsPerPage > n) {
