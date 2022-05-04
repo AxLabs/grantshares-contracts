@@ -684,7 +684,7 @@ public class GrantSharesGovTest {
         Hash256 tx = gov.createProposal(alice.getScriptHash(), "fail_create_proposal_calling_contract_management", -1,
                         intent1, intent2).signers(AccountSigner.calledByEntry(alice)).sign().send()
                 .getSendRawTransaction().getHash();
-        assertAborted(tx, "Calls to ContractManagement not allowed", neow3j);
+        assertAborted(tx, "Invalid intents", neow3j);
     }
 
     @Order(11)

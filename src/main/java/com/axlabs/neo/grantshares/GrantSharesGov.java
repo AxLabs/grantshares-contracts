@@ -374,8 +374,6 @@ public class GrantSharesGov {
             fireErrorAndAbort("Invalid quorum", "createProposal");
         if (linkedProposal >= 0 && proposals.get(linkedProposal) == null)
             fireErrorAndAbort("Linked proposal doesn't exist", "createProposal");
-        if (containsCallsToContractManagement(intents))
-            fireErrorAndAbort("Calls to ContractManagement not allowed", "createProposal");
         if (!areIntentsValid(intents)) fireErrorAndAbort("Invalid intents", "createProposal");
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
@@ -395,6 +393,7 @@ public class GrantSharesGov {
         for (Intent intent : intents) {
             if (!Hash160.isValid(intent.targetContract) ||
                     intent.targetContract == Hash160.zero() ||
+                    intent.targetContract == ContractManagement.getHash() ||
                     intent.method == null ||
                     intent.method == "" ||
                     !Helper.within(intent.callFlags, 1, 256)
@@ -403,15 +402,6 @@ public class GrantSharesGov {
             }
         }
         return true;
-    }
-
-    private static boolean containsCallsToContractManagement(Intent[] intents) {
-        for (Intent i : intents) {
-            if (i.targetContract == ContractManagement.getHash()) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
