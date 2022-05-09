@@ -129,7 +129,7 @@ public class GrantSharesGov {
             for (int i = 0; i < params.size(); i += 2) {
                 String paramKey = (String) params.get(i);
                 int value = (int) params.get(i + 1);
-                throwOnInvalidValue(paramKey, value);
+                abortOnInvalidValue(paramKey, value);
                 parameters.put(paramKey, value);
             }
 
@@ -145,6 +145,7 @@ public class GrantSharesGov {
             Storage.put(ctx, PAUSED_KEY, 0);
             Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
         } else {
+            // Migrate Storage
             Iterator<Struct<ByteString, ByteString>> it = proposalData.find(FindOptions.RemovePrefix);
             while (it.next()) {
                 Struct<ByteString, ByteString> item = it.get();
@@ -158,6 +159,15 @@ public class GrantSharesGov {
                         pd.quorum, newIntents.toArray(), pd.offchainUri);
                 proposalData.put(proposalId, serialize(pdn));
                 migrated.fire(proposalId);
+            }
+
+            // Set parameters
+            List<Object> params = (List<Object>) data;
+            for (int i = 0; i < params.size(); i += 2) {
+                String paramKey = (String) params.get(i);
+                int value = (int) params.get(i + 1);
+                abortOnInvalidValue(paramKey, value);
+                parameters.put(paramKey, value);
             }
         }
     }
@@ -516,12 +526,12 @@ public class GrantSharesGov {
     public static void changeParam(String paramKey, int value) {
         abortIfPaused();
         abortIfCallerIsNotSelf();
-        throwOnInvalidValue(paramKey, value);
+        abortOnInvalidValue(paramKey, value);
         parameters.put(paramKey, value);
         paramChanged.fire(paramKey, value);
     }
 
-    private static void throwOnInvalidValue(String paramKey, int value) {
+    private static void abortOnInvalidValue(String paramKey, int value) {
         switch (paramKey) {
             case REVIEW_LENGTH_KEY:
             case VOTING_LENGTH_KEY:

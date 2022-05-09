@@ -42,9 +42,13 @@ public class IntentParam extends ContractParameter {
 
     public static IntentParam updateContractProposal(Hash160 contract, NefFile nef, ContractManifest manifest)
             throws JsonProcessingException {
+        return updateContractProposal(contract, nef, manifest, any(null));
+    }
+
+    public static IntentParam updateContractProposal(Hash160 contract, NefFile nef, ContractManifest manifest,
+            ContractParameter data) throws JsonProcessingException {
         String manifestString = ObjectMapperFactory.getObjectMapper().writeValueAsString(manifest);
-        return new IntentParam(contract, "updateContract",
-                byteArray(nef.toArray()), string(manifestString), any(null));
+        return new IntentParam(contract, "updateContract", byteArray(nef.toArray()), string(manifestString), data);
     }
 
     public static IntentParam addFunderProposal(Hash160 treasury, Hash160 accountHash, ECPublicKey... pubKeys) {

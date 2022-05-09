@@ -4,7 +4,6 @@ import io.neow3j.compiler.CompilationUnit;
 import io.neow3j.compiler.Compiler;
 import io.neow3j.contract.ContractManagement;
 import io.neow3j.contract.SmartContract;
-import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.TransactionBuilder;

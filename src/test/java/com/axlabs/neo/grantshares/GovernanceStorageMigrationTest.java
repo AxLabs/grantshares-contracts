@@ -1,12 +1,12 @@
 package com.axlabs.neo.grantshares;
 
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
+import com.axlabs.neo.grantshares.util.IntentParam;
 import com.axlabs.neo.grantshares.util.ProposalStruct;
 import com.axlabs.neo.grantshares.util.TestHelper;
 import io.neow3j.compiler.CompilationUnit;
 import io.neow3j.compiler.Compiler;
 import io.neow3j.protocol.Neow3j;
-import io.neow3j.protocol.ObjectMapperFactory;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
@@ -29,12 +29,11 @@ import java.util.stream.Collectors;
 import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
 import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
 import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.EXPIRATION_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.VOTING_LENGTH_KEY;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
-import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.publicKey;
@@ -73,7 +72,7 @@ public class GovernanceStorageMigrationTest {
         charlie = ext.getAccount(CHARLIE);
 
         ContractParameter intent1 = array(hash160(gov.getScriptHash()), string("addMember"),
-                        array(publicKey(bob.getECKeyPair().getPublicKey())));
+                array(publicKey(bob.getECKeyPair().getPublicKey())));
         ContractParameter intent2 = array(hash160(gov.getScriptHash()), string("changeParam"),
                 array(VOTING_LENGTH_KEY, 100));
         Hash256 txHash = gov.createProposal(alice.getScriptHash(), "proposal1", -1, intent1, intent2)
@@ -92,12 +91,15 @@ public class GovernanceStorageMigrationTest {
         assertThat(intent.size(), is(2)); // two intents in the first proposal
         // the intents have 3 attributes (no CallFlags yet)
         assertThat(proposal.get(11).getList().get(0).getList().size(), is(3));
+        assertThat(gov.getParameter(EXPIRATION_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH * 1000));
 
         CompilationUnit res = new Compiler().compile(GrantSharesGov.class.getCanonicalName());
+        final int newExpirationLength = 120 * 1000; // milliseconds
+        ContractParameter i = IntentParam.updateContractProposal(gov.getScriptHash(),
+                res.getNefFile(),
+                res.getManifest(),
+                array(EXPIRATION_LENGTH_KEY, newExpirationLength));
 
-        String manifestString = ObjectMapperFactory.getObjectMapper().writeValueAsString(res.getManifest());
-        ContractParameter i = array(hash160(gov.getScriptHash()), string("updateContract"),
-            array(byteArray(res.getNefFile().toArray()), string(manifestString), any(null)));
         int id = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, array(i), "updateContract");
         ext.fastForwardOneBlock(PHASE_LENGTH);
         TestHelper.voteForProposal(gov, neow3j, id, alice);
@@ -116,6 +118,8 @@ public class GovernanceStorageMigrationTest {
         p = gov.getProposal(id);
         assertThat(p.intents.size(), is(1));
         assertThat(p.intents.get(0).callFlags, is((int) CallFlags.ALL.getValue()));
+
+        assertThat(gov.getParameter(EXPIRATION_LENGTH_KEY).getInteger().intValue(), is(newExpirationLength));
 
         List<NeoApplicationLog.Execution.Notification> notifications = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0).getNotifications();

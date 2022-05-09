@@ -33,7 +33,6 @@ import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getTime;
 import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
-import static io.neow3j.devpack.contracts.LedgerContract.currentIndex;
 import static io.neow3j.devpack.contracts.StdLib.deserialize;
 import static io.neow3j.devpack.contracts.StdLib.serialize;
 
