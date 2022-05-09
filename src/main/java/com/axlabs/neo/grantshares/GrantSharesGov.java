@@ -42,7 +42,7 @@ import static io.neow3j.devpack.contracts.StdLib.serialize;
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The governing contract of the GrantShares DAO")
 @ManifestExtra(key = "Website", value = "https://grantshares.io")
-@ContractSourceCode("TODO: Set this to the URL of the release branch before deploying.")
+@ContractSourceCode("https://github.com/AxLabs/grantshares-contracts/blob/main/src/main/java/com/axlabs/neo/grantshares/GrantSharesGov.java")
 @DisplayName("GrantSharesGov")
 @SuppressWarnings("unchecked")
 public class GrantSharesGov {
