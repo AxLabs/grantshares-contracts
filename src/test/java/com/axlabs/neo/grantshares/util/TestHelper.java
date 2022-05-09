@@ -132,25 +132,23 @@ public class TestHelper {
     }
 
 
-    public static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+    public static int createAndEndorseProposal(GrantSharesGovContract gov, Neow3j neow3j, Account proposer,
             Account endorser, ContractParameter intents, String offchainUri) throws Throwable {
-        // 1. create proposal
-        TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(offchainUri),
+        TransactionBuilder b = gov.invokeFunction(CREATE, hash160(proposer), intents, string(offchainUri),
                 integer(-1));
-        return sendAndEndorseProposal(contract, neow3j, proposer, endorser, b);
+        return sendAndEndorseProposal(gov, neow3j, proposer, endorser, b);
     }
 
-    public static int createAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+    public static int createAndEndorseProposal(GrantSharesGovContract gov, Neow3j neow3j, Account proposer,
             Account endorser, ContractParameter intents, String offchainUri, int acceptanceRate, int quorum)
             throws Throwable {
-        // 1. create proposal
-        TransactionBuilder b = contract.invokeFunction(CREATE, hash160(proposer), intents, string(offchainUri),
+        TransactionBuilder b = gov.invokeFunction(CREATE, hash160(proposer), intents, string(offchainUri),
                 integer(-1), integer(acceptanceRate), integer(quorum));
 
-        return sendAndEndorseProposal(contract, neow3j, proposer, endorser, b);
+        return sendAndEndorseProposal(gov, neow3j, proposer, endorser, b);
     }
 
-    private static int sendAndEndorseProposal(SmartContract contract, Neow3j neow3j, Account proposer,
+    private static int sendAndEndorseProposal(GrantSharesGovContract gov, Neow3j neow3j, Account proposer,
             Account endorser, TransactionBuilder b) throws Throwable {
         Hash256 tx = b.signers(AccountSigner.calledByEntry(proposer))
                 .sign().send().getSendRawTransaction().getHash();
@@ -159,7 +157,7 @@ public class TestHelper {
                 .getExecutions().get(0).getStack().get(0).getInteger().intValue();
 
         // 2. endorse proposal
-        tx = contract.invokeFunction(ENDORSE, integer(id), hash160(endorser))
+        tx = gov.invokeFunction(ENDORSE, integer(id), hash160(endorser))
                 .signers(AccountSigner.calledByEntry(endorser))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -167,18 +165,17 @@ public class TestHelper {
         return id;
     }
 
-    public static void voteForProposal(SmartContract contract, Neow3j neow3j, int id,
+    public static void voteForProposal(GrantSharesGovContract gov, Neow3j neow3j, int id,
             Account endorserAndVoter) throws Throwable {
-        Hash256 tx = contract.invokeFunction(VOTE, integer(id), integer(1),
-                        hash160(endorserAndVoter))
+        Hash256 tx = gov.invokeFunction(VOTE, integer(id), integer(1), hash160(endorserAndVoter))
                 .signers(AccountSigner.calledByEntry(endorserAndVoter))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
     }
 
-    public static void voteForProposal(SmartContract contract, Neow3j neow3j, int id, int vote,
+    public static void voteForProposal(GrantSharesGovContract gov, Neow3j neow3j, int id, int vote,
             Account endorserAndVoter) throws Throwable {
-        Hash256 tx = contract.invokeFunction(VOTE, integer(id), integer(vote),
+        Hash256 tx = gov.invokeFunction(VOTE, integer(id), integer(vote),
                         hash160(endorserAndVoter))
                 .signers(AccountSigner.calledByEntry(endorserAndVoter))
                 .sign().send().getSendRawTransaction().getHash();
