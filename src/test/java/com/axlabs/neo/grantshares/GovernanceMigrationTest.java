@@ -44,7 +44,7 @@ import static org.hamcrest.core.Is.is;
 
 @ContractTest(contracts = GrantSharesGovOld.class, blockTime = 1, configFile = "default.neo-express",
         batchFile = "setup.batch")
-public class GovernanceStorageMigrationTest {
+public class GovernanceMigrationTest {
 
     @RegisterExtension
     private static ContractTestExtension ext = new ContractTestExtension();
