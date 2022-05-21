@@ -234,6 +234,30 @@ public class ProposalExecutionsTest {
     }
 
     @Test
+    public void fail_executing_proposal_quorum_reached_but_all_abstained() throws Throwable {
+        ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+        String offchainUri = "fail_executing_proposal_quorum_reached_but_all_abstained";
+
+        // 1. Create and endorse proposal, then skip till voting phase.
+        int id = createAndEndorseProposal(gov, neow3j, bob, alice, intents, offchainUri);
+        ext.fastForwardOneBlock(PHASE_LENGTH);
+
+        // 2. Vote abstained for all members.
+        voteForProposal(gov, neow3j, id, 0, alice);
+        voteForProposal(gov, neow3j, id, 0, charlie);
+        voteForProposal(gov, neow3j, id, 0, denise);
+        voteForProposal(gov, neow3j, id, 0, eve);
+        voteForProposal(gov, neow3j, id, 0, florian);
+        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
+
+        // 3. Call execute
+        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
+                .sign().send().getSendRawTransaction().getHash();
+        assertAborted(tx, "Proposal rejected", neow3j);
+    }
+
+    @Test
     public void fail_executing_proposal_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
                 array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));

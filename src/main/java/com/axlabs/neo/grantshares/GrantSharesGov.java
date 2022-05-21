@@ -499,7 +499,8 @@ public class GrantSharesGov {
         if (voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum)
             fireErrorAndAbort("Quorum not reached", "execute");
         int yesNoCount = votes.approve + votes.reject;
-        if (votes.approve * 100 / yesNoCount <= data.acceptanceRate) fireErrorAndAbort("Proposal rejected", "execute");
+        if (yesNoCount == 0 || (votes.approve * 100 / yesNoCount <= data.acceptanceRate))
+            fireErrorAndAbort("Proposal rejected", "execute");
 
         proposal.executed = true;
         Object[] returnVals = new Object[data.intents.length];
