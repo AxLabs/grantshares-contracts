@@ -7,10 +7,9 @@ This git repo contains the smart contracts for the GrantShares program.
 If you want to know more about GrantShares go to [grantshares.io](https://grantshares.io) or read the documentation 
 at [docs.grantshares.io](https://docs.grantshares.io).
 
-The Governance and Treasury are deployed on Neo N3 mainnet. Their script hashes are
-[`0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9`](https://explorer.onegate.space/contractinfo/0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9) and 
-[`0x6276c1e3a68280bc6c9c00df755fb691be1162ef`](https://explorer.onegate.space/contractinfo/0x6276c1e3a68280bc6c9c00df755fb691be1162ef) respectively.
-
+The Governance and Treasury are deployed on Neo N3 mainnet.  
+- GrantSharesGov: [`0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9`](https://explorer.onegate.space/contractinfo/0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9). 
+- GrantSharesTreasury: [`0x6276c1e3a68280bc6c9c00df755fb691be1162ef`](https://explorer.onegate.space/contractinfo/0x6276c1e3a68280bc6c9c00df755fb691be1162ef)
 
 ## Development
 
@@ -32,6 +31,10 @@ Test can be executed with the following command. Note, that you need a running D
 
 The scripts and configurations to deploy the contracts are in the `deploy` source set.  
 Some basic scripts for invoking the contracts via the neow3j SDK are also located there.
+
+## Security Audit
+
+The smart contracts have been audited by [Red4Sec](https://red4sec.com/en). The audit report can be found [here](https://bit.ly/3wZ14uI).
 
 ## Acknowledgement
 
