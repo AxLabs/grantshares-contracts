@@ -28,6 +28,7 @@ import static com.axlabs.neo.grantshares.Config.getGrantSharesTreasuryHash;
 import static com.axlabs.neo.grantshares.Config.getIntProperty;
 import static com.axlabs.neo.grantshares.Config.getNeow3j;
 import static com.axlabs.neo.grantshares.DeployConfig.EXPIRATION_LENGTH_KEY;
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.map;
 
@@ -42,39 +43,10 @@ public class Invocations {
         GrantSharesTreasuryContract tre = new GrantSharesTreasuryContract(getGrantSharesTreasuryHash(), getNeow3j());
         Account a = Config.getDeployAccount();
 
-//        updateGrantSharesGov(gov, a);
-        updateGrantSharesTreasury(gov, tre, a);
-
 //        createProposal(tre, gov, a);
 //        endorseProposal(gov, a, 0);
 //        vote(gov, a, 0);
 //        gov.printProposalTimes(0);
-    }
-
-    private static void updateGratnSharesGov(GrantSharesGovContract gov, Account a) throws Throwable {
-        CompilationUnit res = new Compiler().compile(GrantSharesGov.class.getCanonicalName());
-        ContractParameter intent = IntentParam.updateContractProposal(gov.getScriptHash(), res.getNefFile(),
-                res.getManifest(), array(EXPIRATION_LENGTH_KEY, Config.getIntProperty(EXPIRATION_LENGTH_KEY)));
-        Hash256 txHash = gov.createProposal(a.getScriptHash(), "None", -1, intent)
-                .signers(AccountSigner.calledByEntry(a)).sign().send().getSendRawTransaction().getHash();
-        System.out.println("GrantSharesGov update Tx: " + txHash.toString());
-    }
-
-    private static void updateGrantSharesTreasury(GrantSharesGovContract gov, GrantSharesTreasuryContract treasury,
-            Account a) throws Throwable {
-
-        CompilationUnit res = new Compiler().compile(GrantSharesTreasury.class.getCanonicalName());
-        Map<Hash160, Long> newWhitelistedTokens = new HashMap<>();
-        newWhitelistedTokens.put(GasToken.SCRIPT_HASH, getIntProperty("gas_token_max"));
-        ContractParameter intent = IntentParam.updateContractProposal(
-                treasury.getScriptHash(),
-                res.getNefFile(),
-                res.getManifest(),
-                map(newWhitelistedTokens));
-        TransactionBuilder b = gov.createProposal(a.getScriptHash(), "None", -1, intent)
-                .signers(AccountSigner.calledByEntry(a));
-        Hash256 txHash = b.sign().send().getSendRawTransaction().getHash();
-        System.out.println("GrantSharesTreasury update Tx: " + txHash.toString());
     }
 
     private static void vote(GrantSharesGovContract gov, Account a, int id) throws Throwable {
