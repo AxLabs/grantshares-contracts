@@ -148,15 +148,6 @@ public class GrantSharesTreasury {
             int thresholdRatio = (int) config[3];
             assert thresholdRatio > 0 && thresholdRatio <= 100;
             Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, thresholdRatio);
-        } else {
-            Map<Hash160, Integer> tokens = (Map<Hash160, Integer>) data;
-            Hash160[] hashes = tokens.keys();
-            Integer[] maxes = tokens.values();
-            for (int i = 0; i < hashes.length; i++) {
-                assert isValid(hashes[i]) && hashes[i] != zero() && maxes[i] > 0;
-                whitelistedTokens.put(hashes[i].toByteString(), maxes[i]);
-                whitelistedTokenMigrated.fire(hashes[i], maxes[i]);
-            }
         }
     }
 

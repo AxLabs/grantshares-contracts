@@ -144,31 +144,6 @@ public class GrantSharesGov {
             Storage.put(ctx, MEMBERS_COUNT_KEY, pubKeys.length);
             Storage.put(ctx, PAUSED_KEY, 0);
             Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
-        } else {
-            // Migrate Storage
-            Iterator<Struct<ByteString, ByteString>> it = proposalData.find(FindOptions.RemovePrefix);
-            while (it.next()) {
-                Struct<ByteString, ByteString> item = it.get();
-                int proposalId = item.key.toInt();
-                ProposalDataOld pd = (ProposalDataOld) deserialize(item.value);
-                List<Intent> newIntents = new List<>();
-                for (IntentOld intent : pd.intents) {
-                    newIntents.add(new Intent(intent.targetContract, intent.method, intent.params, CallFlags.All));
-                }
-                ProposalData pdn = new ProposalData(pd.proposer, pd.linkedProposal, pd.acceptanceRate,
-                        pd.quorum, newIntents.toArray(), pd.offchainUri);
-                proposalData.put(proposalId, serialize(pdn));
-                migrated.fire(proposalId);
-            }
-
-            // Set parameters
-            List<Object> params = (List<Object>) data;
-            for (int i = 0; i < params.size(); i += 2) {
-                String paramKey = (String) params.get(i);
-                int value = (int) params.get(i + 1);
-                abortOnInvalidValue(paramKey, value);
-                parameters.put(paramKey, value);
-            }
         }
     }
 
