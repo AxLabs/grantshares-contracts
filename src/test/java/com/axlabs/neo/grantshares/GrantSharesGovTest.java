@@ -9,10 +9,7 @@ import io.neow3j.contract.ContractManagement;
 import io.neow3j.contract.NefFile;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.protocol.Neow3j;
-import io.neow3j.protocol.core.response.ContractManifest;
-import io.neow3j.protocol.core.response.InvocationResult;
-import io.neow3j.protocol.core.response.NeoApplicationLog;
-import io.neow3j.protocol.core.response.NeoInvokeFunction;
+import io.neow3j.protocol.core.response.*;
 import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -179,11 +176,11 @@ public class GrantSharesGovTest {
         assertThat(p.intents.get(0).params.get(2).getInteger().intValue(), is(targetParam3));
 
         // 3. Test CreateProposal event values
-        List<NeoApplicationLog.Execution.Notification> ntfs =
+        List<Notification> ntfs =
                 neow3j.getApplicationLog(proposalCreationTx).send().getApplicationLog()
                         .getExecutions().get(0).getNotifications();
 
-        NeoApplicationLog.Execution.Notification ntf = ntfs.get(0);
+        Notification ntf = ntfs.get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_CREATED));
         List<StackItem> state = ntf.getState().getList();
         assertThat(state.get(0).getInteger().intValue(), is(id));
@@ -278,7 +275,7 @@ public class GrantSharesGovTest {
         assertThat(p.abstain, is(0));
 
         // 6. Test emitted "endorsed" event
-        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(endorseTx).send()
+        Notification ntf = neow3j.getApplicationLog(endorseTx).send()
                 .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_ENDORSED));
         List<StackItem> state = ntf.getState().getList();
@@ -379,7 +376,7 @@ public class GrantSharesGovTest {
         assertThat(proposal.voters.get(charlie.getAddress()), is(-1));
 
         // 6. Test the emitted vote event
-        NeoApplicationLog.Execution.Notification ntf = neow3j.getApplicationLog(voteTx).send()
+        Notification ntf = neow3j.getApplicationLog(voteTx).send()
                 .getApplicationLog().getExecutions().get(0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(VOTED));
         List<StackItem> state = ntf.getState().getList();
@@ -805,7 +802,7 @@ public class GrantSharesGovTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("UpdatingContract"));
         assertThat(n.getContract(), is(gov.getScriptHash()));
     }

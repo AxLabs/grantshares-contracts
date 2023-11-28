@@ -12,6 +12,7 @@ import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
+import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
@@ -185,7 +186,9 @@ public class GrantSharesTreasuryTest {
         hash = neo.vote(alice, alice.getECKeyPair().getPublicKey())
                 .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
-        assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1000));
+        assertThat(neo.getCandidates().stream()
+                .filter(c -> c.getPublicKey().equals(alice.getECKeyPair().getPublicKey()))
+                .findFirst().get().getVotes().intValue(), is(1000));
 
         // fund treasury
         hash = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100))
@@ -195,7 +198,9 @@ public class GrantSharesTreasuryTest {
         hash = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.none(bob)).sign().send()
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
-        assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1100));
+        assertThat(neo.getCandidates().stream()
+                .filter(c -> c.getPublicKey().equals(alice.getECKeyPair().getPublicKey()))
+                .findFirst().get().getVotes().intValue(), is(1100));
     }
 
     @Test
@@ -466,7 +471,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderAdded"));
 
         Map<Hash160, List<ECPublicKey>> funders = treasury.getFunders();
@@ -500,7 +505,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderAdded"));
 
         Map<Hash160, List<ECPublicKey>> funders = treasury.getFunders();
@@ -552,7 +557,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderRemoved"));
 
         Map<Hash160, List<ECPublicKey>> funders = treasury.getFunders();
@@ -601,7 +606,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("WhitelistedTokenRemoved"));
 
         Map<Hash160, BigInteger> tokens = treasury.getWhitelistedTokens();
@@ -640,7 +645,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("WhitelistedTokenAdded"));
 
         Map<Hash160, BigInteger> tokens = treasury.getWhitelistedTokens();
@@ -674,7 +679,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("WhitelistedTokenAdded"));
 
         tokens = treasury.getWhitelistedTokens();
@@ -695,7 +700,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("Transfer"));
         assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
         assertThat(n.getState().getList().get(0).getAddress(), is(bob.getAddress()));
@@ -731,7 +736,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("Transfer"));
 
         assertThat(new GasToken(neow3j).getBalanceOf(acc), is(fundingAmount));
@@ -877,7 +882,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("UpdatingContract"));
         assertThat(n.getContract(), is(treasury.getScriptHash()));
     }

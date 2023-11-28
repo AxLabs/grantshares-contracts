@@ -1,41 +1,19 @@
 package com.axlabs.neo.grantshares;
 
-import io.neow3j.devpack.Account;
-import io.neow3j.devpack.ByteString;
-import io.neow3j.devpack.Contract;
-import io.neow3j.devpack.ECPoint;
-import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.Helper;
-import io.neow3j.devpack.Iterator;
-import io.neow3j.devpack.Iterator.Struct;
-import io.neow3j.devpack.List;
-import io.neow3j.devpack.Map;
+import io.neow3j.devpack.*;
 import io.neow3j.devpack.Runtime;
-import io.neow3j.devpack.Storage;
-import io.neow3j.devpack.StorageContext;
-import io.neow3j.devpack.StorageMap;
-import io.neow3j.devpack.annotations.ContractSourceCode;
-import io.neow3j.devpack.annotations.DisplayName;
-import io.neow3j.devpack.annotations.ManifestExtra;
-import io.neow3j.devpack.annotations.OnDeployment;
-import io.neow3j.devpack.annotations.Permission;
-import io.neow3j.devpack.annotations.Safe;
-import io.neow3j.devpack.constants.CallFlags;
+import io.neow3j.devpack.Iterator.Struct;
+import io.neow3j.devpack.annotations.*;
 import io.neow3j.devpack.constants.FindOptions;
 import io.neow3j.devpack.contracts.ContractManagement;
-import io.neow3j.devpack.events.Event;
-import io.neow3j.devpack.events.Event1Arg;
-import io.neow3j.devpack.events.Event2Args;
-import io.neow3j.devpack.events.Event3Args;
-import io.neow3j.devpack.events.Event4Args;
+import io.neow3j.devpack.contracts.StdLib;
+import io.neow3j.devpack.events.*;
 
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getTime;
 import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
-import static io.neow3j.devpack.contracts.StdLib.deserialize;
-import static io.neow3j.devpack.contracts.StdLib.serialize;
 
 @Permission(contract = "*", methods = "*")
 @ManifestExtra(key = "Author", value = "AxLabs")
@@ -186,7 +164,7 @@ public class GrantSharesGov {
         dto.id = id;
         ByteString bytes = proposalData.get(id);
         if (bytes != null) {
-            ProposalData p = (ProposalData) deserialize(bytes);
+            ProposalData p = (ProposalData) new StdLib().deserialize(bytes);
             dto.proposer = p.proposer;
             dto.linkedProposal = p.linkedProposal;
             dto.acceptanceRate = p.acceptanceRate;
@@ -198,7 +176,7 @@ public class GrantSharesGov {
         }
         bytes = proposals.get(id);
         if (bytes != null) {
-            Proposal p = (Proposal) deserialize(bytes);
+            Proposal p = (Proposal) new StdLib().deserialize(bytes);
             dto.endorser = p.endorser;
             dto.reviewEnd = p.reviewEnd;
             dto.votingEnd = p.votingEnd;
@@ -208,7 +186,7 @@ public class GrantSharesGov {
         }
         bytes = proposalVotes.get(id);
         if (bytes != null) {
-            ProposalVotes p = (ProposalVotes) deserialize(bytes);
+            ProposalVotes p = (ProposalVotes) new StdLib().deserialize(bytes);
             dto.approve = p.approve;
             dto.reject = p.reject;
             dto.abstain = p.abstain;
@@ -363,10 +341,10 @@ public class GrantSharesGov {
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
-        proposals.put(id, serialize(new Proposal(id, expiration)));
-        proposalData.put(id, serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
+        proposals.put(id, new StdLib().serialize(new Proposal(id, expiration)));
+        proposalData.put(id, new StdLib().serialize(new ProposalData(proposer, linkedProposal, acceptanceRate,
                 quorum, intents, offchainUri)));
-        proposalVotes.put(id, serialize(new ProposalVotes()));
+        proposalVotes.put(id, new StdLib().serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
 
         // An event can take max 1024 bytes data. Thus, we're not passing the offchainUri since it could be longer.
@@ -378,7 +356,7 @@ public class GrantSharesGov {
         for (Intent intent : intents) {
             if (!Hash160.isValid(intent.targetContract) ||
                     intent.targetContract == Hash160.zero() ||
-                    intent.targetContract == ContractManagement.getHash() ||
+                    intent.targetContract == new ContractManagement().getHash() ||
                     intent.method == null ||
                     intent.method == "" ||
                     !Helper.within(intent.callFlags, 1, 256)
@@ -402,7 +380,7 @@ public class GrantSharesGov {
             fireErrorAndAbort("Not authorised", "endorseProposal");
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) fireErrorAndAbort("Proposal doesn't exist", "endorseProposal");
-        Proposal proposal = (Proposal) deserialize(proposalBytes);
+        Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
         if (proposal.expiration <= getTime()) fireErrorAndAbort("Proposal expired", "endorseProposal");
         if (proposal.endorser != null) fireErrorAndAbort("Proposal already endorsed", "endorseProposal");
 
@@ -411,7 +389,7 @@ public class GrantSharesGov {
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
-        proposals.put(id, serialize(proposal));
+        proposals.put(id, new StdLib().serialize(proposal));
         endorsed.fire(id, endorser);
     }
 
@@ -431,11 +409,11 @@ public class GrantSharesGov {
             fireErrorAndAbort("Not authorised", "vote");
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) fireErrorAndAbort("Proposal doesn't exist", "vote");
-        Proposal proposal = (Proposal) deserialize(proposalBytes);
+        Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
         int time = getTime();
         if (proposal.endorser == null || time < proposal.reviewEnd || time >= proposal.votingEnd)
             fireErrorAndAbort("Proposal not active", "vote");
-        ProposalVotes pv = (ProposalVotes) deserialize(proposalVotes.get(id));
+        ProposalVotes pv = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
         if (pv.voters.containsKey(voter)) fireErrorAndAbort("Already voted on this proposal", "vote");
 
         pv.voters.put(voter, vote);
@@ -446,7 +424,7 @@ public class GrantSharesGov {
         } else {
             pv.abstain += 1;
         }
-        proposalVotes.put(id, serialize(pv));
+        proposalVotes.put(id, new StdLib().serialize(pv));
         voted.fire(id, voter, vote);
     }
 
@@ -463,13 +441,13 @@ public class GrantSharesGov {
         abortIfPaused();
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) fireErrorAndAbort("Proposal doesn't exist", "execute");
-        Proposal proposal = (Proposal) deserialize(proposalBytes);
+        Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
         if (proposal.endorser == null || getTime() < proposal.timeLockEnd)
             fireErrorAndAbort("Proposal not in execution phase", "execute");
         if (proposal.executed) fireErrorAndAbort("Proposal already executed", "execute");
         if (proposal.expiration <= getTime()) fireErrorAndAbort("Proposal expired", "execute");
-        ProposalData data = (ProposalData) deserialize(proposalData.get(id));
-        ProposalVotes votes = (ProposalVotes) deserialize(proposalVotes.get(id));
+        ProposalData data = (ProposalData) new StdLib().deserialize(proposalData.get(id));
+        ProposalVotes votes = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
         if (voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum)
             fireErrorAndAbort("Quorum not reached", "execute");
@@ -479,7 +457,7 @@ public class GrantSharesGov {
 
         proposal.executed = true;
         Object[] returnVals = new Object[data.intents.length];
-        proposals.put(id, serialize(proposal));
+        proposals.put(id, new StdLib().serialize(proposal));
         for (int i = 0; i < data.intents.length; i++) {
             Intent t = data.intents[i];
             returnVals[i] = Contract.call(t.targetContract, t.method, t.callFlags, t.params);
@@ -575,7 +553,7 @@ public class GrantSharesGov {
         abortIfPaused();
         abortIfCallerIsNotSelf();
         updating.fire();
-        ContractManagement.update(nef, manifest, data);
+        new ContractManagement().update(nef, manifest, data);
     }
     //endregion PROPOSAL-INVOKED METHODS
 

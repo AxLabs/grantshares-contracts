@@ -4,6 +4,7 @@ import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import io.neow3j.contract.GasToken;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
+import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
@@ -191,7 +192,7 @@ public class ProposalExecutionsTest {
                 .getApplicationLog().getExecutions().get(0);
         assertTrue(execution.getStack().get(0).getList().get(0).getBoolean());
         assertTrue(execution.getStack().get(0).getList().get(1).getBoolean());
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("Transfer"));
         assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
         assertThat(n.getState().getList().get(0).getAddress(), is(alice.getAddress()));

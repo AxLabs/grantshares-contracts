@@ -91,11 +91,11 @@ public class GrantSharesTreasuryContract extends SmartContract {
     }
 
     public int setFundersMultiSigThresholdRatio() throws IOException {
-        return callFuncReturningInt(getMethodName()).intValue();
+        return callFunctionReturningInt(getMethodName()).intValue();
     }
 
     public int getFundersMultiSigThresholdRatio() throws IOException {
-        return callFuncReturningInt(getMethodName()).intValue();
+        return callFunctionReturningInt(getMethodName()).intValue();
     }
 
     public TransactionBuilder removeFunder(Hash160 funderHash) {

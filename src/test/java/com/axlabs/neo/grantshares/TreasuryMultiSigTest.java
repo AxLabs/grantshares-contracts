@@ -9,6 +9,7 @@ import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoGetNep17Balances;
+import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
@@ -160,7 +161,7 @@ public class TreasuryMultiSigTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("ThresholdChanged"));
         assertThat(treasury.getFundersMultiSigThresholdRatio(), is(51));
     }

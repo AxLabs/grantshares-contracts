@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'io.neow3j.gradle-plugin' version '3.17.1-SNAPSHOT'
+    id 'io.neow3j.gradle-plugin' version '3.21.1'
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -24,14 +24,14 @@ sourceSets {
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.17.1-SNAPSHOT'
+    implementation 'io.neow3j:devpack:3.21.1'
 
-    testImplementation 'io.neow3j:devpack-test:3.17.1-SNAPSHOT',
-            'io.neow3j:compiler:3.17.1-SNAPSHOT',
+    testImplementation 'io.neow3j:devpack-test:3.21.1',
+            'io.neow3j:compiler:3.21.1',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 
-    deployImplementation 'io.neow3j:compiler:3.17.1-SNAPSHOT'
+    deployImplementation 'io.neow3j:compiler:3.21.1'
 }
 
 tasks.withType(Test) {

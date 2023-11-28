@@ -132,7 +132,7 @@ public class GrantSharesTreasury {
                 for (ECPoint key : accountKeys) {
                     assert ECPoint.isValid(key);
                 }
-                funders.put(accountHash.toByteString(), StdLib.serialize(accountKeys));
+                funders.put(accountHash.toByteString(), new StdLib().serialize(accountKeys));
             }
 
             // Set whitelisted tokens
@@ -168,7 +168,7 @@ public class GrantSharesTreasury {
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null;
         if (sender == null) {
             // Only allow new token minting from GasToken.
-            assert getCallingScriptHash() == GasToken.getHash();
+            assert getCallingScriptHash() == new GasToken().getHash();
             return;
         }
         assert funders.get(sender.toByteString()) != null;
@@ -186,7 +186,7 @@ public class GrantSharesTreasury {
         Map<Hash160, ECPoint[]> funders = new Map<>();
         while (it.next()) {
             Struct<ByteString, ByteString> entry = it.get();
-            funders.put(new Hash160(entry.key), (ECPoint[]) StdLib.deserialize(entry.value));
+            funders.put(new Hash160(entry.key), (ECPoint[]) new StdLib().deserialize(entry.value));
         }
         return funders;
     }
@@ -195,7 +195,7 @@ public class GrantSharesTreasury {
         Iterator<ByteString> it = funders.find(ValuesOnly);
         List<ECPoint> pubKeys = new List<>();
         while (it.next()) {
-            ECPoint[] keys = (ECPoint[]) StdLib.deserialize(it.get());
+            ECPoint[] keys = (ECPoint[]) new StdLib().deserialize(it.get());
             for (ECPoint key : keys) {
                 pubKeys.add(key);
             }
@@ -325,7 +325,7 @@ public class GrantSharesTreasury {
         for (ECPoint key : publicKeys) {
             if (!ECPoint.isValid(key)) fireErrorAndAbort("Invalid public key", "addFunder");
         }
-        funders.put(accountHash.toByteString(), StdLib.serialize(publicKeys));
+        funders.put(accountHash.toByteString(), new StdLib().serialize(publicKeys));
         funderAdded.fire(accountHash);
     }
 
@@ -441,14 +441,14 @@ public class GrantSharesTreasury {
     public static void voteCommitteeMemberWithLeastVotes() {
         abortIfPaused();
         ECPoint c = getCommitteeMemberWithLeastVotes();
-        if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c))
+        if (!new NeoToken().vote(Runtime.getExecutingScriptHash(), c))
             fireErrorAndAbort("Failed voting on candidate", "voteCommitteeMemberWithLeastVotes");
         voted.fire(c);
     }
 
     private static ECPoint getCommitteeMemberWithLeastVotes() {
-        NeoToken.Candidate[] candidates = NeoToken.getCandidates();
-        List<ECPoint> committee = new List<>(NeoToken.getCommittee());
+        NeoToken.Candidate[] candidates = new NeoToken().getCandidates();
+        List<ECPoint> committee = new List<>(new NeoToken().getCommittee());
         int leastVotes = 100000000; // just a large number for initialisation
         ECPoint leastVotesMember = null;
         for (int i = 0; i < candidates.length; i++) {
@@ -476,7 +476,7 @@ public class GrantSharesTreasury {
         abortIfPaused();
         abortIfCallerIsNotOwner();
         updating.fire();
-        ContractManagement.update(nef, manifest, data);
+        new ContractManagement().update(nef, manifest, data);
     }
 
     private static void abortIfCallerIsNotOwner() {
