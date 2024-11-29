@@ -1,6 +1,7 @@
 plugins {
     id 'java'
     id 'io.neow3j.gradle-plugin' version '3.21.1'
+    id "com.github.node-gradle.node" version "7.1.0"
 }
 
 sourceCompatibility = JavaVersion.VERSION_1_8
@@ -37,6 +38,28 @@ dependencies {
 tasks.withType(Test) {
     useJUnitPlatform()
 }
+
+node {
+    version = '18.20.5'
+    download = true
+}
+
+//task compileSolidity(type: NpxTask) {
+//    dependsOn('npmInstall')
+//    command = 'hardhat'
+//    args = ['compile']
+//}
+task compileSolidity(type : Exec) {
+    dependsOn('npmInstall')
+    commandLine 'forge', 'compile'
+}
+compileJava.finalizedBy('compileSolidity')
+
+task testSolidity(type : Exec) {
+    dependsOn('compileSolidity')
+    commandLine 'forge', 'test'
+}
+test.dependsOn('testSolidity')
 
 neow3jCompile {
     className = "com.axlabs.neo.grantshares.GrantSharesTreasury"
