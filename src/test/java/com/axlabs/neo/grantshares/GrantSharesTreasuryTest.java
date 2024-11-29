@@ -886,5 +886,4 @@ public class GrantSharesTreasuryTest {
         assertThat(n.getEventName(), is("UpdatingContract"));
         assertThat(n.getContract(), is(treasury.getScriptHash()));
     }
-
 }

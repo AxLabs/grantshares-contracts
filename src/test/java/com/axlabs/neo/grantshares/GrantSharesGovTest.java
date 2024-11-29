@@ -806,5 +806,4 @@ public class GrantSharesGovTest {
         assertThat(n.getEventName(), is("UpdatingContract"));
         assertThat(n.getContract(), is(gov.getScriptHash()));
     }
-
 }
