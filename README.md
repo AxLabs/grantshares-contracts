@@ -18,10 +18,21 @@ Clone this repo:
 git clone https://github.com/AxLabs/grantshares-contracts.git
 ```
 
+### Neo N3 contracts
 The GrantShares contracts use the [neow3j](https://neow3j.io) devpack and compiler which in turn uses Gradle as the 
 build tool. The contracts are located in the `main` source set.
 
-Test can be executed with the following command. Note, that you need a running Docker deamon for the tests to work.
+### Solidity contracts
+Since this project also has solidity code, we need to install the foundry toolchain by running the following commands:
+```shell
+curl -L https://foundry.paradigm.xyz | bash 
+source ~/.bashrc #this might differ if using a different shell
+foundryup
+```
+
+### Testing
+After installing these, the 
+tests can be executed with the following command (Note, that you need a running Docker deamon for the tests to work):
 
 ```shell
 ./gradlew test
@@ -29,8 +40,12 @@ Test can be executed with the following command. Note, that you need a running D
 
 ## Deployment
 
-The scripts and configurations to deploy the contracts are in the `deploy` source set.  
+### Neo N3 contracts
+The scripts and configurations to deploy the neoN3 contracts are in the `deploy` source set.  
 Some basic scripts for invoking the contracts via the neow3j SDK are also located there.
+
+### Solidity contracts
+//TODO: Add deployment instructions for solidity contracts
 
 ## Security Audit
 

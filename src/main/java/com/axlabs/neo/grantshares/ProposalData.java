@@ -49,5 +49,4 @@ public class ProposalData {
         this.intents = intents;
         this.offchainUri = offchainUri;
     }
-
 }

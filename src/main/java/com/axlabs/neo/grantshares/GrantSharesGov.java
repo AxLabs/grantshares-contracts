@@ -597,5 +597,4 @@ public class GrantSharesGov {
         error.fire(msg, method);
         Helper.abort();
     }
-
 }

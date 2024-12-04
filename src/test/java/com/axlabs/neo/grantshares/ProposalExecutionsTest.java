@@ -369,6 +369,4 @@ public class ProposalExecutionsTest {
                 .sign().send().getSendRawTransaction().getHash();
         assertAborted(tx, "Proposal expired", neow3j);
     }
-
-
 }

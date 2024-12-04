@@ -492,5 +492,4 @@ public class GrantSharesTreasury {
         error.fire(msg, method);
         Helper.abort();
     }
-
 }

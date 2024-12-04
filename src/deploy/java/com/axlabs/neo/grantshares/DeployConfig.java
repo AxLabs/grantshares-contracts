@@ -96,5 +96,4 @@ public class DeployConfig {
                 map(tokens),
                 Config.getIntProperty(THRESHOLD_KEY));
     }
-
 }

@@ -1,4 +1,4 @@
 forge-std/=lib/forge-std/src/
-solmate/=lib/solmate/src/
 oz/=lib/openzeppelin-contracts/contracts/
+oz-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/
 ds-test/=lib/forge-std/lib/ds-test/src/

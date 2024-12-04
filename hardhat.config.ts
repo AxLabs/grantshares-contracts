@@ -1,5 +1,4 @@
 import fs from "fs";
-import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
 import "hardhat-preprocessor";
 import { HardhatUserConfig, task } from "hardhat/config";
@@ -18,7 +17,7 @@ task("example", "Example task").setAction(example);
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.13",
+    version: "0.8.20",
     settings: {
       optimizer: {
         enabled: true,

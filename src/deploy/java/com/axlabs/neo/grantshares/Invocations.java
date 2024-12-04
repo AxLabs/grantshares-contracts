@@ -90,6 +90,4 @@ public class Invocations {
         int t = gov.calcMembersMultiSigAccountThreshold();
         return "import multisigaddress " + t + " " + concatKeys;
     }
-
-
 }
