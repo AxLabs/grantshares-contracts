@@ -31,8 +31,7 @@ foundryup
 ```
 
 ### Testing
-After installing these, the 
-tests can be executed with the following command (Note, that you need a running Docker deamon for the tests to work):
+After installing these, the tests can be executed with the following command (Note that you need a running Docker daemon for the tests to work):
 
 ```shell
 ./gradlew test
