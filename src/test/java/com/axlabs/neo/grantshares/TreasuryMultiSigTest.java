@@ -18,6 +18,7 @@ import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.Transaction;
 import io.neow3j.transaction.Witness;
+import io.neow3j.transaction.exceptions.TransactionConfigurationException;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
@@ -43,7 +44,6 @@ import static com.axlabs.neo.grantshares.util.TestHelper.EVE;
 import static com.axlabs.neo.grantshares.util.TestHelper.IS_PAUSED;
 import static com.axlabs.neo.grantshares.util.TestHelper.PAUSE;
 import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
@@ -53,8 +53,7 @@ import static io.neow3j.types.ContractParameter.map;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
         blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
@@ -117,7 +116,6 @@ public class TreasuryMultiSigTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        neow3j.allowTransmissionOnFault();
         // contracts
         gov = new GrantSharesGovContract(
                 ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
@@ -183,9 +181,8 @@ public class TreasuryMultiSigTest {
     @Test
     @Order(0)
     public void fail_execute_drain_on_unpaused_contract() throws Throwable {
-        Hash256 tx = treasury.drain().signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is not paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> treasury.drain().signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is not paused"));
     }
 
     @Order(10)
@@ -211,9 +208,8 @@ public class TreasuryMultiSigTest {
     @Order(11)
     @Test
     public void fail_execute_drain_with_non_funder() throws Throwable {
-        Hash256 tx = treasury.drain().signers(AccountSigner.calledByEntry(bob)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorized", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> treasury.drain().signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 
     @Order(12)

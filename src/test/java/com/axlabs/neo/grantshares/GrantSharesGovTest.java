@@ -18,6 +18,7 @@ import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.Transaction;
 import io.neow3j.transaction.Witness;
+import io.neow3j.transaction.exceptions.TransactionConfigurationException;
 import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
@@ -36,6 +37,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 
 import static com.axlabs.neo.grantshares.util.TestHelper.ADD_MEMBER;
@@ -61,7 +63,6 @@ import static com.axlabs.neo.grantshares.util.TestHelper.UNPAUSE;
 import static com.axlabs.neo.grantshares.util.TestHelper.UPDATE_CONTRACT;
 import static com.axlabs.neo.grantshares.util.TestHelper.VOTE;
 import static com.axlabs.neo.grantshares.util.TestHelper.VOTED;
-import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.util.TestHelper.createSimpleProposal;
@@ -82,8 +83,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.core.IsNot.not;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
         batchFile = "setup.batch")
@@ -91,18 +91,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class GrantSharesGovTest {
 
     @RegisterExtension
-    private static ContractTestExtension ext = new ContractTestExtension();
-
+    private static final ContractTestExtension ext = new ContractTestExtension();
+    private final static Path TESTCONTRACT_NEF_FILE = Paths.get("TestContract.nef");
+    private final static Path TESTCONTRACT_MANIFEST_FILE =
+            Paths.get("TestGrantSharesGov.manifest.json");
     private static Neow3j neow3j;
     private static GrantSharesGovContract gov;
     private static Account alice; // Set to be a DAO member.
     private static Account bob;
     private static Account charlie; // Set to be a DAO member.
     private static int defaultProposalId;
-
-    private final static Path TESTCONTRACT_NEF_FILE = Paths.get("TestContract.nef");
-    private final static Path TESTCONTRACT_MANIFEST_FILE =
-            Paths.get("TestGrantSharesGov.manifest.json");
 
     @DeployConfig(GrantSharesGov.class)
     public static DeployConfiguration deployConfig() throws Exception {
@@ -115,7 +113,6 @@ public class GrantSharesGovTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        neow3j.allowTransmissionOnFault();
         gov = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
@@ -158,7 +155,7 @@ public class GrantSharesGovTest {
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getInteger().intValue();
 
         // 2. Test correct setup of the created proposal.
-        NeoInvokeFunction r = gov.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
+        NeoInvokeFunction r = gov.callInvokeFunction(GET_PROPOSAL, Collections.singletonList(integer(id)));
         ProposalStruct p = new ProposalStruct(r.getInvocationResult().getStack().get(0).getList());
         assertThat(p.id, is(id));
         assertThat(p.proposer, is(alice.getScriptHash()));
@@ -196,9 +193,8 @@ public class GrantSharesGovTest {
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
         String offchainUri = "fail_creating_with_missing_linked_proposal";
 
-        Hash256 tx = gov.createProposal(alice.getScriptHash(), offchainUri, 1000, intent)
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Linked proposal doesn't exist", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.createProposal(alice.getScriptHash(), offchainUri, 1000, intent).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Linked proposal doesn't exist"));
     }
 
     @Test
@@ -208,13 +204,11 @@ public class GrantSharesGovTest {
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
         String offchainUri = "fail_creating_with_bad_quorum";
 
-        Hash256 tx = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, MIN_QUORUM - 1,
-                intent).signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid quorum", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, MIN_QUORUM - 1, intent).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Invalid quorum"));
 
-        tx = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, 101, intent)
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid quorum", neow3j);
+        e = assertThrows(TransactionConfigurationException.class, () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, 101, intent).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Invalid quorum"));
     }
 
     @Test
@@ -224,13 +218,11 @@ public class GrantSharesGovTest {
                 array(gov.getScriptHash(), alice.getScriptHash(), 1));
         String offchainUri = "fail_creating_with_bad_acceptance_rate";
 
-        Hash256 tx = gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE - 1, MIN_QUORUM,
-                intent).signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid acceptance rate", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE - 1, MIN_QUORUM, intent).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Invalid acceptance rate"));
 
-        tx = gov.createProposal(alice.getScriptHash(), offchainUri, -1, 101, MIN_QUORUM, intent)
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid acceptance rate", neow3j);
+        e = assertThrows(TransactionConfigurationException.class, () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, 101, MIN_QUORUM, intent).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Invalid acceptance rate"));
     }
 
     @Test
@@ -286,17 +278,15 @@ public class GrantSharesGovTest {
     @Test
     @Order(0)
     public void fail_endorsing_with_non_member() throws Throwable {
-        Hash256 tx = gov.endorseProposal(defaultProposalId, bob.getScriptHash())
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.endorseProposal(defaultProposalId, bob.getScriptHash()).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
     @Order(0)
     public void fail_endorsing_with_member_but_wrong_signer() throws Throwable {
-        Hash256 tx = gov.endorseProposal(defaultProposalId, alice.getScriptHash())
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.endorseProposal(defaultProposalId, alice.getScriptHash()).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
@@ -314,17 +304,15 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Endorse again
-        Hash256 tx = gov.endorseProposal(id, alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal already endorsed", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.endorseProposal(id, alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal already endorsed"));
     }
 
     @Test
     @Order(0)
     public void fail_endorsing_non_existent_proposal() throws Throwable {
-        Hash256 tx = gov.endorseProposal(1000, alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal doesn't exist", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.endorseProposal(1000, alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
     @Test
@@ -336,9 +324,8 @@ public class GrantSharesGovTest {
                 .getApplicationLog().getExecutions().get(0).getStack().get(0).getInteger().intValue();
         ext.fastForwardOneBlock(PHASE_LENGTH);
 
-        Hash256 tx = gov.endorseProposal(id, alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal expired", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.endorseProposal(id, alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal expired"));
     }
 
     @Test
@@ -401,17 +388,15 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(endorseTx, neow3j);
 
         // 3. Vote in review phase
-        Hash256 tx = gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal not active", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal not active"));
 
         // 5. Fast-forward till after the voting phase.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 4. Vote in queued or later phase
-        tx = gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal not active", neow3j);
+        e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal not active"));
     }
 
     @Test
@@ -440,9 +425,8 @@ public class GrantSharesGovTest {
         Await.waitUntilTransactionIsExecuted(voteTx, neow3j);
 
         // 5. Vote the second time
-        Hash256 tx = gov.vote(id, 1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Already voted on this proposal", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(id, 1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+        assertTrue(e.getMessage().endsWith("Already voted on this proposal"));
 
         // 6. Check votes
         ProposalStruct proposal = gov.getProposal(id);
@@ -457,35 +441,31 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_voting_with_non_member() throws Throwable {
         // Vote on the default proposal. Doesn't matter in what phase it is.
-        Hash256 tx = gov.vote(defaultProposalId, -1, bob.getScriptHash()).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(defaultProposalId, -1, bob.getScriptHash()).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
     @Order(0)
     public void fail_voting_on_non_existent_proposal() throws Throwable {
-        Hash256 tx = gov.vote(1000, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign()
-                .send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal doesn't exist", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(1000, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
     @Test
     @Order(0)
     public void fail_voting_on_not_endorsed_proposal() throws Throwable {
         // Vote on the default proposal. Doesn't matter in what phase it is.
-        Hash256 tx = gov.vote(defaultProposalId, -1, charlie.getScriptHash())
-                .signers(AccountSigner.calledByEntry(charlie)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal not active", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(defaultProposalId, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal not active"));
     }
 
     @Test
     @Order(0)
     public void fail_voting_with_invalid_vote() throws Throwable {
         // Vote on the default proposal. Doesn't matter in what phase it is.
-        Hash256 tx = gov.vote(defaultProposalId, 2, charlie.getScriptHash())
-                .signers(AccountSigner.calledByEntry(charlie)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid vote", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(defaultProposalId, 2, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+        assertTrue(e.getMessage().endsWith("Invalid vote"));
     }
 
     @Test
@@ -558,7 +538,7 @@ public class GrantSharesGovTest {
         int id = neow3j.getApplicationLog(tx).send().getApplicationLog().getExecutions().get(0)
                 .getStack().get(0).getInteger().intValue();
 
-        NeoInvokeFunction r = gov.callInvokeFunction(GET_PROPOSAL, asList(integer(id)));
+        NeoInvokeFunction r = gov.callInvokeFunction(GET_PROPOSAL, Collections.singletonList(integer(id)));
         ProposalStruct p = new ProposalStruct(r.getInvocationResult().getStack().get(0).getList());
         assertThat(p.id, is(id));
         assertThat(p.proposer, is(bob.getScriptHash()));
@@ -621,17 +601,15 @@ public class GrantSharesGovTest {
     @Test
     @Order(0)
     public void fail_pausing_contract_without_members_account() throws Throwable {
-        Hash256 tx = gov.invokeFunction(PAUSE).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorized", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(PAUSE).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 
     @Test
     @Order(0)
     public void fail_unpausing_contract_without_members_account() throws Throwable {
-        Hash256 tx = gov.invokeFunction(UNPAUSE).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorized", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(UNPAUSE).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 
     // Is executed as the first test of series of test that require the contract to be paused.
@@ -667,9 +645,8 @@ public class GrantSharesGovTest {
         ContractManifest manifest = getObjectMapper()
                 .readValue(manifestFile, ContractManifest.class);
         String manifestString = getObjectMapper().writeValueAsString(manifest);
-        Hash256 tx = gov.updateContract(nef.toArray(), manifestString, null).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Method only callable by the contract itself", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.updateContract(nef.toArray(), manifestString, null).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
     @Test
@@ -678,66 +655,57 @@ public class GrantSharesGovTest {
         IntentParam intent1 = IntentParam.addMemberProposal(gov.getScriptHash(), alice.getECKeyPair().getPublicKey());
         IntentParam intent2 = new IntentParam(ContractManagement.SCRIPT_HASH, "destroy");
 
-        Hash256 tx = gov.createProposal(alice.getScriptHash(), "fail_create_proposal_calling_contract_management", -1,
-                        intent1, intent2).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid intents", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.createProposal(alice.getScriptHash(), "fail_create_proposal_calling_contract_management", -1, intent1, intent2).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Invalid intents"));
     }
 
     @Order(11)
     @Test
     public void fail_change_param_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.invokeFunction(CHANGE_PARAM, string(MIN_ACCEPTANCE_RATE_KEY), integer(50))
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(CHANGE_PARAM, string(MIN_ACCEPTANCE_RATE_KEY), integer(50)).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(12)
     @Test
     public void fail_add_member_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.invokeFunction(ADD_MEMBER, publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true)))
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(ADD_MEMBER, publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(13)
     @Test
     public void fail_remove_member_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.invokeFunction(REMOVE_MEMBER, publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true)))
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(REMOVE_MEMBER, publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(14)
     @Test
     public void fail_execute_proposal_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.execute(defaultProposalId).signers(AccountSigner.calledByEntry(bob)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(defaultProposalId).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(15)
     @Test
     public void fail_vote_on_proposal_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.vote(defaultProposalId, 1, alice.getScriptHash()).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.vote(defaultProposalId, 1, alice.getScriptHash()).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(16)
     @Test
     public void fail_endorse_proposal_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.endorseProposal(defaultProposalId, alice.getScriptHash())
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.endorseProposal(defaultProposalId, alice.getScriptHash()).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(17)
     @Test
     public void fail_update_contract_on_paused_contract() throws Throwable {
-        Hash256 tx = gov.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null)
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     // Must be executed after all tests orderd after the test that pauses the contract.

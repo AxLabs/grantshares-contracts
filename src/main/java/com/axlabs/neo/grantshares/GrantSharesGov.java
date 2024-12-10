@@ -72,8 +72,6 @@ public class GrantSharesGov {
     static Event unpaused;
     @DisplayName("ProposalMigrated")
     static Event1Arg<Integer> migrated;
-    @DisplayName("Error")
-    static Event2Args<String, String> error;
     //endregion EVENTS
 
     /**
@@ -328,16 +326,16 @@ public class GrantSharesGov {
      * @return The id of the proposal.
      */
     public static int createProposal(Hash160 proposer, Intent[] intents, String offchainUri, int linkedProposal,
-            int acceptanceRate, int quorum) {
+                                     int acceptanceRate, int quorum) {
 
-        if (!checkWitness(proposer)) fireErrorAndAbort("Not authorised", "createProposal");
+        if (!checkWitness(proposer)) Helper.abort("createProposal" + ": " +  "Not authorised");
         if (acceptanceRate < parameters.getInt(MIN_ACCEPTANCE_RATE_KEY) || acceptanceRate > 100)
-            fireErrorAndAbort("Invalid acceptance rate", "createProposal");
+            Helper.abort("createProposal" + ": " +  "Invalid acceptance rate");
         if (quorum < parameters.getInt(MIN_QUORUM_KEY) || quorum > 100)
-            fireErrorAndAbort("Invalid quorum", "createProposal");
+            Helper.abort("createProposal" + ": " +  "Invalid quorum");
         if (linkedProposal >= 0 && proposals.get(linkedProposal) == null)
-            fireErrorAndAbort("Linked proposal doesn't exist", "createProposal");
-        if (!areIntentsValid(intents)) fireErrorAndAbort("Invalid intents", "createProposal");
+            Helper.abort("createProposal" + ": " +  "Linked proposal doesn't exist");
+        if (!areIntentsValid(intents)) Helper.abort("createProposal" + ": " +  "Invalid intents");
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
@@ -377,12 +375,12 @@ public class GrantSharesGov {
     public static void endorseProposal(int id, Hash160 endorser) {
         abortIfPaused();
         if (members.get(endorser.toByteString()) == null || !checkWitness(endorser))
-            fireErrorAndAbort("Not authorised", "endorseProposal");
+            Helper.abort("endorseProposal" + ": " +  "Not authorised");
         ByteString proposalBytes = proposals.get(id);
-        if (proposalBytes == null) fireErrorAndAbort("Proposal doesn't exist", "endorseProposal");
+        if (proposalBytes == null) Helper.abort("endorseProposal" + ": " +  "Proposal doesn't exist");
         Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
-        if (proposal.expiration <= getTime()) fireErrorAndAbort("Proposal expired", "endorseProposal");
-        if (proposal.endorser != null) fireErrorAndAbort("Proposal already endorsed", "endorseProposal");
+        if (proposal.expiration <= getTime()) Helper.abort("endorseProposal" + ": " +  "Proposal expired");
+        if (proposal.endorser != null) Helper.abort("endorseProposal" + ": " +  "Proposal already endorsed");
 
         proposal.endorser = endorser;
         proposal.reviewEnd = getTime() + parameters.getInt(REVIEW_LENGTH_KEY);
@@ -404,17 +402,17 @@ public class GrantSharesGov {
      */
     public static void vote(int id, int vote, Hash160 voter) {
         abortIfPaused();
-        if (vote < -1 || vote > 1) fireErrorAndAbort("Invalid vote", "vote");
+        if (vote < -1 || vote > 1) Helper.abort("vote" + ": " +  "Invalid vote");
         if (members.get(voter.toByteString()) == null || !checkWitness(voter))
-            fireErrorAndAbort("Not authorised", "vote");
+            Helper.abort("vote" + ": " +  "Not authorised");
         ByteString proposalBytes = proposals.get(id);
-        if (proposalBytes == null) fireErrorAndAbort("Proposal doesn't exist", "vote");
+        if (proposalBytes == null) Helper.abort("vote" + ": " +  "Proposal doesn't exist");
         Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
         int time = getTime();
         if (proposal.endorser == null || time < proposal.reviewEnd || time >= proposal.votingEnd)
-            fireErrorAndAbort("Proposal not active", "vote");
+            Helper.abort("vote" + ": " +  "Proposal not active");
         ProposalVotes pv = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
-        if (pv.voters.containsKey(voter)) fireErrorAndAbort("Already voted on this proposal", "vote");
+        if (pv.voters.containsKey(voter)) Helper.abort("vote" + ": " +  "Already voted on this proposal");
 
         pv.voters.put(voter, vote);
         if (vote < 0) {
@@ -440,20 +438,20 @@ public class GrantSharesGov {
     public static Object[] execute(int id) {
         abortIfPaused();
         ByteString proposalBytes = proposals.get(id);
-        if (proposalBytes == null) fireErrorAndAbort("Proposal doesn't exist", "execute");
+        if (proposalBytes == null) Helper.abort("execute" + ": " +  "Proposal doesn't exist");
         Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
         if (proposal.endorser == null || getTime() < proposal.timeLockEnd)
-            fireErrorAndAbort("Proposal not in execution phase", "execute");
-        if (proposal.executed) fireErrorAndAbort("Proposal already executed", "execute");
-        if (proposal.expiration <= getTime()) fireErrorAndAbort("Proposal expired", "execute");
+            Helper.abort("execute" + ": " +  "Proposal not in execution phase");
+        if (proposal.executed) Helper.abort("execute" + ": " +  "Proposal already executed");
+        if (proposal.expiration <= getTime()) Helper.abort("execute" + ": " +  "Proposal expired");
         ProposalData data = (ProposalData) new StdLib().deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
         if (voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum)
-            fireErrorAndAbort("Quorum not reached", "execute");
+            Helper.abort("execute" + ": " +  "Quorum not reached");
         int yesNoCount = votes.approve + votes.reject;
         if (yesNoCount == 0 || (votes.approve * 100 / yesNoCount <= data.acceptanceRate))
-            fireErrorAndAbort("Proposal rejected", "execute");
+            Helper.abort("execute" + ": " +  "Proposal rejected");
 
         proposal.executed = true;
         Object[] returnVals = new Object[data.intents.length];
@@ -491,17 +489,17 @@ public class GrantSharesGov {
             case VOTING_LENGTH_KEY:
             case TIMELOCK_LENGTH_KEY:
             case EXPIRATION_LENGTH_KEY:
-                if (value < 0) fireErrorAndAbort("Invalid parameter value", "changeParam");
+                if (value < 0) Helper.abort("changeParam" + ": " +  "Invalid parameter value");
                 break;
             case MIN_ACCEPTANCE_RATE_KEY:
             case MIN_QUORUM_KEY:
-                if (value < 0 || value > 100) fireErrorAndAbort("Invalid parameter value", "changeParam");
+                if (value < 0 || value > 100) Helper.abort("changeParam" + ": " +  "Invalid parameter value");
                 break;
             case MULTI_SIG_THRESHOLD_KEY:
-                if (value <= 0 || value > 100) fireErrorAndAbort("Invalid parameter value", "changeParam");
+                if (value <= 0 || value > 100) Helper.abort("changeParam" + ": " +  "Invalid parameter value");
                 break;
             default:
-                fireErrorAndAbort("Unknown parameter", "changeParam");
+                Helper.abort("changeParam" + ": " +  "Unknown parameter");
         }
     }
 
@@ -516,7 +514,7 @@ public class GrantSharesGov {
         abortIfPaused();
         abortIfCallerIsNotSelf();
         Hash160 memberHash = createStandardAccount(memberPubKey);
-        if (members.get(memberHash.toByteString()) != null) fireErrorAndAbort("Already a member", "addMember");
+        if (members.get(memberHash.toByteString()) != null) Helper.abort("addMember" + ": " +  "Already a member");
         members.put(memberHash.toByteString(), memberPubKey.toByteString());
         Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) + 1);
         memberAdded.fire(memberHash);
@@ -533,7 +531,7 @@ public class GrantSharesGov {
         abortIfPaused();
         abortIfCallerIsNotSelf();
         Hash160 memberHash = createStandardAccount(memberPubKey);
-        if (members.get(memberHash.toByteString()) == null) fireErrorAndAbort("Not a member", "removeMember");
+        if (members.get(memberHash.toByteString()) == null) Helper.abort("removeMember" + ": " +  "Not a member");
         members.delete(memberHash.toByteString());
         Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) - 1);
         memberRemoved.fire(memberHash);
@@ -562,9 +560,9 @@ public class GrantSharesGov {
         try {
             membersMultiSigHash = calcMembersMultiSigAccount();
         } catch (Exception e) {
-            fireErrorAndAbort(e.getMessage(), "pause");
+            Helper.abort("pause" + ": " +  e.getMessage());
         }
-        if (!checkWitness(membersMultiSigHash)) fireErrorAndAbort("Not authorized", "pause");
+        if (!checkWitness(membersMultiSigHash)) Helper.abort("pause" + ": " +  "Not authorized");
         Storage.put(ctx, PAUSED_KEY, 1);
         paused.fire();
     }
@@ -574,27 +572,26 @@ public class GrantSharesGov {
         try {
             membersMultiSigHash = calcMembersMultiSigAccount();
         } catch (Exception e) {
-            fireErrorAndAbort(e.getMessage(), "pause");
+            Helper.abort("pause" + ": " +  e.getMessage());
         }
-        if (!checkWitness(membersMultiSigHash)) fireErrorAndAbort("Not authorized", "unpause");
+        if (!checkWitness(membersMultiSigHash)) Helper.abort("unpause" + ": " +  "Not authorized");
         Storage.put(ctx, PAUSED_KEY, 0);
         unpaused.fire();
     }
 
     private static void abortIfCallerIsNotSelf() {
         if (Runtime.getCallingScriptHash() != Runtime.getExecutingScriptHash()) {
-            fireErrorAndAbort("Method only callable by the contract itself", "abortIfCallerIsNotSelf");
+            Helper.abort("abortIfCallerIsNotSelf" + ": " +  "Method only callable by the contract itself");
         }
     }
 
     public static void abortIfPaused() {
         if (Storage.getBoolean(getReadOnlyContext(), PAUSED_KEY)) {
-            fireErrorAndAbort("Contract is paused", "abortIfPaused");
+            Helper.abort("abortIfPaused" + ": " +  "Contract is paused");
         }
     }
 
-    private static void fireErrorAndAbort(String msg, String method) {
-        error.fire(msg, method);
-        Helper.abort();
+    private static void abortWithMessage(String method, String msg) {
+        Helper.abort(method + ": " + msg);
     }
 }

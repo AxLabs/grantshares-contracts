@@ -188,12 +188,4 @@ public class TestHelper {
                 .collect(Collectors.toList());
         return Account.createMultiSigAccount(pubKeys, threshold);
     }
-
-    public static void assertAborted(Hash256 tx, String expectedError, Neow3j neow3j) throws IOException {
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
-        NeoApplicationLog.Execution e = neow3j.getApplicationLog(tx).send().getApplicationLog().getExecutions().get(0);
-        assertThat(e.getState(), is(NeoVMStateType.FAULT));
-        String exception = e.getNotifications().get(0).getState().getList().get(0).getString();
-        assertThat(exception, containsString(expectedError));
-    }
 }

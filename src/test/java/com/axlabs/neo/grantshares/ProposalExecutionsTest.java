@@ -10,6 +10,7 @@ import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
+import io.neow3j.transaction.exceptions.TransactionConfigurationException;
 import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash256;
@@ -35,7 +36,6 @@ import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY
 import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
 import static com.axlabs.neo.grantshares.util.TestHelper.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
@@ -46,6 +46,7 @@ import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
@@ -76,7 +77,6 @@ public class ProposalExecutionsTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        neow3j.allowTransmissionOnFault();
         gov = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
@@ -88,9 +88,8 @@ public class ProposalExecutionsTest {
 
     @Test
     public void fail_executing_non_existent_proposal() throws Throwable {
-        Hash256 tx = gov.execute(1000).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal doesn't exist", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(1000).signers(AccountSigner.calledByEntry(alice)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
     @Test
@@ -110,9 +109,8 @@ public class ProposalExecutionsTest {
                 .getStack().get(0).getInteger().intValue();
 
         // 2. Call execute
-        tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal not in execution phase", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal not in execution phase"));
     }
 
     @Test
@@ -127,9 +125,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Quorum not reached", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
     @Test
@@ -157,9 +154,8 @@ public class ProposalExecutionsTest {
                 .getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
         // 4. Call execute the second time and fail.
-        tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal already executed", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal already executed"));
     }
 
     @Test
@@ -229,9 +225,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal rejected", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
     @Test
@@ -253,9 +248,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal rejected", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
     @Test
@@ -274,9 +268,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Quorum not reached", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
     @Test
@@ -296,9 +289,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Quorum not reached", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
     @Test
@@ -320,9 +312,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal rejected", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
     @Test
@@ -365,8 +356,7 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH); // skip voting, time lock, expiration phase
 
         // 2. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal expired", neow3j);
+        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        assertTrue(e.getMessage().endsWith("Proposal expired"));
     }
 }
