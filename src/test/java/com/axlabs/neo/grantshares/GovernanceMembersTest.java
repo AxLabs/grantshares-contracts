@@ -27,17 +27,36 @@ import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.axlabs.neo.grantshares.util.TestHelper.*;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.MEMBER_ADDED;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.MEMBER_REMOVED;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.PROPOSAL_EXECUTED;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.ADD_MEMBER;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CALC_MEMBER_MULTI_SIG_ACC;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.GET_MEMBERS;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.REMOVE_MEMBER;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.DENISE;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
+import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
+import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
+import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
 import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.*;
+import static io.neow3j.types.ContractParameter.hash160;
+import static io.neow3j.types.ContractParameter.publicKey;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-        batchFile = "setup.batch")
+              batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GovernanceMembersTest {
 
@@ -71,8 +90,9 @@ public class GovernanceMembersTest {
 
     //region ADD MEMBER
     @Test
-    public void fail_calling_add_member_directly() throws Throwable {
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(ADD_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice)).sign());
+    public void fail_calling_add_member_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.invokeFunction(ADD_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice)).sign());
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -99,7 +119,8 @@ public class GovernanceMembersTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send().getSendRawTransaction().getHash();
+        Hash256 tx = gov.execute(id).signers(
+                AccountSigner.calledByEntry(charlie)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
@@ -140,7 +161,8 @@ public class GovernanceMembersTest {
         voteForProposal(gov, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign());
         assertTrue(e.getMessage().endsWith("Already a member"));
     }
 
@@ -171,8 +193,10 @@ public class GovernanceMembersTest {
 
     //region REMOVE MEMBER
     @Test
-    public void fail_calling_remove_member_directly() throws Throwable {
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(REMOVE_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice)).sign());
+    public void fail_calling_remove_member_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.invokeFunction(REMOVE_MEMBER, hash160(bob)).signers(
+                        AccountSigner.calledByEntry(alice)).sign());
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -198,7 +222,8 @@ public class GovernanceMembersTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign().send().getSendRawTransaction().getHash();
+        Hash256 tx = gov.execute(id).signers(
+                AccountSigner.calledByEntry(charlie)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
@@ -237,7 +262,8 @@ public class GovernanceMembersTest {
         voteForProposal(gov, neow3j, id, charlie);
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign());
         assertTrue(e.getMessage().endsWith("Not a member"));
     }
 

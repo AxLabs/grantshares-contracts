@@ -487,8 +487,4 @@ public class GrantSharesTreasury {
     private static void abortIfPaused() {
         if (isPaused()) Helper.abort("abortIfCallerIsNotOwner" + ": " + "Contract is paused");
     }
-
-    private static void abortWithMessage(String method, String msg) {
-        Helper.abort(method + ": " + msg);
-    }
 }

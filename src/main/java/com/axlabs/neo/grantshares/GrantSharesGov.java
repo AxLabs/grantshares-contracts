@@ -590,8 +590,4 @@ public class GrantSharesGov {
             Helper.abort("abortIfPaused" + ": " +  "Contract is paused");
         }
     }
-
-    private static void abortWithMessage(String method, String msg) {
-        Helper.abort(method + ": " + msg);
-    }
 }

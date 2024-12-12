@@ -23,19 +23,19 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.math.BigInteger;
 
-import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHANGE_PARAM;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.CREATE;
-import static com.axlabs.neo.grantshares.util.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EVE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.util.TestHelper.FLORIAN;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
-import static com.axlabs.neo.grantshares.util.TestHelper.REVIEW_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.PROPOSAL_EXECUTED;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CHANGE_PARAM;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CREATE;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.EXECUTE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.DENISE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.EVE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.FLORIAN;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.REVIEW_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
@@ -50,7 +50,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-        batchFile = "setup.batch")
+              batchFile = "setup.batch")
 public class ProposalExecutionsTest {
 
     @RegisterExtension
@@ -87,8 +87,9 @@ public class ProposalExecutionsTest {
     }
 
     @Test
-    public void fail_executing_non_existent_proposal() throws Throwable {
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(1000).signers(AccountSigner.calledByEntry(alice)).sign());
+    public void fail_executing_non_existent_proposal() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(1000).signers(AccountSigner.calledByEntry(alice)).sign());
         assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
@@ -109,7 +110,8 @@ public class ProposalExecutionsTest {
                 .getStack().get(0).getInteger().intValue();
 
         // 2. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Proposal not in execution phase"));
     }
 
@@ -125,7 +127,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
@@ -154,7 +157,8 @@ public class ProposalExecutionsTest {
                 .getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
         // 4. Call execute the second time and fail.
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Proposal already executed"));
     }
 
@@ -225,7 +229,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
@@ -248,7 +253,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
@@ -268,7 +274,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
@@ -289,7 +296,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
@@ -312,7 +320,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
@@ -356,7 +365,8 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH); // skip voting, time lock, expiration phase
 
         // 2. Call execute
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Proposal expired"));
     }
 }

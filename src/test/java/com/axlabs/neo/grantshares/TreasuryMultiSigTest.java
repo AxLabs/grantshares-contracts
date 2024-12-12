@@ -36,14 +36,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EVE;
-import static com.axlabs.neo.grantshares.util.TestHelper.IS_PAUSED;
-import static com.axlabs.neo.grantshares.util.TestHelper.PAUSE;
-import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.IS_PAUSED;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.PAUSE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.DENISE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.EVE;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
@@ -53,10 +53,12 @@ import static io.neow3j.types.ContractParameter.map;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
-        blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
+              blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TreasuryMultiSigTest {
     private static final int NEO_MAX_AMOUNT = 100;
@@ -180,8 +182,9 @@ public class TreasuryMultiSigTest {
 
     @Test
     @Order(0)
-    public void fail_execute_drain_on_unpaused_contract() throws Throwable {
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> treasury.drain().signers(AccountSigner.calledByEntry(alice)).sign());
+    public void fail_execute_drain_on_unpaused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.drain().signers(AccountSigner.calledByEntry(alice)).sign());
         assertTrue(e.getMessage().endsWith("Contract is not paused"));
     }
 
@@ -207,8 +210,9 @@ public class TreasuryMultiSigTest {
 
     @Order(11)
     @Test
-    public void fail_execute_drain_with_non_funder() throws Throwable {
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> treasury.drain().signers(AccountSigner.calledByEntry(bob)).sign());
+    public void fail_execute_drain_with_non_funder() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.drain().signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 

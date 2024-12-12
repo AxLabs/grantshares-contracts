@@ -24,23 +24,23 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHANGE_PARAM;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EXPIRATION_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_QUORUM;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_QUORUM_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.MULTI_SIG_THRESHOLD_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.MULTI_SIG_THRESHOLD_RATIO;
-import static com.axlabs.neo.grantshares.util.TestHelper.PARAMETER_CHANGED;
-import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
-import static com.axlabs.neo.grantshares.util.TestHelper.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.TIMELOCK_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.VOTING_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.PARAMETER_CHANGED;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.PROPOSAL_EXECUTED;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CHANGE_PARAM;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.EXPIRATION_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.MIN_QUORUM_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.MULTI_SIG_THRESHOLD_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.REVIEW_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.TIMELOCK_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.VOTING_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.MIN_ACCEPTANCE_RATE;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.MIN_QUORUM;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.MULTI_SIG_THRESHOLD_RATIO;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-        batchFile = "setup.batch")
+              batchFile = "setup.batch")
 public class GovernanceParametersTest {
 
     @RegisterExtension
@@ -138,8 +138,10 @@ public class GovernanceParametersTest {
     }
 
     @Test
-    public void fail_calling_change_parameter_directly() throws Throwable {
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.invokeFunction(CHANGE_PARAM, string(REVIEW_LENGTH_KEY), integer(100)).signers(AccountSigner.calledByEntry(alice)).sign());
+    public void fail_calling_change_parameter_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.invokeFunction(CHANGE_PARAM, string(REVIEW_LENGTH_KEY), integer(100)).signers(
+                        AccountSigner.calledByEntry(alice)).sign());
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -158,7 +160,8 @@ public class GovernanceParametersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Unknown parameter"));
     }
 
@@ -175,7 +178,8 @@ public class GovernanceParametersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(VOTING_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH * 1000));
     }
@@ -193,7 +197,8 @@ public class GovernanceParametersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MIN_ACCEPTANCE_RATE_KEY).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
     }
@@ -211,7 +216,8 @@ public class GovernanceParametersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MIN_ACCEPTANCE_RATE_KEY).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
     }
@@ -229,7 +235,8 @@ public class GovernanceParametersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MULTI_SIG_THRESHOLD_KEY).getInteger().intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
     }
@@ -247,7 +254,8 @@ public class GovernanceParametersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Exception e = assertThrows(TransactionConfigurationException.class, () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MULTI_SIG_THRESHOLD_KEY).getInteger().intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
     }
