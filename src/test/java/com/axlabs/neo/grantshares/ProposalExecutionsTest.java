@@ -10,6 +10,7 @@ import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.transaction.AccountSigner;
+import io.neow3j.transaction.exceptions.TransactionConfigurationException;
 import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash256;
@@ -22,20 +23,19 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import java.math.BigInteger;
 
-import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHANGE_PARAM;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.CREATE;
-import static com.axlabs.neo.grantshares.util.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EVE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.util.TestHelper.FLORIAN;
-import static com.axlabs.neo.grantshares.util.TestHelper.MIN_ACCEPTANCE_RATE_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.util.TestHelper.PROPOSAL_EXECUTED;
-import static com.axlabs.neo.grantshares.util.TestHelper.REVIEW_LENGTH_KEY;
-import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
+import static com.axlabs.neo.grantshares.util.TestHelper.Events.PROPOSAL_EXECUTED;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CHANGE_PARAM;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CREATE;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.EXECUTE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.DENISE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.EVE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.FLORIAN;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.MIN_ACCEPTANCE_RATE_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterNames.REVIEW_LENGTH_KEY;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
@@ -46,6 +46,7 @@ import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
@@ -69,14 +70,14 @@ public class ProposalExecutionsTest {
         DeployConfiguration config = new DeployConfiguration();
         config.setDeployParam(prepareDeployParameter(
                 ext.getAccount(ALICE), ext.getAccount(CHARLIE), ext.getAccount(DENISE), ext.getAccount(EVE),
-                ext.getAccount(FLORIAN)));
+                ext.getAccount(FLORIAN)
+        ));
         return config;
     }
 
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        neow3j.allowTransmissionOnFault();
         gov = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
@@ -87,21 +88,24 @@ public class ProposalExecutionsTest {
     }
 
     @Test
-    public void fail_executing_non_existent_proposal() throws Throwable {
-        Hash256 tx = gov.execute(1000).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal doesn't exist", neow3j);
+    public void fail_executing_non_existent_proposal() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(1000).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
     @Test
     public void fail_executing_proposal_that_wasnt_endorsed() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 51), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 51), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_that_wasnt_endorsed";
 
         // 1. Create proposal then skip till after the queued phase without endorsing.
         Hash256 tx = gov.invokeFunction(CREATE, hash160(bob), intents, string(offchainUri),
-                        integer(-1))
+                        integer(-1)
+                )
                 .signers(AccountSigner.calledByEntry(bob))
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
@@ -110,16 +114,18 @@ public class ProposalExecutionsTest {
                 .getStack().get(0).getInteger().intValue();
 
         // 2. Call execute
-        tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal not in execution phase", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal not in execution phase"));
     }
 
     @Test
     public void fail_executing_proposal_without_votes() throws Throwable {
         int newValue = 60;
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, newValue), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, newValue), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_without_votes";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
@@ -127,15 +133,17 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH);
 
         // 2. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Quorum not reached", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
     @Test
     public void fail_executing_accepted_proposal_multiple_times() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_accepted_proposal_multiple_times";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -157,18 +165,22 @@ public class ProposalExecutionsTest {
                 .getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
         // 4. Call execute the second time and fail.
-        tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal already executed", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal already executed"));
     }
 
     @Test
     public void execute_proposal_with_multiple_intents() throws Throwable {
         ContractParameter intents = array(
                 array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
-                        bob.getScriptHash(), 1, any(null)), CallFlags.ALL.getValue()),
+                        bob.getScriptHash(), 1, any(null)
+                ), CallFlags.ALL.getValue()),
                 array(GasToken.SCRIPT_HASH, "transfer", array(alice.getScriptHash(),
-                        bob.getScriptHash(), 1, any(null)), CallFlags.ALL.getValue()));
+                        bob.getScriptHash(), 1, any(null)
+                ), CallFlags.ALL.getValue())
+        );
         String offchainUri = "execute_proposal_with_multiple_intents";
 
         // 1. Create and endorse proposal
@@ -213,7 +225,8 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_proposal_quorum_reached_but_rejected() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_quorum_reached_but_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -229,15 +242,17 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal rejected", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
     @Test
     public void fail_executing_proposal_quorum_reached_but_all_abstained() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_quorum_reached_but_all_abstained";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -253,15 +268,17 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal rejected", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
     @Test
     public void fail_executing_proposal_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_quorum_not_reached";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -274,15 +291,17 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Quorum not reached", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
     @Test
     public void fail_executing_proposal_with_different_quorum_not_reached() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_with_different_quorum_not_reached";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -296,15 +315,17 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Quorum not reached", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Quorum not reached"));
     }
 
     @Test
     public void fail_executing_proposal_with_different_quorum_reached_different_rate_rejected() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_executing_proposal_with_different_quorum_reached_different_rate_rejected";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -320,15 +341,17 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         // 3. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal rejected", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal rejected"));
     }
 
     @Test
     public void succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM,
-                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()));
+                array(MIN_ACCEPTANCE_RATE_KEY, 40), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "succeed_executing_proposal_with_different_quorum_reached_different_rate_accepted";
 
         // 1. Create and endorse proposal, then skip till voting phase.
@@ -352,7 +375,8 @@ public class ProposalExecutionsTest {
     @Test
     public void fail_executing_expired_proposal() throws Throwable {
         ContractParameter intents = array(array(gov.getScriptHash(), CHANGE_PARAM, array(REVIEW_LENGTH_KEY, 1),
-                CallFlags.ALL.getValue()));
+                CallFlags.ALL.getValue()
+        ));
         String discUrl = "fail_executing_expired_proposal";
 
         // 1. Create and endorse proposal, then skip till after the queued phase without voting.
@@ -365,8 +389,9 @@ public class ProposalExecutionsTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH + PHASE_LENGTH); // skip voting, time lock, expiration phase
 
         // 2. Call execute
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Proposal expired", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Proposal expired"));
     }
 }

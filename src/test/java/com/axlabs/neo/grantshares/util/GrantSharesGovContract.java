@@ -42,7 +42,8 @@ public class GrantSharesGovContract extends SmartContract {
                 .getMap();
         return map.entrySet().stream().collect(Collectors.toMap(
                 i -> i.getKey().getString(),
-                i -> i.getValue().getInteger()));
+                i -> i.getValue().getInteger()
+        ));
     }
 
     public ProposalStruct getProposal(int id) throws IOException, UnexpectedReturnTypeException {
@@ -78,13 +79,15 @@ public class GrantSharesGovContract extends SmartContract {
     public TransactionBuilder createProposal(Hash160 proposer, String offchainUri, int linkedProposal,
             ContractParameter... intents) {
         return invokeFunction(getMethodName(), hash160(proposer), array(asList(intents)),
-                string(offchainUri), integer(linkedProposal));
+                string(offchainUri), integer(linkedProposal)
+        );
     }
 
     public TransactionBuilder createProposal(Hash160 proposer, String offchainUri, int linkedProposal,
             int acceptanceRate, int quorum, ContractParameter... intents) {
         return invokeFunction(getMethodName(), hash160(proposer), array(asList(intents)),
-                string(offchainUri), integer(linkedProposal), integer(acceptanceRate), integer(quorum));
+                string(offchainUri), integer(linkedProposal), integer(acceptanceRate), integer(quorum)
+        );
     }
 
     public TransactionBuilder endorseProposal(int id, Hash160 endorser) {
