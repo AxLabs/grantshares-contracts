@@ -56,7 +56,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-              batchFile = "setup.batch")
+        batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GovernanceMembersTest {
 
@@ -92,7 +92,8 @@ public class GovernanceMembersTest {
     @Test
     public void fail_calling_add_member_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.invokeFunction(ADD_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.invokeFunction(ADD_MEMBER, hash160(bob)).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -106,7 +107,8 @@ public class GovernanceMembersTest {
                 gov.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))),
-                CallFlags.ALL.getValue()));
+                CallFlags.ALL.getValue()
+        ));
         String offchainUri = "execute_add_member";
 
         // 1. Create and endorse proposal
@@ -130,7 +132,8 @@ public class GovernanceMembersTest {
         assertThat(returnVals.get(0).getValue(), is(nullValue()));
         assertThat(execution.getNotifications().get(0).getEventName(), is(MEMBER_ADDED));
         assertThat(execution.getNotifications().get(0).getState().getList().get(0).getAddress(),
-                is(bob.getAddress()));
+                is(bob.getAddress())
+        );
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
         List<ECKeyPair.ECPublicKey> newMembers = gov.getMembers();
@@ -139,7 +142,8 @@ public class GovernanceMembersTest {
                 bob.getECKeyPair().getPublicKey(),
                 charlie.getECKeyPair().getPublicKey(),
                 alice.getECKeyPair().getPublicKey(),
-                denise.getECKeyPair().getPublicKey()));
+                denise.getECKeyPair().getPublicKey()
+        ));
 
         assertThat(gov.getMembersCount(), is(4));
     }
@@ -150,7 +154,8 @@ public class GovernanceMembersTest {
                 gov.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(alice.getECKeyPair().getPublicKey().getEncoded(true))),
-                CallFlags.ALL.getValue()));
+                CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_execute_add_member_with_already_member";
 
         // 1. Create and endorse proposal
@@ -162,7 +167,8 @@ public class GovernanceMembersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Already a member"));
     }
 
@@ -174,7 +180,8 @@ public class GovernanceMembersTest {
                 gov.getScriptHash(),
                 ADD_MEMBER,
                 array(publicKey(invalidPubKey)),
-                CallFlags.ALL.getValue()));
+                CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_execute_add_member_with_invalid_public_key";
 
         // 1. Create and endorse proposal
@@ -196,7 +203,8 @@ public class GovernanceMembersTest {
     public void fail_calling_remove_member_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.invokeFunction(REMOVE_MEMBER, hash160(bob)).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -209,7 +217,8 @@ public class GovernanceMembersTest {
                 gov.getScriptHash(),
                 REMOVE_MEMBER,
                 array(publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))),
-                CallFlags.ALL.getValue()));
+                CallFlags.ALL.getValue()
+        ));
         String offchainUri = "execute_remove_member";
 
         // 1. Create and endorse proposal
@@ -233,7 +242,8 @@ public class GovernanceMembersTest {
         assertThat(returnVals.get(0).getValue(), is(nullValue()));
         assertThat(execution.getNotifications().get(0).getEventName(), is(MEMBER_REMOVED));
         assertThat(execution.getNotifications().get(0).getState().getList().get(0).getAddress(),
-                is(bob.getAddress()));
+                is(bob.getAddress())
+        );
         assertThat(execution.getNotifications().get(1).getEventName(), is(PROPOSAL_EXECUTED));
 
         List<ECKeyPair.ECPublicKey> newMembers = gov.getMembers();
@@ -241,7 +251,8 @@ public class GovernanceMembersTest {
         assertThat(newMembers, containsInAnyOrder(
                 charlie.getECKeyPair().getPublicKey(),
                 alice.getECKeyPair().getPublicKey(),
-                denise.getECKeyPair().getPublicKey()));
+                denise.getECKeyPair().getPublicKey()
+        ));
     }
 
     @Test
@@ -251,7 +262,8 @@ public class GovernanceMembersTest {
                 gov.getScriptHash(),
                 REMOVE_MEMBER,
                 array(publicKey(acc.getECKeyPair().getPublicKey().getEncoded(true))),
-                CallFlags.ALL.getValue()));
+                CallFlags.ALL.getValue()
+        ));
         String offchainUri = "fail_execute_remove_member_with_non_member";
 
         // 1. Create and endorse proposal
@@ -263,7 +275,8 @@ public class GovernanceMembersTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not a member"));
     }
 
@@ -277,7 +290,8 @@ public class GovernanceMembersTest {
         assertThat(members, contains(
                 alice.getECKeyPair().getPublicKey().getEncoded(true),
                 charlie.getECKeyPair().getPublicKey().getEncoded(true),
-                denise.getECKeyPair().getPublicKey().getEncoded(true)));
+                denise.getECKeyPair().getPublicKey().getEncoded(true)
+        ));
     }
 
     @Test

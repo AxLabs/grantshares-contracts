@@ -80,7 +80,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-              batchFile = "setup.batch")
+        batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GrantSharesGovTest {
 
@@ -112,7 +112,9 @@ public class GrantSharesGovTest {
 
         Hash256 creationTx = gov.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                 array(array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                        integer(CallFlags.ALL.getValue()))), string("default_proposal"), integer(-1)).signers(
+                        integer(CallFlags.ALL.getValue())
+                )), string("default_proposal"), integer(-1)
+        ).signers(
                 AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(creationTx, neow3j);
         defaultProposalId = neow3j.getApplicationLog(creationTx).send().getApplicationLog().getExecutions().get(
@@ -129,10 +131,12 @@ public class GrantSharesGovTest {
         Hash160 targetParam2 = alice.getScriptHash();
         int targetParam3 = 1;
         ContractParameter intent = array(targetContract, targetMethod, array(targetParam1, targetParam2, targetParam3),
-                integer(CallFlags.ALL.getValue()));
+                integer(CallFlags.ALL.getValue())
+        );
         String offchainUri = "offchainUri of the proposal";
         Hash256 proposalCreationTx = gov.invokeFunction(CREATE, hash160(alice.getScriptHash()), array(intent),
-                        string(offchainUri), integer(-1)) // no linked proposal
+                        string(offchainUri), integer(-1)
+                ) // no linked proposal
                 .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(proposalCreationTx, neow3j);
 
@@ -174,12 +178,14 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_creating_with_missing_linked_proposal() {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
-                array(gov.getScriptHash(), alice.getScriptHash(), 1));
+                array(gov.getScriptHash(), alice.getScriptHash(), 1)
+        );
         String offchainUri = "fail_creating_with_missing_linked_proposal";
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.createProposal(alice.getScriptHash(), offchainUri, 1000, intent).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Linked proposal doesn't exist"));
     }
 
@@ -187,17 +193,22 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_creating_with_bad_quorum() {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
-                array(gov.getScriptHash(), alice.getScriptHash(), 1));
+                array(gov.getScriptHash(), alice.getScriptHash(), 1)
+        );
         String offchainUri = "fail_creating_with_bad_quorum";
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, MIN_QUORUM - 1,
-                        intent).signers(AccountSigner.calledByEntry(alice)).sign());
+                        intent
+                ).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid quorum"));
 
         e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE, 101,
-                        intent).signers(AccountSigner.calledByEntry(alice)).sign());
+                        intent
+                ).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid quorum"));
     }
 
@@ -205,17 +216,21 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_creating_with_bad_acceptance_rate() {
         ContractParameter intent = array(NeoToken.SCRIPT_HASH, "transfer",
-                array(gov.getScriptHash(), alice.getScriptHash(), 1));
+                array(gov.getScriptHash(), alice.getScriptHash(), 1)
+        );
         String offchainUri = "fail_creating_with_bad_acceptance_rate";
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, MIN_ACCEPTANCE_RATE - 1, MIN_QUORUM,
-                        intent).signers(AccountSigner.calledByEntry(alice)).sign());
+                        intent
+                ).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid acceptance rate"));
 
         e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.createProposal(alice.getScriptHash(), offchainUri, -1, 101, MIN_QUORUM, intent).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid acceptance rate"));
     }
 
@@ -272,7 +287,8 @@ public class GrantSharesGovTest {
     public void fail_endorsing_with_non_member() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.endorseProposal(defaultProposalId, bob.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -281,7 +297,8 @@ public class GrantSharesGovTest {
     public void fail_endorsing_with_member_but_wrong_signer() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.endorseProposal(defaultProposalId, alice.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -302,7 +319,8 @@ public class GrantSharesGovTest {
         // 3. Endorse again
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.endorseProposal(id, alice.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal already endorsed"));
     }
 
@@ -311,7 +329,8 @@ public class GrantSharesGovTest {
     public void fail_endorsing_non_existent_proposal() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.endorseProposal(1000, alice.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
@@ -326,7 +345,8 @@ public class GrantSharesGovTest {
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.endorseProposal(id, alice.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal expired"));
     }
 
@@ -385,7 +405,8 @@ public class GrantSharesGovTest {
 
         // 3. Vote in review phase
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+                () -> gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal not active"));
 
         // 5. Fast-forward till after the voting phase.
@@ -393,7 +414,8 @@ public class GrantSharesGovTest {
 
         // 4. Vote in queued or later phase
         e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+                () -> gov.vote(id, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal not active"));
     }
 
@@ -420,7 +442,8 @@ public class GrantSharesGovTest {
 
         // 5. Vote the second time
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.vote(id, 1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+                () -> gov.vote(id, 1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Already voted on this proposal"));
 
         // 6. Check votes
@@ -438,7 +461,8 @@ public class GrantSharesGovTest {
         // Vote on the default proposal. Doesn't matter in what phase it is.
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.vote(defaultProposalId, -1, bob.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -446,7 +470,8 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_voting_on_non_existent_proposal() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.vote(1000, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign());
+                () -> gov.vote(1000, -1, charlie.getScriptHash()).signers(AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal doesn't exist"));
     }
 
@@ -456,7 +481,8 @@ public class GrantSharesGovTest {
         // Vote on the default proposal. Doesn't matter in what phase it is.
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.vote(defaultProposalId, -1, charlie.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(charlie)).sign());
+                        AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Proposal not active"));
     }
 
@@ -466,7 +492,8 @@ public class GrantSharesGovTest {
         // Vote on the default proposal. Doesn't matter in what phase it is.
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.vote(defaultProposalId, 2, charlie.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(charlie)).sign());
+                        AccountSigner.calledByEntry(charlie)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid vote"));
     }
 
@@ -477,24 +504,32 @@ public class GrantSharesGovTest {
                 "aabcababcababcababcabbcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcaabcabcabcabcabcabca";
         Hash256 tx = gov.invokeFunction(CREATE, hash160(bob),
                 array(array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue()),
+                                CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue()),
+                                CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue()),
+                                CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue()),
+                                CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue()),
+                                CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue()), array(NeoToken.SCRIPT_HASH,
+                                CallFlags.ALL.getValue()
+                        ), array(NeoToken.SCRIPT_HASH,
                                 "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
                                         "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
                                 array(new Hash160(defaultAccountScriptHash()), new Hash160(defaultAccountScriptHash()),
                                         new Hash160(defaultAccountScriptHash()),
                                         new Hash160(defaultAccountScriptHash()),
                                         new Hash160(defaultAccountScriptHash()),
-                                        new Hash160(defaultAccountScriptHash())), CallFlags.ALL.getValue()),
+                                        new Hash160(defaultAccountScriptHash())
+                                ), CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH,
                                 "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
                                         "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
@@ -504,7 +539,9 @@ public class GrantSharesGovTest {
                                         new Hash160(defaultAccountScriptHash()),
                                         new Hash160(defaultAccountScriptHash()),
                                         new Hash160(defaultAccountScriptHash()),
-                                        new Hash160(defaultAccountScriptHash())), CallFlags.ALL.getValue()),
+                                        new Hash160(defaultAccountScriptHash())
+                                ), CallFlags.ALL.getValue()
+                        ),
                         array(NeoToken.SCRIPT_HASH,
                                 "jjsldfjklkasjdfkljalkjasdf;lkjasddfd" +
                                         "lfjkasdflkjasdfssldfjklkasjdfkljasasdfasfasdfasdf",
@@ -521,8 +558,12 @@ public class GrantSharesGovTest {
                                                 "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
                                                 "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
                                                 "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi" +
-                                                "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"),
-                                CallFlags.ALL.getValue())), string(offchainUri), integer(-1)).signers(
+                                                "hlksajdfiojasdofjasodjflkjasdkfjlaijsdfi"
+                                ),
+                                CallFlags.ALL.getValue()
+                        )
+                ), string(offchainUri), integer(-1)
+        ).signers(
                 AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
@@ -546,7 +587,9 @@ public class GrantSharesGovTest {
         // Recreate default proposal
         InvocationResult result = gov.invokeFunction(CREATE, hash160(alice.getScriptHash()),
                 array(array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                        CallFlags.ALL.getValue())), string("default_proposal"), integer(-1)).signers(
+                        CallFlags.ALL.getValue()
+                )), string("default_proposal"), integer(-1)
+        ).signers(
                 AccountSigner.calledByEntry(alice)).callInvokeScript().getInvocationResult();
         assertThat(result.getStack().get(0).getInteger().intValue(), is(not(defaultProposalId)));
         assertThat(result.getStack().get(0).getInteger().intValue(), is(greaterThan(0)));
@@ -557,7 +600,8 @@ public class GrantSharesGovTest {
     public void get_proposals() throws Throwable {
         ContractParameter intents = array(
                 array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                        CallFlags.ALL.getValue()));
+                        CallFlags.ALL.getValue()
+                ));
         TestHelper.createAndEndorseProposal(gov, neow3j, bob, alice, intents, "some_proposal");
 
         ProposalPaginatedStruct page = gov.getProposals(0, 1);
@@ -571,11 +615,13 @@ public class GrantSharesGovTest {
         assertThat(proposal.id, is(greaterThanOrEqualTo(1)));
 
         String exception = gov.callInvokeFunction("getProposals",
-                asList(integer(-1), integer(1))).getInvocationResult().getException();
+                asList(integer(-1), integer(1))
+        ).getInvocationResult().getException();
         assertThat(exception, containsString("Page number was negative"));
 
         exception = gov.callInvokeFunction("getProposals",
-                asList(integer(0), integer(0))).getInvocationResult().getException();
+                asList(integer(0), integer(0))
+        ).getInvocationResult().getException();
         assertThat(exception, containsString("Page number was negative or zero"));
     }
 
@@ -592,7 +638,8 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_pausing_contract_without_members_account() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.invokeFunction(PAUSE).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.invokeFunction(PAUSE).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 
@@ -600,7 +647,8 @@ public class GrantSharesGovTest {
     @Order(0)
     public void fail_unpausing_contract_without_members_account() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.invokeFunction(UNPAUSE).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.invokeFunction(UNPAUSE).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 
@@ -612,7 +660,8 @@ public class GrantSharesGovTest {
 
         Account membersAccount = createMultiSigAccount(1, alice, charlie);
         Transaction tx = gov.invokeFunction(PAUSE).signers(AccountSigner.none(bob),
-                AccountSigner.calledByEntry(membersAccount)).getUnsignedTransaction();
+                AccountSigner.calledByEntry(membersAccount)
+        ).getUnsignedTransaction();
         Hash256 txHash = tx.addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair())).addMultiSigWitness(
                 membersAccount.getVerificationScript(), alice).send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(txHash, neow3j);
@@ -632,7 +681,8 @@ public class GrantSharesGovTest {
         String manifestString = getObjectMapper().writeValueAsString(manifest);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.updateContract(nef.toArray(), manifestString, null).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -644,7 +694,9 @@ public class GrantSharesGovTest {
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.createProposal(alice.getScriptHash(), "fail_create_proposal_calling_contract_management", -1,
-                        intent1, intent2).signers(AccountSigner.calledByEntry(alice)).sign());
+                        intent1, intent2
+                ).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid intents"));
     }
 
@@ -653,7 +705,8 @@ public class GrantSharesGovTest {
     public void fail_change_param_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.invokeFunction(CHANGE_PARAM, string(MIN_ACCEPTANCE_RATE_KEY), integer(50)).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -662,8 +715,10 @@ public class GrantSharesGovTest {
     public void fail_add_member_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.invokeFunction(ADD_MEMBER,
-                        publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))
+                ).signers(
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -672,8 +727,10 @@ public class GrantSharesGovTest {
     public void fail_remove_member_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.invokeFunction(REMOVE_MEMBER,
-                        publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        publicKey(bob.getECKeyPair().getPublicKey().getEncoded(true))
+                ).signers(
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -681,7 +738,8 @@ public class GrantSharesGovTest {
     @Test
     public void fail_execute_proposal_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(defaultProposalId).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(defaultProposalId).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -690,7 +748,8 @@ public class GrantSharesGovTest {
     public void fail_vote_on_proposal_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.vote(defaultProposalId, 1, alice.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -699,7 +758,8 @@ public class GrantSharesGovTest {
     public void fail_endorse_proposal_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.endorseProposal(defaultProposalId, alice.getScriptHash()).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -708,7 +768,8 @@ public class GrantSharesGovTest {
     public void fail_update_contract_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null).signers(
-                        AccountSigner.calledByEntry(bob)).sign());
+                        AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -720,7 +781,8 @@ public class GrantSharesGovTest {
 
         Account membersAccount = createMultiSigAccount(1, alice, charlie);
         Transaction tx = gov.invokeFunction(UNPAUSE).signers(AccountSigner.none(bob),
-                AccountSigner.calledByEntry(membersAccount)).getUnsignedTransaction();
+                AccountSigner.calledByEntry(membersAccount)
+        ).getUnsignedTransaction();
         Hash256 txHash = tx.addWitness(Witness.create(tx.getHashData(), bob.getECKeyPair())).addMultiSigWitness(
                 membersAccount.getVerificationScript(), alice).send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(txHash, neow3j);
@@ -743,7 +805,8 @@ public class GrantSharesGovTest {
 
         ContractParameter intents = array(
                 array(gov.getScriptHash(), UPDATE_CONTRACT, array(nef.toArray(), manifestBytes, data),
-                        CallFlags.ALL.getValue()));
+                        CallFlags.ALL.getValue()
+                ));
         String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal

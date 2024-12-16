@@ -47,7 +47,9 @@ public class TestHelper {
                         ParameterNames.EXPIRATION_LENGTH_KEY, ParameterValues.PHASE_LENGTH * 1000,
                         ParameterNames.MIN_ACCEPTANCE_RATE_KEY, ParameterValues.MIN_ACCEPTANCE_RATE,
                         ParameterNames.MIN_QUORUM_KEY, ParameterValues.MIN_QUORUM,
-                        ParameterNames.MULTI_SIG_THRESHOLD_KEY, ParameterValues.MULTI_SIG_THRESHOLD_RATIO));
+                        ParameterNames.MULTI_SIG_THRESHOLD_KEY, ParameterValues.MULTI_SIG_THRESHOLD_RATIO
+                )
+        );
     }
 
     public static Hash256 createSimpleProposal(SmartContract contract, Account proposer, String offchainUri)
@@ -55,7 +57,9 @@ public class TestHelper {
 
         return contract.invokeFunction(GovernanceMethods.CREATE, hash160(proposer),
                         array(array(NeoToken.SCRIPT_HASH, "balanceOf", array(new Hash160(defaultAccountScriptHash())),
-                                CallFlags.ALL.getValue())), string(offchainUri), integer(-1))
+                                CallFlags.ALL.getValue()
+                        )), string(offchainUri), integer(-1)
+                )
                 .signers(AccountSigner.calledByEntry(proposer)).sign().send().getSendRawTransaction().getHash();
     }
 
@@ -63,7 +67,8 @@ public class TestHelper {
             Account endorser, ContractParameter intents, String offchainUri)
             throws Throwable {
         TransactionBuilder b = gov.invokeFunction(GovernanceMethods.CREATE, hash160(proposer), intents,
-                string(offchainUri), integer(-1));
+                string(offchainUri), integer(-1)
+        );
         return sendAndEndorseProposal(gov, neow3j, proposer, endorser, b);
     }
 
@@ -71,7 +76,8 @@ public class TestHelper {
             Account endorser, ContractParameter intents, String offchainUri, int acceptanceRate, int quorum)
             throws Throwable {
         TransactionBuilder b = gov.invokeFunction(GovernanceMethods.CREATE, hash160(proposer), intents,
-                string(offchainUri), integer(-1), integer(acceptanceRate), integer(quorum));
+                string(offchainUri), integer(-1), integer(acceptanceRate), integer(quorum)
+        );
 
         return sendAndEndorseProposal(gov, neow3j, proposer, endorser, b);
     }

@@ -72,7 +72,8 @@ public class ProposalStruct {
         this.abstain = abstain;
         this.voters = voters.entrySet().stream().collect(Collectors.toMap(
                 e -> e.getKey().getAddress(),
-                e -> e.getValue().getInteger().intValue()));
+                e -> e.getValue().getInteger().intValue()
+        ));
     }
 
     public static class IntentStruct {

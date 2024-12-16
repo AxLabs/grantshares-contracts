@@ -48,7 +48,9 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The treasury of the GrantShares DAO")
 @ManifestExtra(key = "Website", value = "https://grantshares.io")
+//@formatter:off
 @ContractSourceCode("https://github.com/AxLabs/grantshares-contracts/blob/main/src/main/java/com/axlabs/neo/grantshares/GrantSharesTreasury.java")
+//@formatter:on
 @DisplayName("GrantSharesTreasury")
 public class GrantSharesTreasury {
 
@@ -215,7 +217,8 @@ public class GrantSharesTreasury {
     public static Hash160 calcFundersMultiSigAddress() throws Exception {
         List<ECPoint> funderPublicKeys = getFunderPublicKeys();
         return Account.createMultiSigAccount(calcFundersMultiSigAddressThreshold(funderPublicKeys.size()),
-                funderPublicKeys.toArray());
+                funderPublicKeys.toArray()
+        );
     }
 
     /**
@@ -246,8 +249,9 @@ public class GrantSharesTreasury {
         if (thresholdTimes100 % 100 != 0) {
             threshold += 1; // Always round up.
         }
-        if (threshold == 0)
+        if (threshold == 0) {
             throw new Exception("[GrantSharesTreasury.calcFundersMultiSigAddressThreshold] Threshold was zero");
+        }
         return threshold;
     }
 
@@ -275,7 +279,8 @@ public class GrantSharesTreasury {
     @Safe
     public static boolean isPaused() {
         return (boolean) Contract.call(new Hash160(Storage.get(getReadOnlyContext(), OWNER_KEY)),
-                "isPaused", CallFlags.ReadOnly, new Object[]{});
+                "isPaused", CallFlags.ReadOnly, new Object[]{}
+        );
     }
 
     /**
@@ -299,8 +304,9 @@ public class GrantSharesTreasury {
     public static void setFundersMultiSigThresholdRatio(Integer value) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (value <= 0 || value > 100)
+        if (value <= 0 || value > 100) {
             Helper.abort("setFundersMultiSigThresholdRatio" + ": " + "Invalid threshold ratio");
+        }
         Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
         thresholdChanged.fire(value);
     }
@@ -372,8 +378,9 @@ public class GrantSharesTreasury {
     public static void removeWhitelistedToken(Hash160 token) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (whitelistedTokens.get(token.toByteString()) == null)
+        if (whitelistedTokens.get(token.toByteString()) == null) {
             Helper.abort("removeWhitelistedToken" + ": " + "Not a whitelisted token");
+        }
         whitelistedTokens.delete(token.toByteString());
         whitelistedTokenRemoved.fire(token);
     }
@@ -441,8 +448,9 @@ public class GrantSharesTreasury {
     public static void voteCommitteeMemberWithLeastVotes() {
         abortIfPaused();
         ECPoint c = getCommitteeMemberWithLeastVotes();
-        if (!new NeoToken().vote(Runtime.getExecutingScriptHash(), c))
+        if (!new NeoToken().vote(Runtime.getExecutingScriptHash(), c)) {
             Helper.abort("voteCommitteeMemberWithLeastVotes" + ": " + "Failed voting on candidate");
+        }
         voted.fire(c);
     }
 
@@ -480,8 +488,9 @@ public class GrantSharesTreasury {
     }
 
     private static void abortIfCallerIsNotOwner() {
-        if (Runtime.getCallingScriptHash().toByteString() != Storage.get(getReadOnlyContext(), OWNER_KEY))
+        if (Runtime.getCallingScriptHash().toByteString() != Storage.get(getReadOnlyContext(), OWNER_KEY)) {
             Helper.abort("abortIfCallerIsNotOwner" + ": " + "Not authorised");
+        }
     }
 
     private static void abortIfPaused() {

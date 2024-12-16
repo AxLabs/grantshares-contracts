@@ -54,7 +54,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-              batchFile = "setup.batch")
+        batchFile = "setup.batch")
 public class GovernanceParametersTest {
 
     @RegisterExtension
@@ -141,7 +141,8 @@ public class GovernanceParametersTest {
     public void fail_calling_change_parameter_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> gov.invokeFunction(CHANGE_PARAM, string(REVIEW_LENGTH_KEY), integer(100)).signers(
-                        AccountSigner.calledByEntry(alice)).sign());
+                        AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Method only callable by the contract itself"));
     }
 
@@ -161,7 +162,8 @@ public class GovernanceParametersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Unknown parameter"));
     }
 
@@ -179,7 +181,8 @@ public class GovernanceParametersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(VOTING_LENGTH_KEY).getInteger().intValue(), is(PHASE_LENGTH * 1000));
     }
@@ -198,7 +201,8 @@ public class GovernanceParametersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MIN_ACCEPTANCE_RATE_KEY).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
     }
@@ -217,7 +221,8 @@ public class GovernanceParametersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MIN_ACCEPTANCE_RATE_KEY).getInteger().intValue(), is(MIN_ACCEPTANCE_RATE));
     }
@@ -236,7 +241,8 @@ public class GovernanceParametersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MULTI_SIG_THRESHOLD_KEY).getInteger().intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
     }
@@ -255,7 +261,8 @@ public class GovernanceParametersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid parameter value"));
         assertThat(gov.getParameter(MULTI_SIG_THRESHOLD_KEY).getInteger().intValue(), is(MULTI_SIG_THRESHOLD_RATIO));
     }

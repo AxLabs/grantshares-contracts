@@ -58,7 +58,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
-              blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
+        blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class TreasuryMultiSigTest {
     private static final int NEO_MAX_AMOUNT = 100;
@@ -100,9 +100,11 @@ public class TreasuryMultiSigTest {
                 asList(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()), 2);
         ContractParameter funders = array(
                 array(bob.getScriptHash(), // bob
-                        array(bob.getECKeyPair().getPublicKey())),
+                        array(bob.getECKeyPair().getPublicKey())
+                ),
                 array(multiSigFunder.getScriptHash(), // denise, eve
-                        array(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()))
+                        array(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey())
+                )
         );
 
         // whitelisted tokens
@@ -184,7 +186,8 @@ public class TreasuryMultiSigTest {
     @Order(0)
     public void fail_execute_drain_on_unpaused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> treasury.drain().signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> treasury.drain().signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is not paused"));
     }
 
@@ -212,7 +215,8 @@ public class TreasuryMultiSigTest {
     @Test
     public void fail_execute_drain_with_non_funder() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> treasury.drain().signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> treasury.drain().signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorized"));
     }
 

@@ -79,7 +79,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
-              blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
+        blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GrantSharesTreasuryTest {
 
@@ -209,7 +209,8 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_add_whitelisted_token_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
-                        .sign());
+                        .sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -218,7 +219,8 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_remove_whitelisted_token_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
-                        .sign());
+                        .sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -227,7 +229,8 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_add_funder_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
-                        .signers(AccountSigner.calledByEntry(alice)).sign());
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -236,7 +239,8 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_remove_funder_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.removeFunder(charlie.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
-                        .sign());
+                        .sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -266,7 +270,8 @@ public class GrantSharesTreasuryTest {
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
-                        .signers(AccountSigner.calledByEntry(alice)).sign());
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -275,7 +280,8 @@ public class GrantSharesTreasuryTest {
     public void fail_release_tokens_with_non_whitelisted_token() throws Throwable {
         final Hash160 someToken = new Hash160("1a1512528147558851b39c2cd8aa47da7418aba1");
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), someToken,
-                alice.getScriptHash(), BigInteger.TEN);
+                alice.getScriptHash(), BigInteger.TEN
+        );
         String offchainUri = "fail_release_tokens_with_non_whitelisted_token";
 
         // 1. Create and endorse proposal
@@ -288,7 +294,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Token not whitelisted"));
     }
 
@@ -296,7 +303,8 @@ public class GrantSharesTreasuryTest {
     @Order(0)
     public void fail_release_tokens_with_to_high_amount() throws Throwable {
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), GasToken.SCRIPT_HASH,
-                alice.getScriptHash(), GAS_MAX_AMOUNT.add(BigInteger.ONE));
+                alice.getScriptHash(), GAS_MAX_AMOUNT.add(BigInteger.ONE)
+        );
         String offchainUri = "fail_release_tokens_with_to_high_amount";
 
         // 1. Create and endorse proposal
@@ -310,7 +318,8 @@ public class GrantSharesTreasuryTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Above token's max funding amount"));
     }
 
@@ -319,7 +328,8 @@ public class GrantSharesTreasuryTest {
     public void fail_calling_release_tokens_directly() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
-                        .signers(AccountSigner.calledByEntry(bob)).sign());
+                        .signers(AccountSigner.calledByEntry(bob)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
@@ -328,7 +338,8 @@ public class GrantSharesTreasuryTest {
     public void fail_adding_invalid_funder() throws Throwable {
         ContractParameter intent = new IntentParam(treasury.getScriptHash(), "addFunder",
                 byteArray("3ff68d232a60f23a5805b8c40f7e61747f"),
-                array(Collections.singletonList(alice.getECKeyPair().getPublicKey())));
+                array(Collections.singletonList(alice.getECKeyPair().getPublicKey()))
+        );
         String offchainUri = "fail_adding_invalid_funder";
 
         // 1. Create and endorse proposal
@@ -341,7 +352,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid funder hash"));
     }
 
@@ -361,7 +373,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("List of public keys is empty"));
     }
 
@@ -370,7 +383,9 @@ public class GrantSharesTreasuryTest {
     public void fail_adding_funder_with_invalid_public_key() throws Throwable {
         IntentParam intent = new IntentParam(treasury.getScriptHash(), "addFunder", hash160(alice.getScriptHash()),
                 array(publicKey(alice.getECKeyPair().getPublicKey()),
-                        byteArray("03dab84c1243ec01ab2500e1a8c7a1546a26d734628180b0cf64e72bf776")));
+                        byteArray("03dab84c1243ec01ab2500e1a8c7a1546a26d734628180b0cf64e72bf776")
+                )
+        );
         String offchainUri = "fail_adding_funder_with_invalid_public_key";
 
         // 1. Create and endorse proposal
@@ -383,7 +398,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid public key"));
     }
 
@@ -407,10 +423,12 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id1).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id1).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid threshold ratio"));
         e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id2).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id2).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid threshold ratio"));
     }
 
@@ -418,7 +436,8 @@ public class GrantSharesTreasuryTest {
     @Order(0)
     public void fail_adding_whitelisted_token_with_invalid_token() throws Throwable {
         ContractParameter intent = new IntentParam(treasury.getScriptHash(), "addWhitelistedToken",
-                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), integer(100));
+                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), integer(100)
+        );
         String offchainUri = "fail_adding_whitelisted_token_with_invalid_token";
 
         // 1. Create and endorse proposal
@@ -431,7 +450,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid token hash"));
     }
 
@@ -439,7 +459,8 @@ public class GrantSharesTreasuryTest {
     @Order(0)
     public void fail_adding_whitelisted_token_with_invalid_max_funding_amount() throws Throwable {
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
-                NeoToken.SCRIPT_HASH, BigInteger.ONE.negate());
+                NeoToken.SCRIPT_HASH, BigInteger.ONE.negate()
+        );
         String offchainUri = "fail_adding_whitelisted_token_with_invalid_max_funding_amount";
 
         // 1. Create and endorse proposal
@@ -452,7 +473,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Invalid max funding amount"));
     }
 
@@ -460,7 +482,8 @@ public class GrantSharesTreasuryTest {
     @Order(1)
     public void execute_proposal_with_add_single_sig_funder() throws Throwable {
         IntentParam intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash(),
-                alice.getECKeyPair().getPublicKey());
+                alice.getECKeyPair().getPublicKey()
+        );
         String offchainUri = "execute_proposal_with_add_single_sig_funder";
 
         // 1. Create and endorse proposal
@@ -494,7 +517,8 @@ public class GrantSharesTreasuryTest {
         Account multiSigFunder = Account.createMultiSigAccount(
                 asList(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()), 1);
         IntentParam intent = IntentParam.addFunderProposal(treasury.getScriptHash(), multiSigFunder.getScriptHash(),
-                denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey());
+                denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()
+        );
         String offchainUri = "execute_proposal_with_add_multi_sig_funder";
 
         // 1. Create and endorse proposal
@@ -526,7 +550,8 @@ public class GrantSharesTreasuryTest {
     @Order(3)
     public void fail_adding_already_added_funder() throws Throwable {
         ContractParameter intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash(),
-                alice.getECKeyPair().getPublicKey());
+                alice.getECKeyPair().getPublicKey()
+        );
         String offchainUri = "fail_adding_already_added_funder";
 
         // 1. Create and endorse proposal
@@ -539,7 +564,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Already a funder"));
     }
 
@@ -588,7 +614,8 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Not a funder"));
     }
 
@@ -634,7 +661,8 @@ public class GrantSharesTreasuryTest {
     @Order(12)
     public void execute_proposal_with_add_whitelisted_token() throws Throwable {
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
-                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT_CHANGED);
+                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT_CHANGED
+        );
         String offchainUri = "execute_proposal_with_add_whitelisted_token";
 
         // 1. Create and endorse proposal
@@ -668,7 +696,8 @@ public class GrantSharesTreasuryTest {
         assertThat(tokens.get(NeoToken.SCRIPT_HASH), is(NEO_MAX_AMOUNT_CHANGED));
 
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
-                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT);
+                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT
+        );
         String offchainUri = "execute_proposal_with_change_whitelisted_token_max_amount";
 
         // 1. Create and endorse proposal
@@ -713,7 +742,8 @@ public class GrantSharesTreasuryTest {
         assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
         assertThat(n.getState().getList().get(0).getAddress(), is(bob.getAddress()));
         assertThat(n.getState().getList().get(1).getAddress(),
-                is(treasury.getScriptHash().toAddress()));
+                is(treasury.getScriptHash().toAddress())
+        );
         assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.ONE));
 
         assertThat(gas.getBalanceOf(treasury.getScriptHash()).intValue(), is(initialValue + 1));
@@ -725,7 +755,8 @@ public class GrantSharesTreasuryTest {
         Account acc = Account.create();
         final BigInteger fundingAmount = BigInteger.TEN;
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), GasToken.SCRIPT_HASH,
-                acc.getScriptHash(), fundingAmount);
+                acc.getScriptHash(), fundingAmount
+        );
         String offchainUri = "execute_proposal_with_release_tokens";
 
         // 1. Create and endorse proposal
@@ -775,7 +806,8 @@ public class GrantSharesTreasuryTest {
     public void fail_add_funder_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
-                        .signers(AccountSigner.calledByEntry(alice)).sign());
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -783,7 +815,8 @@ public class GrantSharesTreasuryTest {
     @Test
     public void fail_remove_funder_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> treasury.removeFunder(alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> treasury.removeFunder(alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -792,7 +825,8 @@ public class GrantSharesTreasuryTest {
     public void fail_add_whitelisted_token_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
-                        .sign());
+                        .sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -801,7 +835,8 @@ public class GrantSharesTreasuryTest {
     public void fail_remove_whitelisted_token_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
-                        .sign());
+                        .sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -810,7 +845,8 @@ public class GrantSharesTreasuryTest {
     public void fail_release_tokens_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
-                        .signers(AccountSigner.calledByEntry(alice)).sign());
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -818,7 +854,8 @@ public class GrantSharesTreasuryTest {
     @Test
     public void fail_vote_on_committee_member_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
-                () -> treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(alice)).sign());
+                () -> treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -827,7 +864,8 @@ public class GrantSharesTreasuryTest {
     public void fail_update_contract_on_paused_contract() {
         TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
                 () -> treasury.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null)
-                        .signers(AccountSigner.calledByEntry(alice)).sign());
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
         assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
@@ -876,7 +914,8 @@ public class GrantSharesTreasuryTest {
         ContractParameter data = string("update contract");
 
         ContractParameter intents = array(array(treasury.getScriptHash(), UPDATE_CONTRACT,
-                array(nef.toArray(), manifestBytes, data), CallFlags.ALL.getValue()));
+                array(nef.toArray(), manifestBytes, data), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal

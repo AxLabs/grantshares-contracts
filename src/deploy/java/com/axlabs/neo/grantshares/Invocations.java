@@ -61,12 +61,15 @@ public class Invocations {
         System.out.println(txHash.toString());
     }
 
-    static void createProposal(GrantSharesTreasuryContract treasury, GrantSharesGovContract gov, Account a) throws Throwable {
+    static void createProposal(GrantSharesTreasuryContract treasury, GrantSharesGovContract gov, Account a)
+            throws Throwable {
         IntentParam intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), NeoToken.SCRIPT_HASH,
-                a.getScriptHash(), BigInteger.ONE);
+                a.getScriptHash(), BigInteger.ONE
+        );
         NeoApplicationLog.Execution exec = signSendAwait(
                 gov.createProposal(a.getScriptHash(), "https://github.com/axlabs/grantshares-dev/issues/42", -1,
-                        intent), a);
+                        intent
+                ), a);
     }
 
     static NeoApplicationLog.Execution signSendAwait(TransactionBuilder b, Account signer) throws Throwable {
