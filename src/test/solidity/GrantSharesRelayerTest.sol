@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.28;
 
 import "../../main/solidity/GrantSharesRelayer.sol";
 
@@ -25,11 +25,8 @@ contract GrantSharesRelayerTest is Test {
 
     function testProposalEvent() public {
         vm.expectEmit(true, true, false, true, address(relayer));
-        emit GrantSharesRelayer.CreateProposal(
-            address(this),
-            GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3)
-        );
-        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3));
+        emit GrantSharesRelayer.CreateProposal(address(this), GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
+        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
     }
 
     function testExecutionEvent() public {
@@ -42,17 +39,14 @@ contract GrantSharesRelayerTest is Test {
         relayer.setProposalFee(1);
         assertEq(relayer.getFees().proposalFee, 1);
         vm.expectRevert(GrantSharesRelayer.InvalidPaymentAmount.selector);
-        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3));
+        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
 
         vm.expectRevert(GrantSharesRelayer.InvalidPaymentAmount.selector);
-        relayer.propose{ value: 2 }(GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3));
+        relayer.propose{ value: 2 }(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
 
         vm.expectEmit(true, true, false, true, address(relayer));
-        emit GrantSharesRelayer.CreateProposal(
-            address(this),
-            GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3)
-        );
-        relayer.propose{ value: 1 }(GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3));
+        emit GrantSharesRelayer.CreateProposal(address(this), GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
+        relayer.propose{ value: 1 }(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
     }
 
     function testExecutionFee() public {
@@ -73,18 +67,15 @@ contract GrantSharesRelayerTest is Test {
         relayer.pause();
         assert(relayer.paused());
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
-        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3));
+        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
         vm.expectRevert(PausableUpgradeable.EnforcedPause.selector);
         relayer.execute(1);
 
         relayer.unpause();
         assert(!relayer.paused());
         vm.expectEmit(true, true, false, true, address(relayer));
-        emit GrantSharesRelayer.CreateProposal(
-            address(this),
-            GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3)
-        );
-        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1, 2, 3));
+        emit GrantSharesRelayer.CreateProposal(address(this), GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
+        relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
         vm.expectEmit(true, true, false, true, address(relayer));
         emit GrantSharesRelayer.ExecuteProposal(1);
         relayer.execute(1);

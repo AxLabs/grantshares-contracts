@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.22;
+pragma solidity ^0.8.28;
 
 import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
@@ -14,6 +14,7 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
 
     event ExecuteProposal(uint256 indexed proposalId);
 
+    /// @custom:storage-location erc7201:grantshares.storage
     struct GSStorage {
         uint proposalFee;
         uint executionFee;
@@ -23,8 +24,6 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
         bytes intent;
         string offchainUri;
         uint linkedProposal;
-        uint acceptanceRate;
-        uint quorum;
     }
 
     //keccak256(abi.encode(uint256(keccak256("grantshares.storage")) - 1)) & ~bytes32(uint256(0xff))
