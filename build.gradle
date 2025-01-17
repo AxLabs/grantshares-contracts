@@ -4,8 +4,10 @@ plugins {
     id "com.github.node-gradle.node" version "7.1.0"
 }
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 group 'io.grantshares'
 version '1.0.0'
@@ -54,6 +56,12 @@ task testSolidity(type: Exec) {
     commandLine 'forge', 'test'
 }
 test.dependsOn('testSolidity')
+
+task contract(type : Exec) {
+    dependsOn('npmInstall')
+    // use locally installed node by the gradle-node-plugin
+    commandLine '.gradle/nodejs/node-v20.18.1-darwin-arm64/bin/npx', 'hardhat', 'run', './src/deploy/typescript/deploy_relayer.ts'
+}
 
 neow3jCompile {
     className = "com.axlabs.neo.grantshares.GrantSharesTreasury"

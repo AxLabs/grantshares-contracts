@@ -3,5 +3,6 @@ src = 'src/main/solidity'
 test = 'src/test/solidity'
 out = 'artifacts'
 libs = ['lib']
+solc = "0.8.28"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
