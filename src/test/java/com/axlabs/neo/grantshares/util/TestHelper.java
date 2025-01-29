@@ -82,7 +82,7 @@ public class TestHelper {
         return sendAndEndorseProposal(gov, neow3j, proposer, endorser, b);
     }
 
-    private static int sendAndEndorseProposal(GrantSharesGovContract gov, Neow3j neow3j, Account proposer,
+    public static int sendAndEndorseProposal(GrantSharesGovContract gov, Neow3j neow3j, Account proposer,
             Account endorser, TransactionBuilder b)
             throws Throwable {
         Hash256 tx = b.signers(AccountSigner.calledByEntry(proposer)).sign().send().getSendRawTransaction().getHash();
