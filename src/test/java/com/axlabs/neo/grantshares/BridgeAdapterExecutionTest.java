@@ -1,16 +1,18 @@
 package com.axlabs.neo.grantshares;
 
-import com.axlabs.neo.grantshares.util.BridgeAdapterIntentHelper;
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import com.axlabs.neo.grantshares.util.GrantSharesTreasuryContract;
 import com.axlabs.neo.grantshares.util.TestHelper;
 import com.axlabs.neo.grantshares.util.contracts.TestBridge;
+import com.axlabs.neo.grantshares.util.proposal.ProposalBuilder;
+import com.axlabs.neo.grantshares.util.proposal.ProposalData;
 import io.neow3j.contract.FungibleToken;
 import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
+import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
@@ -19,6 +21,11 @@ import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.ContractSigner;
 import io.neow3j.transaction.TransactionBuilder;
+import io.neow3j.transaction.witnessrule.AndCondition;
+import io.neow3j.transaction.witnessrule.CalledByContractCondition;
+import io.neow3j.transaction.witnessrule.ScriptHashCondition;
+import io.neow3j.transaction.witnessrule.WitnessAction;
+import io.neow3j.transaction.witnessrule.WitnessRule;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
@@ -31,6 +38,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.EXECUTE;
@@ -48,6 +56,7 @@ import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.map;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 
 @ContractTest(
@@ -170,30 +179,23 @@ public class BridgeAdapterExecutionTest {
 
     @Test
     public void execute_proposal_with_bridge_adapter_gas() throws Throwable {
-        BigInteger treasuryBalanceBefore = new GasToken(neow3j).getBalanceOf(treasury.getScriptHash());
-        BigInteger bridgeAdapterBalanceBefore = new GasToken(neow3j).getBalanceOf(bridgeAdapter.getScriptHash());
-        BigInteger bridgeBalanceBefore = new GasToken(neow3j).getBalanceOf(bridge.getScriptHash());
+        GasToken gasToken = new GasToken(neow3j);
+        BigInteger bridgeFee = bridge.callFunctionReturningInt("getFee");
+
+        BigInteger treasuryBalanceBefore = gasToken.getBalanceOf(treasury.getScriptHash());
+        BigInteger bridgeAdapterBalanceBefore = gasToken.getBalanceOf(bridgeAdapter.getScriptHash());
+        BigInteger bridgeBalanceBefore = gasToken.getBalanceOf(bridge.getScriptHash());
 
         // Data from Neo X
-        Hash160 token = GasToken.SCRIPT_HASH;
+        Account proposer = bob;
         Hash160 recipient = alice.getScriptHash();
-        BigInteger amount = new GasToken(neow3j).toFractions(BigDecimal.TEN);
+        BigInteger amount = gasToken.toFractions(BigDecimal.TEN);
         String offchainUri = "execute_proposal_with_bridge_adapter_gas";
         int linkedProposal = -1;
 
-        BridgeAdapterIntentHelper.FundRequestData fundRequestData = new BridgeAdapterIntentHelper.FundRequestData(token, recipient, amount,
-                offchainUri, linkedProposal
-        );
-
-        // 1. Create and endorse proposal
-        Account proposer = bob;
-
-        // Build the intents for releasing Gas tokens from the treasury to the bridge adapter
-        byte[] intentBytes = fundRequestData.buildIntentParamBytesForGasRequest(treasury, bridgeAdapter.getScriptHash(),
-                DEFAULT_BRIDGE_FEE, recipient, amount
-        );
-        byte[] proposalScript = fundRequestData.buildCreateProposalScript(gov, intentBytes, proposer);
-
+        ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
+        byte[] proposalScript = ProposalBuilder.requestForFundsGas(proposer, proposalData, gov, treasury,
+                bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee);
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
 
@@ -207,24 +209,92 @@ public class BridgeAdapterExecutionTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
                 .signers(
-                        AccountSigner.calledByEntry(proposer).setAllowedContracts(GasToken.SCRIPT_HASH),
+                        AccountSigner.none(proposer).setAllowedContracts(GasToken.SCRIPT_HASH),
                         AccountSigner.none(backendAccount).setAllowedContracts(bridgeAdapter.getScriptHash()),
-                        ContractSigner.global(bridgeAdapter.getScriptHash())
+                        ContractSigner.calledByEntry(bridgeAdapter.getScriptHash())
+                                .setRules(new WitnessRule(
+                                        WitnessAction.ALLOW,
+                                        new AndCondition(
+                                                new ScriptHashCondition(gasToken.getScriptHash()),
+                                                new CalledByContractCondition(bridge.getScriptHash())
+                                        )
+                                ))
                 )
                 .sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(tx, neow3j);
 
-        BigInteger treasuryBalanceAfter = new GasToken(neow3j).getBalanceOf(treasury.getScriptHash());
-        BigInteger bridgeAdaptorBalanceAfter = new GasToken(neow3j).getBalanceOf(bridgeAdapter.getScriptHash());
-        BigInteger bridgeBalanceAfter = new GasToken(neow3j).getBalanceOf(bridge.getScriptHash());
+        BigInteger treasuryBalanceAfter = gasToken.getBalanceOf(treasury.getScriptHash());
+        BigInteger bridgeAdaptorBalanceAfter = gasToken.getBalanceOf(bridgeAdapter.getScriptHash());
+        BigInteger bridgeBalanceAfter = gasToken.getBalanceOf(bridge.getScriptHash());
 
-        assertThat(treasuryBalanceAfter, is(treasuryBalanceBefore.subtract(amount.add(DEFAULT_BRIDGE_FEE))));
+        // Assert Balances
+        assertThat(treasuryBalanceAfter, is(treasuryBalanceBefore.subtract(amount).subtract(bridgeFee)));
         assertThat(bridgeAdaptorBalanceAfter, is(bridgeAdapterBalanceBefore));
-        assertThat(bridgeBalanceAfter, is(bridgeBalanceBefore.add(amount.add(DEFAULT_BRIDGE_FEE))));
+        assertThat(bridgeBalanceAfter, is(bridgeBalanceBefore.add(amount.add(bridgeFee))));
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getFirstExecution();
-        // Todo mialbu: Check the execution logs for the correct notifications.
+
+        List<Notification> n = execution.getNotifications();
+        assertThat(n, hasSize(8));
+
+        // Intent #1: Bridge fee payment from treasury to bridge adapter.
+        Notification n0 = n.get(0);
+        assertThat(n0.getContract(), is(gasToken.getScriptHash()));
+        assertThat(n0.getEventName(), is("Transfer"));
+        assertThat(n0.getState().getList().get(0).getAddress(), is(treasury.getScriptHash().toAddress()));
+        assertThat(n0.getState().getList().get(1).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n0.getState().getList().get(2).getInteger(), is(bridgeFee));
+
+        Notification n1 = n.get(1);
+        assertThat(n1.getContract(), is(treasury.getScriptHash()));
+        assertThat(n1.getEventName(), is("TokenReleased"));
+        assertThat(n1.getState().getList().get(0).getAddress(), is(gasToken.getScriptHash().toAddress()));
+        assertThat(n1.getState().getList().get(1).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n1.getState().getList().get(2).getInteger(), is(bridgeFee));
+
+        // Intent #2: Transfer from bridge adapter to bridge.
+        Notification n2 = n.get(2);
+        assertThat(n2.getContract(), is(gasToken.getScriptHash()));
+        assertThat(n2.getEventName(), is("Transfer"));
+        assertThat(n2.getState().getList().get(0).getAddress(), is(treasury.getScriptHash().toAddress()));
+        assertThat(n2.getState().getList().get(1).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n2.getState().getList().get(2).getInteger(), is(amount));
+
+        Notification n3 = n.get(3);
+        assertThat(n3.getContract(), is(treasury.getScriptHash()));
+        assertThat(n3.getEventName(), is("TokenReleased"));
+        assertThat(n3.getState().getList().get(0).getAddress(), is(gasToken.getScriptHash().toAddress()));
+        assertThat(n3.getState().getList().get(1).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n3.getState().getList().get(2).getInteger(), is(amount));
+
+        // Intent #3: Invoke bridge adapter to bridge.
+        Notification n4 = n.get(4); // Fee transfer
+        assertThat(n4.getContract(), is(gasToken.getScriptHash()));
+        assertThat(n4.getEventName(), is("Transfer"));
+        assertThat(n4.getState().getList().get(0).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n4.getState().getList().get(1).getAddress(), is(bridge.getScriptHash().toAddress()));
+        assertThat(n4.getState().getList().get(2).getInteger(), is(bridgeFee));
+
+        Notification n5 = n.get(5); // Token transfer
+        assertThat(n5.getContract(), is(gasToken.getScriptHash()));
+        assertThat(n5.getEventName(), is("Transfer"));
+        assertThat(n5.getState().getList().get(0).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n5.getState().getList().get(1).getAddress(), is(bridge.getScriptHash().toAddress()));
+        assertThat(n5.getState().getList().get(2).getInteger(), is(amount));
+
+        Notification n6 = n.get(6); // Deposit event
+        assertThat(n6.getContract(), is(bridge.getScriptHash()));
+        assertThat(n6.getEventName(), is("NativeDeposit"));
+        assertThat(n6.getState().getList().get(0).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
+        assertThat(n6.getState().getList().get(1).getAddress(), is(recipient.toAddress()));
+        assertThat(n6.getState().getList().get(2).getInteger(), is(amount));
+
+        // Proposal executed event
+        Notification n7 = n.get(7);
+        assertThat(n7.getContract(), is(gov.getScriptHash()));
+        assertThat(n7.getEventName(), is("ProposalExecuted"));
+        assertThat(n7.getState().getList().get(0).getInteger(), is(BigInteger.ZERO));
     }
 
 }

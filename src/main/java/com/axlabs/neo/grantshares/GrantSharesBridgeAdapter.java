@@ -20,6 +20,7 @@ import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
 
 import static io.neow3j.devpack.Helper.abort;
+import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.Runtime.getExecutingScriptHash;
 import static io.neow3j.devpack.Storage.getStorageContext;
 
@@ -109,6 +110,13 @@ public class GrantSharesBridgeAdapter {
         }
     }
 
+    @OnVerification
+    public static boolean verify() {
+        // This contract is not intended to hold any tokens inbetween two transactions. In each transaction where tokens
+        // are received, they are intended to be forwarded immediately.
+        return true;
+    }
+
     @OnNEP17Payment
     public static void onNEP17Payment(Hash160 from, int amount, Object data) {
         Hash160 callingScriptHash = Runtime.getCallingScriptHash();
@@ -140,11 +148,6 @@ public class GrantSharesBridgeAdapter {
                 }
             }
         }
-    }
-
-    @OnVerification
-    public static boolean verify() {
-        return Runtime.checkWitness(backendAccount());
     }
 
     @Safe
@@ -180,7 +183,7 @@ public class GrantSharesBridgeAdapter {
      * @param to    the recipient of the bridged tokens.
      */
     public static void bridge(Hash160 token, Hash160 to, Integer amount) {
-        if (!Runtime.getCallingScriptHash().equals(grantSharesGovContract())) {
+        if (!getCallingScriptHash().equals(grantSharesGovContract())) {
             abort("only GrantSharesGov contract");
         }
         if (token == null || !Hash160.isValid(token) || token.isZero()) {
@@ -197,14 +200,12 @@ public class GrantSharesBridgeAdapter {
         BridgeContract bridgeContract = new BridgeContract(bridgeContract());
         int maxFee = maxFee();
 
-        int bridgeFee = bridgeContract.getFee();
         FungibleToken tokenContract = new FungibleToken(token);
 
         int balance = tokenContract.balanceOf(executingScriptHash);
         if (balance < amount) abort("insufficient balance");
 
         if (token.equals(new GasToken().getHash())) {
-            if (balance < amount + bridgeFee) abort("insufficient balance for fee");
             bridgeContract.depositNative(executingScriptHash, to, amount, maxFee);
         } else if (token.equals(new NeoToken().getHash())) {
             bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee);
