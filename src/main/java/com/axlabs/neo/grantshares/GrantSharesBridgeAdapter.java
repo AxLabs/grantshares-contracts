@@ -1,7 +1,6 @@
 package com.axlabs.neo.grantshares;
 
 import io.neow3j.devpack.Hash160;
-import io.neow3j.devpack.Helper;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.StorageContext;
@@ -105,13 +104,28 @@ public class GrantSharesBridgeAdapter {
     @OnNEP17Payment
     public static void onNEP17Payment(Hash160 from, int amount, Object data) {
         Hash160 callingScriptHash = Runtime.getCallingScriptHash();
-        if (!from.equals(grantSharesTrasuryContract())) abort("only treasury");
-        if (callingScriptHash.equals(new GasToken().getHash())) {
-            return;
-        } else if (callingScriptHash.equals(new NeoToken().getHash())) {
-            return;
+
+        if (from == null) {
+            // Only Gas-minting is allowed.
+            if (!callingScriptHash.equals(new GasToken().getHash())) {
+                abort("minting only allowed for gas");
+            } else {
+                // Gas minting is accepted.
+                return;
+            }
         } else {
-            abort("unsupported token");
+            if (!from.equals(grantSharesTrasuryContract())) {
+                abort("only treasury");
+            } else {
+                // Accept only Gas and Neo tokens.
+                if (callingScriptHash.equals(new GasToken().getHash())) {
+                    return;
+                } else if (callingScriptHash.equals(new NeoToken().getHash())) {
+                    return;
+                } else {
+                    abort("unsupported token");
+                }
+            }
         }
     }
 
@@ -126,15 +140,17 @@ public class GrantSharesBridgeAdapter {
     }
 
     public static void setBackendAccount(Hash160 account) {
+        onlyOwner();
         if (account == null || !Hash160.isValid(account) || account.isZero()) {
             abort("invalid account");
         }
         Storage.put(context, BACKEND_ACCOUNT_KEY, account);
     }
 
-    // Todo: the sender also needs to pay the bridge fee, in this case this adapter contract. That means, the adapter
-    //  contract should have a gas balance to pay that fee. With the current test implementation of releasing Gas
-    //  tokens from the treasury, the intent releasing Gas tokens adds the fee on top, so it is paid by the treasury.
+    // Todo: In the bridge the 'from' also needs to pay the bridge fee, in this case that is this adapter contract.
+    //  That means, the adapter contract should have a gas balance to pay that fee. With the current test
+    //  implementation of releasing Gas tokens from the treasury, the intent releasing Gas tokens adds the fee on
+    //  top, so it is paid by the treasury.
     public static void bridge(Hash160 token, Hash160 to, Integer amount) {
         if (!Runtime.getCallingScriptHash().equals(grantSharesGovContract())) {
             abort("only GrantSharesGov contract");
@@ -151,22 +167,15 @@ public class GrantSharesBridgeAdapter {
 
         Hash160 executingScriptHash = getExecutingScriptHash();
         BridgeContract bridgeContract = new BridgeContract(bridgeContract());
-        int fee = bridgeContract.getFee();
         int maxFee = maxFee();
         // Todo: Consider comparing the fee and max fee here. Depends on the approach for paying the bridge fee.
 
+        FungibleToken tokenContract = new FungibleToken(token);
+        if (tokenContract.balanceOf(executingScriptHash) < amount) abort("insufficient balance");
+
         if (token.equals(new GasToken().getHash())) {
-            if (new FungibleToken(token).balanceOf(executingScriptHash) < amount + fee) {
-                abort("insufficient gas balance: " + Helper.toString(Helper.toByteArray(amount + fee)));
-            }
             bridgeContract.depositNative(executingScriptHash, to, amount, maxFee);
         } else if (token.equals(new NeoToken().getHash())) {
-            if (new GasToken().balanceOf(executingScriptHash) < fee) {
-                abort("insufficient fee balance");
-            }
-            if (new NeoToken().balanceOf(executingScriptHash) < amount) {
-                abort("insufficient balance");
-            }
             bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee);
         } else {
             abort("unsupported token");
