@@ -130,7 +130,8 @@ public class BridgeAdapterExecutionTest {
                         treasury.getScriptHash(),
                         bridge.getScriptHash(),
                         FungibleToken.toFractions(new BigDecimal("0.1"), 8),
-                        backendAccount
+                        backendAccount,
+                        ext.getAccount(CHARLIE)
                 )
         );
         config.setSigner(global(initialOwner));

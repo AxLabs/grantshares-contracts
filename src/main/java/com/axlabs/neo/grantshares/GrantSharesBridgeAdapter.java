@@ -44,6 +44,7 @@ public class GrantSharesBridgeAdapter {
     private final static int BRIDGE_CONTRACT_KEY = 0x04;
     private static final int MAX_FEE_KEY = 0x05;
     private static final int BACKEND_ACCOUNT_KEY = 0x06;
+    private static final int WHITELISTED_FUNDER_KEY = 0x07;
 
     @Struct
     static class DeployParams {
@@ -53,6 +54,7 @@ public class GrantSharesBridgeAdapter {
         Hash160 bridgeContract;
         Integer initialMaxFee;
         Hash160 initialBackendAccount;
+        Hash160 initialWhitelistedFunder;
     }
 
     @OnDeployment
@@ -98,27 +100,38 @@ public class GrantSharesBridgeAdapter {
                 abort("invalid backend account");
             }
             Storage.put(context, BACKEND_ACCOUNT_KEY, backendAccount);
+
+            Hash160 whitelistedFunder = deployParams.initialWhitelistedFunder;
+            if (whitelistedFunder == null || !Hash160.isValid(whitelistedFunder) || whitelistedFunder.isZero()) {
+                abort("invalid whitelisted funder");
+            }
+            Storage.put(context, WHITELISTED_FUNDER_KEY, whitelistedFunder);
         }
     }
 
     @OnNEP17Payment
     public static void onNEP17Payment(Hash160 from, int amount, Object data) {
         Hash160 callingScriptHash = Runtime.getCallingScriptHash();
+        boolean isGas = callingScriptHash.equals(new GasToken().getHash());
 
         if (from == null) {
             // Only Gas-minting is allowed.
-            if (!callingScriptHash.equals(new GasToken().getHash())) {
+            if (!isGas) {
                 abort("minting only allowed for gas");
             } else {
                 // Gas minting is accepted.
                 return;
             }
         } else {
+            if (from.equals(whitelistedFunder()) && isGas) {
+                // Whitelisted funder is allowed to send Gas tokens.
+                return;
+            }
             if (!from.equals(grantSharesTrasuryContract())) {
                 abort("only treasury");
             } else {
                 // Accept only Gas and Neo tokens.
-                if (callingScriptHash.equals(new GasToken().getHash())) {
+                if (isGas) {
                     return;
                 } else if (callingScriptHash.equals(new NeoToken().getHash())) {
                     return;
@@ -147,10 +160,25 @@ public class GrantSharesBridgeAdapter {
         Storage.put(context, BACKEND_ACCOUNT_KEY, account);
     }
 
-    // Todo: In the bridge the 'from' also needs to pay the bridge fee, in this case that is this adapter contract.
-    //  That means, the adapter contract should have a gas balance to pay that fee. With the current test
-    //  implementation of releasing Gas tokens from the treasury, the intent releasing Gas tokens adds the fee on
-    //  top, so it is paid by the treasury.
+    @Safe
+    public static Hash160 whitelistedFunder() {
+        return Storage.getHash160(context.asReadOnly(), WHITELISTED_FUNDER_KEY);
+    }
+
+    public static void setWhitelistedFunder(Hash160 funder) {
+        onlyOwner();
+        if (funder == null || !Hash160.isValid(funder) || funder.isZero()) {
+            abort("invalid funder");
+        }
+        Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
+    }
+
+    /**
+     * The bridge fee will be paid by the treasury using a separate intent.
+     *
+     * @param token the token to bridge.
+     * @param to    the recipient of the bridged tokens.
+     */
     public static void bridge(Hash160 token, Hash160 to, Integer amount) {
         if (!Runtime.getCallingScriptHash().equals(grantSharesGovContract())) {
             abort("only GrantSharesGov contract");
@@ -168,12 +196,15 @@ public class GrantSharesBridgeAdapter {
         Hash160 executingScriptHash = getExecutingScriptHash();
         BridgeContract bridgeContract = new BridgeContract(bridgeContract());
         int maxFee = maxFee();
-        // Todo: Consider comparing the fee and max fee here. Depends on the approach for paying the bridge fee.
 
+        int bridgeFee = bridgeContract.getFee();
         FungibleToken tokenContract = new FungibleToken(token);
-        if (tokenContract.balanceOf(executingScriptHash) < amount) abort("insufficient balance");
+
+        int balance = tokenContract.balanceOf(executingScriptHash);
+        if (balance < amount) abort("insufficient balance");
 
         if (token.equals(new GasToken().getHash())) {
+            if (balance < amount + bridgeFee) abort("insufficient balance for fee");
             bridgeContract.depositNative(executingScriptHash, to, amount, maxFee);
         } else if (token.equals(new NeoToken().getHash())) {
             bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee);
