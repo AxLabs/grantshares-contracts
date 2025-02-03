@@ -1,6 +1,7 @@
 package com.axlabs.neo.grantshares.util.proposal.intents;
 
 import com.axlabs.neo.grantshares.util.GrantSharesTreasuryContract;
+import io.neow3j.contract.GasToken;
 import io.neow3j.script.ScriptBuilder;
 import io.neow3j.types.CallFlags;
 import io.neow3j.types.Hash160;
@@ -34,7 +35,7 @@ public class RequestForFunds {
         // Replicate what happens in ScriptBuilder when pushing array(intents) (reversed order of pushing params)
         pushAdapterBridgeIntent(b, token, bridgeAdapter, recipient, amount);
         pushReleaseTokensIntent(b, token, treasury, bridgeAdapter, amount);
-        pushReleaseTokensIntent(b, token, treasury, bridgeAdapter, bridgeFee);
+        pushReleaseTokensIntent(b, GasToken.SCRIPT_HASH, treasury, bridgeAdapter, bridgeFee);
         b.pushInteger(3); // Number of intents
         b.pack();
         return b.toArray();
