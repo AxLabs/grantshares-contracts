@@ -27,7 +27,7 @@ public class RequestForFunds {
      * @param amount        the amount of GAS tokens to be bridged.
      * @return the script bytes of the intents.
      */
-    public static byte[] intentBytes(Hash160 token, Hash160 treasury, Hash160 bridgeAdapter, Hash160 recipient,
+    public static byte[] buildIntentsBytes(Hash160 token, Hash160 treasury, Hash160 bridgeAdapter, Hash160 recipient,
             BigInteger amount, BigInteger bridgeFee) {
 
         ScriptBuilder b = new ScriptBuilder();
@@ -35,7 +35,7 @@ public class RequestForFunds {
         pushAdapterBridgeIntent(b, token, bridgeAdapter, recipient, amount);
         pushReleaseTokensIntent(b, token, treasury, bridgeAdapter, amount);
         pushReleaseTokensIntent(b, GasToken.SCRIPT_HASH, treasury, bridgeAdapter, bridgeFee);
-        b.pushInteger(3); // Number of intents
+        b.pushInteger(3);
         b.pack();
         return b.toArray();
     }

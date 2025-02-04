@@ -228,8 +228,9 @@ public class BridgeAdapterExecutionTest {
         // 1. Create proposal
         ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
         proposalData = new ProposalData("offchainUri", -1);
-        byte[] proposalScript = ProposalBuilder.requestForFundsGas(proposer, proposalData, gov.getScriptHash(),
-                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee
+        byte[] proposalScript = ProposalBuilder.buildRequestForFundsTxScriptGas(proposer, proposalData,
+                gov.getScriptHash(), treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount,
+                bridgeFee
         );
 
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
@@ -352,8 +353,9 @@ public class BridgeAdapterExecutionTest {
         // 1. Create proposal
         ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
 
-        byte[] proposalScript = ProposalBuilder.requestForFundsNeo(proposer, proposalData, gov.getScriptHash(),
-                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee
+        byte[] proposalScript = ProposalBuilder.buildRequestForFundsTxScriptNeo(proposer, proposalData,
+                gov.getScriptHash(), treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount,
+                bridgeFee
         );
 
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);

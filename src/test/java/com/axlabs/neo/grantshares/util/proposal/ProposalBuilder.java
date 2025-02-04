@@ -1,7 +1,5 @@
 package com.axlabs.neo.grantshares.util.proposal;
 
-import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
-import com.axlabs.neo.grantshares.util.GrantSharesTreasuryContract;
 import com.axlabs.neo.grantshares.util.TestHelper;
 import com.axlabs.neo.grantshares.util.proposal.intents.RequestForFunds;
 import io.neow3j.contract.GasToken;
@@ -45,10 +43,10 @@ public class ProposalBuilder {
      * @param bridgeFee the fee to be paid to the bridge.
      * @return the script to create a proposal for a fund request of Gas to an address on Neo X.
      */
-    public static byte[] requestForFundsGas(Account proposer, ProposalData data, Hash160 gov, Hash160 treasury,
-            Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
-        return requestForFunds(GasToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient, amount,
-                bridgeFee
+    public static byte[] buildRequestForFundsTxScriptGas(Account proposer, ProposalData data, Hash160 gov,
+            Hash160 treasury, Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
+        return buildRequestForFundsTxScript(GasToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient,
+                amount, bridgeFee
         );
     }
 
@@ -74,16 +72,17 @@ public class ProposalBuilder {
      * @param bridgeFee the fee to be paid to the bridge.
      * @return the script to create a proposal for a fund request of Neo to an address on Neo X.
      */
-    public static byte[] requestForFundsNeo(Account proposer, ProposalData data, Hash160 gov, Hash160 treasury,
-            Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
-        return requestForFunds(
-                NeoToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient, amount, bridgeFee
+    public static byte[] buildRequestForFundsTxScriptNeo(Account proposer, ProposalData data, Hash160 gov,
+            Hash160 treasury, Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
+        return buildRequestForFundsTxScript(NeoToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient,
+                amount, bridgeFee
         );
     }
 
-    private static byte[] requestForFunds(Hash160 token, Account proposer, ProposalData data, Hash160 gov,
-            Hash160 treasury, Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
-        byte[] intentBytes = RequestForFunds.intentBytes(token, treasury, adapter, recipient, amount, bridgeFee);
+    private static byte[] buildRequestForFundsTxScript(Hash160 token, Account proposer, ProposalData data,
+            Hash160 gov, Hash160 treasury, Hash160 adapter, Hash160 recipient, BigInteger amount,
+            BigInteger bridgeFee) {
+        byte[] intentBytes = RequestForFunds.buildIntentsBytes(token, treasury, adapter, recipient, amount, bridgeFee);
         return buildCreateProposalScript(data, gov, intentBytes, proposer);
     }
 

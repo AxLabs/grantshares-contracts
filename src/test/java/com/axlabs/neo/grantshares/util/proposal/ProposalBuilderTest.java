@@ -57,7 +57,7 @@ public class ProposalBuilderTest {
         BigInteger bridgeFee = new BigInteger("10000000");
         ProposalData proposalData = new ProposalData("execute_proposal_with_bridge_adapter_gas", -1);
 
-        byte[] txScript = ProposalBuilder.requestForFundsGas(proposer, proposalData, GS_GOV, GS_TREASURY,
+        byte[] txScript = ProposalBuilder.buildRequestForFundsTxScriptGas(proposer, proposalData, GS_GOV, GS_TREASURY,
                 BRIDGE_ADAPTER, recipient, amount, bridgeFee
         );
         assertThat(toHexString(txScript),
@@ -73,7 +73,7 @@ public class ProposalBuilderTest {
         BigInteger bridgeFee = new BigInteger("10000000");
         ProposalData proposalData = new ProposalData("execute_proposal_with_bridge_adapter_neo", 0);
 
-        byte[] txScript = ProposalBuilder.requestForFundsNeo(proposer, proposalData, GS_GOV, GS_TREASURY,
+        byte[] txScript = ProposalBuilder.buildRequestForFundsTxScriptNeo(proposer, proposalData, GS_GOV, GS_TREASURY,
                 BRIDGE_ADAPTER, recipient, amount, bridgeFee
         );
         assertThat(toHexString(txScript),
