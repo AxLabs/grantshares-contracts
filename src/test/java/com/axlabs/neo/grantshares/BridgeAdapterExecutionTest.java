@@ -8,11 +8,16 @@ import com.axlabs.neo.grantshares.util.proposal.ProposalBuilder;
 import com.axlabs.neo.grantshares.util.proposal.ProposalData;
 import io.neow3j.contract.FungibleToken;
 import io.neow3j.contract.GasToken;
+import io.neow3j.contract.NefFile;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.core.response.ContractManifest;
+import io.neow3j.protocol.core.response.ContractState;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
+import io.neow3j.protocol.core.response.NeoSendRawTransaction;
 import io.neow3j.protocol.core.response.Notification;
+import io.neow3j.serialization.exceptions.DeserializationException;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
@@ -21,6 +26,7 @@ import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.ContractSigner;
 import io.neow3j.transaction.TransactionBuilder;
+import io.neow3j.transaction.exceptions.TransactionConfigurationException;
 import io.neow3j.transaction.witnessrule.AndCondition;
 import io.neow3j.transaction.witnessrule.CalledByContractCondition;
 import io.neow3j.transaction.witnessrule.OrCondition;
@@ -30,15 +36,19 @@ import io.neow3j.transaction.witnessrule.WitnessRule;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
-import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,17 +63,25 @@ import static com.axlabs.neo.grantshares.util.TestHelper.Members.FLORIAN;
 import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
+import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
+import static io.neow3j.transaction.AccountSigner.calledByEntry;
 import static io.neow3j.transaction.AccountSigner.global;
+import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.byteArray;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.map;
+import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
 import static io.neow3j.utils.Numeric.reverseHexString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.core.Is.is;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ContractTest(
         contracts = {GrantSharesGov.class, GrantSharesTreasury.class, TestBridge.class, GrantSharesBridgeAdapter.class},
@@ -175,12 +193,12 @@ public class BridgeAdapterExecutionTest {
         GasToken gasToken = new GasToken(neow3j);
         Hash256 tx = gasToken.transfer(bob, treasury.getScriptHash(), gasToken.toFractions(new BigDecimal("100")))
                 .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        waitUntilTransactionIsExecuted(tx, neow3j);
 
         // fund the treasury with NEO
         tx = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100))
                 .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        waitUntilTransactionIsExecuted(tx, neow3j);
     }
 
     @Test
@@ -204,7 +222,8 @@ public class BridgeAdapterExecutionTest {
         ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
         proposalData = new ProposalData("offchainUri", -1);
         byte[] proposalScript = ProposalBuilder.requestForFundsGas(proposer, proposalData, gov.getScriptHash(),
-                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee);
+                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee
+        );
 
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
@@ -230,7 +249,7 @@ public class BridgeAdapterExecutionTest {
                                 ))
                 )
                 .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        waitUntilTransactionIsExecuted(tx, neow3j);
 
         BigInteger treasuryBalanceAfter = gasToken.getBalanceOf(treasury.getScriptHash());
         BigInteger bridgeAdaptorBalanceAfter = gasToken.getBalanceOf(bridgeAdapter.getScriptHash());
@@ -332,7 +351,8 @@ public class BridgeAdapterExecutionTest {
         ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
 
         byte[] proposalScript = ProposalBuilder.requestForFundsNeo(proposer, proposalData, gov.getScriptHash(),
-                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee);
+                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee
+        );
 
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
@@ -361,7 +381,7 @@ public class BridgeAdapterExecutionTest {
                                 ))
                 )
                 .sign().send().getSendRawTransaction().getHash();
-        Await.waitUntilTransactionIsExecuted(tx, neow3j);
+        waitUntilTransactionIsExecuted(tx, neow3j);
 
         BigInteger treasuryBalanceAfterNeo = neoToken.getBalanceOf(treasury.getScriptHash());
         BigInteger bridgeAdaptorBalanceAfterNeo = neoToken.getBalanceOf(bridgeAdapter.getScriptHash());
@@ -454,6 +474,45 @@ public class BridgeAdapterExecutionTest {
         assertThat(n8.getContract(), is(gov.getScriptHash()));
         assertThat(n8.getEventName(), is("ProposalExecuted"));
         assertThat(n8.getState().getList().get(0).getInteger(), is(BigInteger.ONE));
+    }
+
+    @Test
+    @Order(99)
+    public void testUpdate_notAuthorized() throws Throwable {
+        TransactionBuilder b = updateTxBuilder().signers(calledByEntry(bob));
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("only owner"));
+    }
+
+    @Test
+    @Order(100)
+    public void testUpdate() throws Throwable {
+        ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
+        assertThat(contractState.getUpdateCounter(), is(0));
+        assertThat(contractState.getNef().getChecksum(), is(2236112610L));
+
+        NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
+        assertFalse(response.hasError());
+        Hash256 txHash = response.getSendRawTransaction().getHash();
+        waitUntilTransactionIsExecuted(txHash, neow3j);
+
+        ContractState contractStateAfterUpdate = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
+        assertThat(contractStateAfterUpdate.getUpdateCounter(), is(1));
+        assertThat(contractStateAfterUpdate.getNef().getChecksum(), is(4241155401L));
+    }
+
+    private TransactionBuilder updateTxBuilder() throws URISyntaxException, IOException, DeserializationException {
+        Path testNefFile = Paths.get("TestGrantSharesBridgeAdapter.nef");
+        Path testManifestFile = Paths.get("TestGrantSharesBridgeAdapter.manifest.json");
+
+        File nefFile = new File(getClass().getClassLoader().getResource(testNefFile.toString()).toURI());
+        ContractParameter nefParam = byteArray(NefFile.readFromFile(nefFile).toArray());
+
+        File manifestFile = new File(getClass().getClassLoader().getResource(testManifestFile.toString()).toURI());
+        ContractManifest manifest = getObjectMapper().readValue(manifestFile, ContractManifest.class);
+        ContractParameter manifestParam = byteArray(getObjectMapper().writeValueAsBytes(manifest));
+
+        return bridgeAdapter.invokeFunction("update", nefParam, manifestParam, any(null));
     }
 
 }
