@@ -23,7 +23,6 @@ import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
 import io.neow3j.test.DeployConfiguration;
 import io.neow3j.test.DeployContext;
-import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.ContractSigner;
 import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.transaction.exceptions.TransactionConfigurationException;
@@ -66,9 +65,12 @@ import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
 import static io.neow3j.protocol.ObjectMapperFactory.getObjectMapper;
 import static io.neow3j.transaction.AccountSigner.calledByEntry;
 import static io.neow3j.transaction.AccountSigner.global;
+import static io.neow3j.transaction.AccountSigner.none;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.byteArray;
+import static io.neow3j.types.ContractParameter.byteArrayFromString;
+import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.map;
 import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
@@ -79,14 +81,14 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.lessThan;
 import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNot.not;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @ContractTest(
         contracts = {GrantSharesGov.class, GrantSharesTreasury.class, TestBridge.class, GrantSharesBridgeAdapter.class},
-        blockTime = 1, configFile = "default.neo-express",
-        batchFile = "setup.batch")
+        blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 public class BridgeAdapterExecutionTest {
 
     private static final BigInteger NEO_MAX_AMOUNT = BigInteger.valueOf(100);
@@ -98,6 +100,8 @@ public class BridgeAdapterExecutionTest {
     static ContractTestExtension ext = new ContractTestExtension();
 
     static Neow3j neow3j;
+    static Account owner;
+    static Hash160 whitelistedFunder;
     static GrantSharesGovContract gov;
     static GrantSharesTreasuryContract treasury;
     static SmartContract bridgeAdapter;
@@ -109,13 +113,15 @@ public class BridgeAdapterExecutionTest {
     static Account eve; // Set to be a DAO member.
     static Account florian; // Set to be a DAO member.
 
+    // region deploy configuration
+
     @DeployConfig(GrantSharesGov.class)
     public static DeployConfiguration deployConfig() throws Exception {
         DeployConfiguration config = new DeployConfiguration();
-        config.setDeployParam(prepareDeployParameter(
-                ext.getAccount(ALICE), ext.getAccount(CHARLIE), ext.getAccount(DENISE), ext.getAccount(EVE),
-                ext.getAccount(FLORIAN)
-        ));
+        config.setDeployParam(
+                prepareDeployParameter(ext.getAccount(ALICE), ext.getAccount(CHARLIE), ext.getAccount(DENISE),
+                        ext.getAccount(EVE), ext.getAccount(FLORIAN)
+                ));
         return config;
     }
 
@@ -155,26 +161,23 @@ public class BridgeAdapterExecutionTest {
         SmartContract bridge = ctx.getDeployedContract(TestBridge.class);
 
         Account initialOwner = ext.getAccount(ALICE);
-        config.setDeployParam(
-                array(
-                        initialOwner,
-                        gov.getScriptHash(),
-                        treasury.getScriptHash(),
-                        bridge.getScriptHash(),
-                        FungibleToken.toFractions(new BigDecimal("0.1"), 8),
-                        ext.getAccount(CHARLIE)
-                )
-        );
+        config.setDeployParam(array(initialOwner, gov.getScriptHash(), treasury.getScriptHash(), bridge.getScriptHash(),
+                FungibleToken.toFractions(new BigDecimal("0.1"), 8), ext.getAccount(CHARLIE)
+        ));
         config.setSigner(global(initialOwner));
         return config;
     }
+
+    // endregion deploy configuration
+    // region setup
 
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
         gov = new GrantSharesGovContract(ext.getDeployedContract(GrantSharesGov.class).getScriptHash(), neow3j);
-        treasury = new GrantSharesTreasuryContract(
-                ext.getDeployedContract(GrantSharesTreasury.class).getScriptHash(), neow3j);
+        treasury = new GrantSharesTreasuryContract(ext.getDeployedContract(GrantSharesTreasury.class).getScriptHash(),
+                neow3j
+        );
         bridge = new SmartContract(ext.getDeployedContract(TestBridge.class).getScriptHash(), neow3j);
         bridgeAdapter = new SmartContract(ext.getDeployedContract(GrantSharesBridgeAdapter.class).getScriptHash(),
                 neow3j
@@ -187,6 +190,9 @@ public class BridgeAdapterExecutionTest {
         eve = ext.getAccount(EVE);
         florian = ext.getAccount(FLORIAN);
 
+        owner = alice;
+        whitelistedFunder = charlie.getScriptHash();
+
         // fund the treasury with GAS
         GasToken gasToken = new GasToken(neow3j);
         Hash256 tx = gasToken.transfer(bob, treasury.getScriptHash(), gasToken.toFractions(new BigDecimal("100")))
@@ -194,10 +200,13 @@ public class BridgeAdapterExecutionTest {
         waitUntilTransactionIsExecuted(tx, neow3j);
 
         // fund the treasury with NEO
-        tx = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100))
-                .sign().send().getSendRawTransaction().getHash();
+        tx = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100)).sign().send()
+                .getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(tx, neow3j);
     }
+
+    // endregion setup
+    // region fund request intents execution using adapter
 
     @Test
     @Order(1)
@@ -234,19 +243,14 @@ public class BridgeAdapterExecutionTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(
-                        AccountSigner.none(proposer),
-                        ContractSigner.calledByEntry(bridgeAdapter.getScriptHash())
-                                .setRules(new WitnessRule(
-                                        WitnessAction.ALLOW,
-                                        new AndCondition(
-                                                new ScriptHashCondition(gasToken.getScriptHash()),
-                                                new CalledByContractCondition(bridge.getScriptHash())
-                                        )
-                                ))
-                )
-                .sign().send().getSendRawTransaction().getHash();
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id)).signers(none(proposer),
+                ContractSigner.calledByEntry(bridgeAdapter.getScriptHash()).setRules(
+                        new WitnessRule(WitnessAction.ALLOW,
+                                new AndCondition(new ScriptHashCondition(gasToken.getScriptHash()),
+                                        new CalledByContractCondition(bridge.getScriptHash())
+                                )
+                        ))
+        ).sign().send().getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(tx, neow3j);
 
         BigInteger treasuryBalanceAfter = gasToken.getBalanceOf(treasury.getScriptHash());
@@ -258,8 +262,8 @@ public class BridgeAdapterExecutionTest {
         assertThat(bridgeAdaptorBalanceAfter, is(bridgeAdapterBalanceBefore));
         assertThat(bridgeBalanceAfter, is(bridgeBalanceBefore.add(amount.add(bridgeFee))));
 
-        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
-                .getApplicationLog().getFirstExecution();
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send().getApplicationLog()
+                .getFirstExecution();
 
         List<Notification> n = execution.getNotifications();
         assertThat(n, hasSize(8));
@@ -363,22 +367,15 @@ public class BridgeAdapterExecutionTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id))
-                .signers(
-                        AccountSigner.none(proposer),
-                        ContractSigner.calledByEntry(bridgeAdapter.getScriptHash())
-                                .setRules(new WitnessRule(
-                                        WitnessAction.ALLOW,
-                                        new AndCondition(
-                                                new OrCondition(
-                                                        new ScriptHashCondition(gasToken.getScriptHash()),
-                                                        new ScriptHashCondition(neoToken.getScriptHash())
-                                                ),
-                                                new CalledByContractCondition(bridge.getScriptHash())
-                                        )
-                                ))
-                )
-                .sign().send().getSendRawTransaction().getHash();
+        Hash256 tx = gov.invokeFunction(EXECUTE, integer(id)).signers(none(proposer),
+                ContractSigner.calledByEntry(bridgeAdapter.getScriptHash()).setRules(
+                        new WitnessRule(WitnessAction.ALLOW, new AndCondition(
+                                new OrCondition(new ScriptHashCondition(gasToken.getScriptHash()),
+                                        new ScriptHashCondition(neoToken.getScriptHash())
+                                ), new CalledByContractCondition(bridge.getScriptHash())
+                        )
+                        ))
+        ).sign().send().getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(tx, neow3j);
 
         BigInteger treasuryBalanceAfterNeo = neoToken.getBalanceOf(treasury.getScriptHash());
@@ -399,8 +396,8 @@ public class BridgeAdapterExecutionTest {
         assertThat(bridgeAdaptorBalanceAfterGas, is(bridgeAdapterBalanceBeforeGas));
         assertThat(bridgeBalanceAfterGas, is(bridgeBalanceBeforeGas.add(bridgeFee)));
 
-        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
-                .getApplicationLog().getFirstExecution();
+        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send().getApplicationLog()
+                .getFirstExecution();
 
         List<Notification> n = execution.getNotifications();
         assertThat(n, hasSize(9));
@@ -474,6 +471,152 @@ public class BridgeAdapterExecutionTest {
         assertThat(n8.getState().getList().get(0).getInteger(), is(BigInteger.ONE));
     }
 
+    // endregion fund request intents execution using adapter
+    // region bridge function unauthorized
+
+    @Test
+    @Order(10)
+    public void failInvokeBridgeFunctionIfNotGovContract() {
+        TransactionBuilder b = bridgeAdapter.invokeFunction("bridge", hash160(GasToken.SCRIPT_HASH), hash160(bob),
+                integer(1)
+        ).signers(none(owner));
+
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("only GrantSharesGov contract"));
+    }
+
+    // endregion bridge function unauthorized
+    // region nep-17 transfer
+
+    @Test
+    @Order(0)
+    public void whitelistedFunderIsAllowedToSendGas() throws Throwable {
+        GasToken gasToken = new GasToken(neow3j);
+        BigInteger adapterBalanceBefore = gasToken.getBalanceOf(bridgeAdapter.getScriptHash());
+        BigInteger amount = BigInteger.TEN;
+
+        Account whitelistedFunderAcc = ext.getAccount(whitelistedFunder.toAddress());
+        NeoSendRawTransaction response = gasToken.transfer(whitelistedFunderAcc, bridgeAdapter.getScriptHash(), amount)
+                .sign().send();
+        assertFalse(response.hasError());
+        Hash256 txHash = response.getSendRawTransaction().getHash();
+        waitUntilTransactionIsExecuted(txHash, neow3j);
+
+        BigInteger adapterBalanceAfter = gasToken.getBalanceOf(bridgeAdapter.getScriptHash());
+        assertThat(adapterBalanceAfter, is(adapterBalanceBefore.add(amount)));
+    }
+
+    @Test
+    @Order(0)
+    public void whitelistedFunderIsNotAllowedToTransferTokenOtherThanGas() throws Throwable {
+        NeoToken neoToken = new NeoToken(neow3j);
+
+        Account whitelistedFunderAcc = ext.getAccount(whitelistedFunder.toAddress());
+        TransactionBuilder b = neoToken.transfer(whitelistedFunderAcc, bridgeAdapter.getScriptHash(), BigInteger.TEN);
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+
+        assertThat(thrown.getMessage(), containsString("only treasury"));
+    }
+
+    // endregion nep-17 transfer
+    // region test setters
+
+    @Test
+    @Order(10)
+    public void setWhitelistedFunder() throws Throwable {
+        Hash160 newWhitelistedFunder = eve.getScriptHash();
+        assertThat(bridgeAdapter.callFunctionReturningScriptHash("whitelistedFunder"), is(whitelistedFunder));
+
+        NeoSendRawTransaction response = bridgeAdapter.invokeFunction("setWhitelistedFunder",
+                hash160(newWhitelistedFunder)
+        ).signers(calledByEntry(owner)).sign().send();
+
+        assertFalse(response.hasError());
+        Hash256 txHash = response.getSendRawTransaction().getHash();
+        waitUntilTransactionIsExecuted(txHash, neow3j);
+
+        assertThat(bridgeAdapter.callFunctionReturningScriptHash("whitelistedFunder"), is(newWhitelistedFunder));
+
+        // Reset to default
+        response = bridgeAdapter.invokeFunction("setWhitelistedFunder", hash160(whitelistedFunder))
+                .signers(calledByEntry(owner))
+                .sign().send();
+        assertFalse(response.hasError());
+        txHash = response.getSendRawTransaction().getHash();
+        waitUntilTransactionIsExecuted(txHash, neow3j);
+    }
+
+    @Test
+    @Order(10)
+    public void failSetWhitelistedFunder_unauthorized() {
+        TransactionBuilder b = bridgeAdapter.invokeFunction("setWhitelistedFunder",
+                hash160(eve.getScriptHash())
+        ).signers(calledByEntry(bob));
+
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("only owner"));
+    }
+
+    @Test
+    @Order(10)
+    public void failSetWhitelistedFunder_invalid() {
+        TransactionBuilder b = bridgeAdapter.invokeFunction("setWhitelistedFunder", byteArrayFromString("hello"))
+                .signers(calledByEntry(owner));
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("invalid funder"));
+
+
+        b = bridgeAdapter.invokeFunction("setWhitelistedFunder", any(null))
+                .signers(calledByEntry(owner));
+        thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("invalid funder"));
+    }
+
+    @Test
+    public void setMaxFee() throws Throwable {
+        int newFee = 1;
+        assertThat(bridgeAdapter.callFunctionReturningInt("maxFee"), is(DEFAULT_BRIDGE_FEE));
+        assertThat(DEFAULT_BRIDGE_FEE, is(not(newFee)));
+
+        NeoSendRawTransaction response = bridgeAdapter.invokeFunction("setMaxFee", integer(1))
+                .signers(calledByEntry(owner)).sign().send();
+        assertFalse(response.hasError());
+        Hash256 txHash = response.getSendRawTransaction().getHash();
+        waitUntilTransactionIsExecuted(txHash, neow3j);
+
+        assertThat(bridgeAdapter.callFunctionReturningInt("maxFee"), is(BigInteger.valueOf(newFee)));
+
+        // Reset to default
+        response = bridgeAdapter.invokeFunction("setMaxFee", integer(DEFAULT_BRIDGE_FEE)).signers(calledByEntry(owner))
+                .sign().send();
+        assertFalse(response.hasError());
+        txHash = response.getSendRawTransaction().getHash();
+        waitUntilTransactionIsExecuted(txHash, neow3j);
+    }
+
+    @Test
+    @Order(10)
+    public void failSetMaxFee_unauthorized() {
+        TransactionBuilder b = bridgeAdapter.invokeFunction("setMaxFee", integer(1)).signers(none(bob));
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("only owner"));
+    }
+
+    @Test
+    @Order(10)
+    public void failSetMaxFee_negative() {
+        TransactionBuilder b = bridgeAdapter.invokeFunction("setMaxFee", integer(-1)).signers(calledByEntry(owner));
+        TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("invalid max fee"));
+
+        b = bridgeAdapter.invokeFunction("setMaxFee", any(null)).signers(calledByEntry(owner));
+        thrown = assertThrows(TransactionConfigurationException.class, b::sign);
+        assertThat(thrown.getMessage(), containsString("invalid max fee"));
+    }
+
+    // endregion test setters
+    // region test update
+
     @Test
     @Order(99)
     public void testUpdate_notAuthorized() throws Throwable {
@@ -487,14 +630,15 @@ public class BridgeAdapterExecutionTest {
     public void testUpdate() throws Throwable {
         ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
         assertThat(contractState.getUpdateCounter(), is(0));
-        assertThat(contractState.getNef().getChecksum(), is(3303416436L));
+        assertThat(contractState.getNef().getChecksum(), is(2532326755L));
 
         NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
         assertFalse(response.hasError());
         Hash256 txHash = response.getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(txHash, neow3j);
 
-        ContractState contractStateAfterUpdate = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
+        ContractState contractStateAfterUpdate = neow3j.getContractState(bridgeAdapter.getScriptHash()).send()
+                .getContractState();
         assertThat(contractStateAfterUpdate.getUpdateCounter(), is(1));
         assertThat(contractStateAfterUpdate.getNef().getChecksum(), is(4241155401L));
     }
@@ -512,5 +656,7 @@ public class BridgeAdapterExecutionTest {
 
         return bridgeAdapter.invokeFunction("update", nefParam, manifestParam, any(null));
     }
+
+    // endregion test update
 
 }
