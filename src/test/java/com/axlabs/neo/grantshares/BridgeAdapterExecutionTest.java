@@ -93,7 +93,6 @@ public class BridgeAdapterExecutionTest {
     private static final BigInteger GAS_MAX_AMOUNT = FungibleToken.toFractions(BigDecimal.valueOf(10000), 8);
     private static final int MULTI_SIG_THRESHOLD_RATIO = 50;
     private static final BigInteger DEFAULT_BRIDGE_FEE = FungibleToken.toFractions(new BigDecimal("0.1"), 8);
-    private static final Account backendAccount = Account.create();
 
     @RegisterExtension
     static ContractTestExtension ext = new ContractTestExtension();
@@ -163,7 +162,6 @@ public class BridgeAdapterExecutionTest {
                         treasury.getScriptHash(),
                         bridge.getScriptHash(),
                         FungibleToken.toFractions(new BigDecimal("0.1"), 8),
-                        backendAccount,
                         ext.getAccount(CHARLIE)
                 )
         );
@@ -489,7 +487,7 @@ public class BridgeAdapterExecutionTest {
     public void testUpdate() throws Throwable {
         ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
         assertThat(contractState.getUpdateCounter(), is(0));
-        assertThat(contractState.getNef().getChecksum(), is(2236112610L));
+        assertThat(contractState.getNef().getChecksum(), is(3303416436L));
 
         NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
         assertFalse(response.hasError());

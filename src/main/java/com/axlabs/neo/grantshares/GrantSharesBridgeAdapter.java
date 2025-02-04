@@ -46,7 +46,6 @@ public class GrantSharesBridgeAdapter {
     private final static int GRANTSHARESTREASURY_CONTRACT_KEY = 0x03;
     private final static int BRIDGE_CONTRACT_KEY = 0x04;
     private static final int MAX_FEE_KEY = 0x05;
-    private static final int BACKEND_ACCOUNT_KEY = 0x06;
     private static final int WHITELISTED_FUNDER_KEY = 0x07;
 
     @Struct
@@ -56,7 +55,6 @@ public class GrantSharesBridgeAdapter {
         Hash160 grantSharesTreasuryContract;
         Hash160 bridgeContract;
         Integer initialMaxFee;
-        Hash160 initialBackendAccount;
         Hash160 initialWhitelistedFunder;
     }
 
@@ -102,12 +100,6 @@ public class GrantSharesBridgeAdapter {
                 abort("invalid initial max fee");
             }
             Storage.put(context, MAX_FEE_KEY, initialMaxFee);
-
-            Hash160 backendAccount = deployParams.initialBackendAccount;
-            if (backendAccount == null || !Hash160.isValid(backendAccount) || backendAccount.isZero()) {
-                abort("invalid backend account");
-            }
-            Storage.put(context, BACKEND_ACCOUNT_KEY, backendAccount);
 
             Hash160 whitelistedFunder = deployParams.initialWhitelistedFunder;
             if (whitelistedFunder == null || !Hash160.isValid(whitelistedFunder) || whitelistedFunder.isZero()) {
@@ -155,19 +147,6 @@ public class GrantSharesBridgeAdapter {
                 }
             }
         }
-    }
-
-    @Safe
-    public static Hash160 backendAccount() {
-        return Storage.getHash160(context.asReadOnly(), BACKEND_ACCOUNT_KEY);
-    }
-
-    public static void setBackendAccount(Hash160 account) {
-        onlyOwner();
-        if (account == null || !Hash160.isValid(account) || account.isZero()) {
-            abort("invalid account");
-        }
-        Storage.put(context, BACKEND_ACCOUNT_KEY, account);
     }
 
     @Safe
