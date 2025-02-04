@@ -1,5 +1,6 @@
 package com.axlabs.neo.grantshares;
 
+import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
@@ -15,6 +16,7 @@ import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.annotations.Struct;
 import io.neow3j.devpack.contracts.ContractInterface;
+import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.FungibleToken;
 import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
@@ -24,7 +26,7 @@ import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.Runtime.getExecutingScriptHash;
 import static io.neow3j.devpack.Storage.getStorageContext;
 
-@Permission(contract = "*", methods = "*")
+@Permission(contract = "*")
 @ManifestExtra(key = "Author", value = "AxLabs")
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The GrantShares bridge adapter contract.")
@@ -56,6 +58,11 @@ public class GrantSharesBridgeAdapter {
         Integer initialMaxFee;
         Hash160 initialBackendAccount;
         Hash160 initialWhitelistedFunder;
+    }
+
+    public static void update(ByteString nef, String manifest, Object data) {
+        onlyOwner();
+        new ContractManagement().update(nef, manifest, data);
     }
 
     @OnDeployment
