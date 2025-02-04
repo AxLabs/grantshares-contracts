@@ -33,6 +33,7 @@ import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -183,6 +184,7 @@ public class BridgeAdapterExecutionTest {
     }
 
     @Test
+    @Order(1)
     public void execute_proposal_with_bridge_adapter_gas() throws Throwable {
         GasToken gasToken = new GasToken(neow3j);
         BigInteger bridgeFee = bridge.callFunctionReturningInt("getFee");
@@ -200,9 +202,10 @@ public class BridgeAdapterExecutionTest {
 
         // 1. Create proposal
         ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
-        byte[] proposalScript = ProposalBuilder.requestForFundsGas(proposer, proposalData, gov, treasury,
-                bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee
-        );
+        proposalData = new ProposalData("offchainUri", -1);
+        byte[] proposalScript = ProposalBuilder.requestForFundsGas(proposer, proposalData, gov.getScriptHash(),
+                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee);
+
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
 
@@ -304,6 +307,7 @@ public class BridgeAdapterExecutionTest {
     }
 
     @Test
+    @Order(2)
     public void execute_proposal_with_bridge_adapter_neo() throws Throwable {
         GasToken gasToken = new GasToken(neow3j);
         NeoToken neoToken = new NeoToken(neow3j);
@@ -322,13 +326,14 @@ public class BridgeAdapterExecutionTest {
         Hash160 recipient = eve.getScriptHash();
         BigInteger amount = BigInteger.TEN;
         String offchainUri = "execute_proposal_with_bridge_adapter_neo";
-        int linkedProposal = -1;
+        int linkedProposal = 0;
 
         // 1. Create proposal
         ProposalData proposalData = new ProposalData(offchainUri, linkedProposal);
-        byte[] proposalScript = ProposalBuilder.requestForFundsNeo(proposer, proposalData, gov, treasury,
-                bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee
-        );
+
+        byte[] proposalScript = ProposalBuilder.requestForFundsNeo(proposer, proposalData, gov.getScriptHash(),
+                treasury.getScriptHash(), bridgeAdapter.getScriptHash(), recipient, amount, bridgeFee);
+
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
 

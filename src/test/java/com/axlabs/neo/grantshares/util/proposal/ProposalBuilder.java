@@ -37,17 +37,16 @@ public class ProposalBuilder {
      *
      * @param proposer  the proposer account.
      * @param data      the proposal data.
-     * @param gov       the GrantSharesGov contract.
-     * @param treasury  the GrantSharesTreasury contract.
-     * @param adapter   the GrantSharesAdapter contract.
+     * @param gov       the GrantSharesGov contract hash.
+     * @param treasury  the GrantSharesTreasury contract hash.
+     * @param adapter   the GrantSharesAdapter contract hash.
      * @param recipient the recipient address on Neo X.
      * @param amount    the amount of GAS tokens to be bridged.
      * @param bridgeFee the fee to be paid to the bridge.
-     * @return the byte array representation of the script.
+     * @return the script to create a proposal for a fund request of Gas to an address on Neo X.
      */
-    public static byte[] requestForFundsGas(Account proposer, ProposalData data, GrantSharesGovContract gov,
-            GrantSharesTreasuryContract treasury, Hash160 adapter, Hash160 recipient, BigInteger amount,
-            BigInteger bridgeFee) {
+    public static byte[] requestForFundsGas(Account proposer, ProposalData data, Hash160 gov, Hash160 treasury,
+            Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
         return requestForFunds(GasToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient, amount,
                 bridgeFee
         );
@@ -60,37 +59,31 @@ public class ProposalBuilder {
      * The intents include:
      * <ul>
      *     <li>Releasing the provided bridge fee amount in GAS tokens from the treasury to the bridge adapter.</li>
-     *     <li>Releasing the requested GAS tokens from the treasury to the bridge adapter.</li>
+     *     <li>Releasing the requested NEO tokens from the treasury to the bridge adapter.</li>
      *     <li>Invoking the {@code bridge} function on the bridge adapter contract that will invoke the native bridge
      *     to deposit the corresponding amount to the provided address on Neo X.</li>
      * </ul>
      *
      * @param proposer  the proposer account.
      * @param data      the proposal data.
-     * @param gov       the GrantSharesGov contract.
-     * @param treasury  the GrantSharesTreasury contract.
-     * @param adapter   the GrantSharesAdapter contract.
+     * @param gov       the GrantSharesGov contract hash.
+     * @param treasury  the GrantSharesTreasury contract hash.
+     * @param adapter   the GrantSharesAdapter contract hash.
      * @param recipient the recipient address on Neo X.
      * @param amount    the amount of NEO tokens to be bridged.
      * @param bridgeFee the fee to be paid to the bridge.
-     * @return the byte array representation of the script.
+     * @return the script to create a proposal for a fund request of Neo to an address on Neo X.
      */
-    public static byte[] requestForFundsNeo(Account proposer, ProposalData data, GrantSharesGovContract gov,
-            GrantSharesTreasuryContract treasury, Hash160 adapter, Hash160 recipient, BigInteger amount,
-            BigInteger bridgeFee) {
-        return requestForFunds(NeoToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient, amount,
-                bridgeFee
+    public static byte[] requestForFundsNeo(Account proposer, ProposalData data, Hash160 gov, Hash160 treasury,
+            Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
+        return requestForFunds(
+                NeoToken.SCRIPT_HASH, proposer, data, gov, treasury, adapter, recipient, amount, bridgeFee
         );
     }
 
-    private static byte[] requestForFunds(Hash160 token, Account proposer, ProposalData data,
-            GrantSharesGovContract gov,
-            GrantSharesTreasuryContract treasury, Hash160 adapter, Hash160 recipient, BigInteger amount,
-            BigInteger bridgeFee) {
-
-        byte[] intentBytes = RequestForFunds.intentBytes(token, treasury, adapter, recipient, amount,
-                bridgeFee
-        );
+    private static byte[] requestForFunds(Hash160 token, Account proposer, ProposalData data, Hash160 gov,
+            Hash160 treasury, Hash160 adapter, Hash160 recipient, BigInteger amount, BigInteger bridgeFee) {
+        byte[] intentBytes = RequestForFunds.intentBytes(token, treasury, adapter, recipient, amount, bridgeFee);
         return buildCreateProposalScript(data, gov, intentBytes, proposer);
     }
 
@@ -100,13 +93,12 @@ public class ProposalBuilder {
     /**
      * Builds the script for creating a generic proposal on the GrantSharesGov contract.
      *
-     * @param gov         the GrantSharesGov contract.
-     * @param intentBytes the byte array representation of the intents.
+     * @param gov         the GrantSharesGov contract hash.
+     * @param intentBytes the intents script.
      * @param proposer    the proposer of the proposal.
-     * @return the byte array representation of the script.
+     * @return the proposal creation script.
      */
-    public static byte[] buildCreateProposalScript(ProposalData proposalData, GrantSharesGovContract gov,
-            byte[] intentBytes,
+    public static byte[] buildCreateProposalScript(ProposalData proposalData, Hash160 gov, byte[] intentBytes,
             Account proposer) {
 
         ScriptBuilder b1 = new ScriptBuilder();
@@ -122,7 +114,7 @@ public class ProposalBuilder {
 
         b2.pushInteger(CallFlags.ALL.getValue());
         b2.pushData(TestHelper.GovernanceMethods.CREATE);
-        b2.pushData(gov.getScriptHash().toLittleEndianArray());
+        b2.pushData(gov.toLittleEndianArray());
         b2.sysCall(InteropService.SYSTEM_CONTRACT_CALL);
         byte[] endBytes = b2.toArray();
 
