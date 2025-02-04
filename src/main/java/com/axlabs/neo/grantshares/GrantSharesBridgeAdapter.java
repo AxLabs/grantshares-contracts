@@ -48,66 +48,16 @@ public class GrantSharesBridgeAdapter {
     private static final int MAX_FEE_KEY = 0x05;
     private static final int WHITELISTED_FUNDER_KEY = 0x07;
 
-    @Struct
-    static class DeployParams {
-        Hash160 initialOwner;
-        Hash160 grantSharesGovContract;
-        Hash160 grantSharesTreasuryContract;
-        Hash160 bridgeContract;
-        Integer initialMaxFee;
-        Hash160 initialWhitelistedFunder;
-    }
+    // region authorization
 
-    public static void update(ByteString nef, String manifest, Object data) {
-        onlyOwner();
-        new ContractManagement().update(nef, manifest, data);
-    }
-
-    @OnDeployment
-    public static void deploy(Object data, boolean update) {
-        if (!update) {
-            Storage.put(context, VERSION_KEY, 1);
-
-            // Initialize the contract.
-            DeployParams deployParams = (DeployParams) data;
-            Hash160 initialOwner = deployParams.initialOwner;
-            if (initialOwner == null || !Hash160.isValid(initialOwner) || initialOwner.isZero()) {
-                abort("invalid initial owner");
-            }
-            Storage.put(context, OWNER_KEY, initialOwner);
-            onlyOwner();
-
-            Hash160 gsGovContract = deployParams.grantSharesGovContract;
-            if (gsGovContract == null || !Hash160.isValid(gsGovContract) || gsGovContract.isZero()) {
-                abort("invalid GrantSharesGov contract");
-            }
-            Storage.put(context, GRANTSHARESGOV_CONTRACT_KEY, gsGovContract);
-
-            Hash160 gsTreasury = deployParams.grantSharesTreasuryContract;
-            if (gsGovContract == null || !Hash160.isValid(gsTreasury) || gsTreasury.isZero()) {
-                abort("invalid GrantSharesTreasury contract");
-            }
-            Storage.put(context, GRANTSHARESTREASURY_CONTRACT_KEY, gsTreasury);
-
-            Hash160 bridgeContract = deployParams.bridgeContract;
-            if (bridgeContract == null || !Hash160.isValid(bridgeContract) || bridgeContract.isZero()) {
-                abort("invalid bridge contract");
-            }
-            Storage.put(context, BRIDGE_CONTRACT_KEY, bridgeContract);
-
-            Integer initialMaxFee = deployParams.initialMaxFee;
-            if (initialMaxFee == null || initialMaxFee < 0) {
-                abort("invalid initial max fee");
-            }
-            Storage.put(context, MAX_FEE_KEY, initialMaxFee);
-
-            Hash160 whitelistedFunder = deployParams.initialWhitelistedFunder;
-            if (whitelistedFunder == null || !Hash160.isValid(whitelistedFunder) || whitelistedFunder.isZero()) {
-                abort("invalid whitelisted funder");
-            }
-            Storage.put(context, WHITELISTED_FUNDER_KEY, whitelistedFunder);
+    private static void onlyOwner() {
+        if (!Runtime.checkWitness(owner())) {
+            abort("only owner");
         }
     }
+
+    // endregion authorization
+    // region verify
 
     @OnVerification
     public static boolean verify() {
@@ -116,51 +66,8 @@ public class GrantSharesBridgeAdapter {
         return true;
     }
 
-    @OnNEP17Payment
-    public static void onNEP17Payment(Hash160 from, int amount, Object data) {
-        Hash160 callingScriptHash = Runtime.getCallingScriptHash();
-        boolean isGas = callingScriptHash.equals(new GasToken().getHash());
-
-        if (from == null) {
-            // Only Gas-minting is allowed.
-            if (!isGas) {
-                abort("minting only allowed for gas");
-            } else {
-                // Gas minting is accepted.
-                return;
-            }
-        } else {
-            if (from.equals(whitelistedFunder()) && isGas) {
-                // Whitelisted funder is allowed to send Gas tokens.
-                return;
-            }
-            if (!from.equals(grantSharesTrasuryContract())) {
-                abort("only treasury");
-            } else {
-                // Accept only Gas and Neo tokens.
-                if (isGas) {
-                    return;
-                } else if (callingScriptHash.equals(new NeoToken().getHash())) {
-                    return;
-                } else {
-                    abort("unsupported token");
-                }
-            }
-        }
-    }
-
-    @Safe
-    public static Hash160 whitelistedFunder() {
-        return Storage.getHash160(context.asReadOnly(), WHITELISTED_FUNDER_KEY);
-    }
-
-    public static void setWhitelistedFunder(Hash160 funder) {
-        onlyOwner();
-        if (funder == null || !Hash160.isValid(funder) || funder.isZero()) {
-            abort("invalid funder");
-        }
-        Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
-    }
+    // endregion verify
+    // region bridge function
 
     /**
      * The bridge fee will be paid by the treasury using a separate intent.
@@ -200,18 +107,67 @@ public class GrantSharesBridgeAdapter {
         }
     }
 
-    private static void onlyOwner() {
-        if (!Runtime.checkWitness(owner())) {
-            abort("only owner");
+    // endregion bridge function
+    // region NEP17 payment
+
+    @OnNEP17Payment
+    public static void onNEP17Payment(Hash160 from, int amount, Object data) {
+        Hash160 callingScriptHash = Runtime.getCallingScriptHash();
+        boolean isGas = callingScriptHash.equals(new GasToken().getHash());
+
+        if (from == null) {
+            // Only Gas-minting is allowed.
+            if (!isGas) {
+                abort("minting only allowed for gas");
+            } else {
+                // Gas minting is accepted.
+                return;
+            }
+        } else {
+            if (from.equals(whitelistedFunder()) && isGas) {
+                // Whitelisted funder is allowed to send Gas tokens.
+                return;
+            }
+            if (!from.equals(grantSharesTrasuryContract())) {
+                abort("only treasury");
+            } else {
+                // Accept only Gas and Neo tokens.
+                if (isGas) {
+                    return;
+                } else if (callingScriptHash.equals(new NeoToken().getHash())) {
+                    return;
+                } else {
+                    abort("unsupported token");
+                }
+            }
         }
     }
 
-    public static void setMaxFee(int maxFee) {
+    // endregion
+    // region setters
+
+    public static void setWhitelistedFunder(Hash160 funder) {
         onlyOwner();
-        if (maxFee < 0) {
+        if (funder == null || !Hash160.isValid(funder) || funder.isZero()) {
+            abort("invalid funder");
+        }
+        Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
+    }
+
+    public static void setMaxFee(Integer maxFee) {
+        onlyOwner();
+        if (maxFee == null || maxFee < 0) {
             abort("invalid max fee");
         }
         Storage.put(context, MAX_FEE_KEY, maxFee);
+    }
+
+    // endregion setters
+    // region read-only methods
+
+    @Safe
+    public static Hash160 owner() {
+        return Storage.getHash160(context.asReadOnly(), OWNER_KEY);
     }
 
     @Safe
@@ -220,8 +176,8 @@ public class GrantSharesBridgeAdapter {
     }
 
     @Safe
-    public static Hash160 owner() {
-        return Storage.getHash160(context.asReadOnly(), OWNER_KEY);
+    public static Hash160 whitelistedFunder() {
+        return Storage.getHash160(context.asReadOnly(), WHITELISTED_FUNDER_KEY);
     }
 
     @Safe
@@ -239,8 +195,74 @@ public class GrantSharesBridgeAdapter {
         return Storage.getHash160(context.asReadOnly(), BRIDGE_CONTRACT_KEY);
     }
 
-    static class BridgeContract extends ContractInterface {
+    // endregion
+    // region deployment/update
 
+    @Struct
+    static class DeployData {
+        Hash160 initialOwner;
+        Hash160 grantSharesGovContract;
+        Hash160 grantSharesTreasuryContract;
+        Hash160 bridgeContract;
+        Integer initialMaxFee;
+        Hash160 initialWhitelistedFunder;
+    }
+
+    @OnDeployment
+    public static void deploy(Object data, boolean update) {
+        if (!update) {
+            Storage.put(context, VERSION_KEY, 1);
+
+            // Initialize the contract.
+            DeployData deployData = (DeployData) data;
+            Hash160 initialOwner = deployData.initialOwner;
+            if (initialOwner == null || !Hash160.isValid(initialOwner) || initialOwner.isZero()) {
+                abort("invalid initial owner");
+            }
+            Storage.put(context, OWNER_KEY, initialOwner);
+            onlyOwner();
+
+            Hash160 gsGovContract = deployData.grantSharesGovContract;
+            if (gsGovContract == null || !Hash160.isValid(gsGovContract) || gsGovContract.isZero()) {
+                abort("invalid GrantSharesGov contract");
+            }
+            Storage.put(context, GRANTSHARESGOV_CONTRACT_KEY, gsGovContract);
+
+            Hash160 gsTreasury = deployData.grantSharesTreasuryContract;
+            if (gsGovContract == null || !Hash160.isValid(gsTreasury) || gsTreasury.isZero()) {
+                abort("invalid GrantSharesTreasury contract");
+            }
+            Storage.put(context, GRANTSHARESTREASURY_CONTRACT_KEY, gsTreasury);
+
+            Hash160 bridgeContract = deployData.bridgeContract;
+            if (bridgeContract == null || !Hash160.isValid(bridgeContract) || bridgeContract.isZero()) {
+                abort("invalid bridge contract");
+            }
+            Storage.put(context, BRIDGE_CONTRACT_KEY, bridgeContract);
+
+            Integer initialMaxFee = deployData.initialMaxFee;
+            if (initialMaxFee == null || initialMaxFee < 0) {
+                abort("invalid initial max fee");
+            }
+            Storage.put(context, MAX_FEE_KEY, initialMaxFee);
+
+            Hash160 whitelistedFunder = deployData.initialWhitelistedFunder;
+            if (whitelistedFunder == null || !Hash160.isValid(whitelistedFunder) || whitelistedFunder.isZero()) {
+                abort("invalid whitelisted funder");
+            }
+            Storage.put(context, WHITELISTED_FUNDER_KEY, whitelistedFunder);
+        }
+    }
+
+    public static void update(ByteString nef, String manifest, Object data) {
+        onlyOwner();
+        new ContractManagement().update(nef, manifest, data);
+    }
+
+    // endregion deployment/update
+    // region bridge interface
+
+    static class BridgeContract extends ContractInterface {
         BridgeContract(Hash160 contractHash) {
             super(contractHash);
         }
@@ -250,9 +272,8 @@ public class GrantSharesBridgeAdapter {
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositToken(Hash160 neoN3Token, Hash160 from, Hash160 to, int amount, int maxFee);
-
-        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
-        native int getFee();
     }
+
+    // endregion
 
 }
