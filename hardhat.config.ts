@@ -2,7 +2,7 @@ import fs from 'fs';
 import '@typechain/hardhat';
 import 'hardhat-preprocessor';
 import '@openzeppelin/hardhat-upgrades';
-import { HardhatUserConfig, task } from 'hardhat/config';
+import { HardhatUserConfig, task, vars } from 'hardhat/config';
 import checkBalance from './src/deploy/typescript/checkBalance';
 
 function getRemappings() {
@@ -17,7 +17,7 @@ task('checkBalance', 'Check deployer balance').setAction(checkBalance);
 
 //!!!TEST MNEMONIC!!! - DO NOT USE IN PRODUCTION
 const accountMnemonic =
-  process.env.MNEMONIC || 'cabin remain mom audit drive system nurse sniff mule odor approve bread';
+  vars.has("MNEMONIC") ? vars.get("MNEMONIC") : 'cabin remain mom audit drive system nurse sniff mule odor approve bread';
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -51,6 +51,14 @@ const config: HardhatUserConfig = {
       gas: 'auto',
       gasMultiplier: 1,
     },
+    neoxTestnet: {
+      url: 'https://testnet.rpc.banelabs.org',
+      accounts: {
+        mnemonic: accountMnemonic,
+      },
+      chainId: 12227332,
+      gasPrice: 40000000000,
+    }
   },
   paths: {
     sources: './src/main/solidity', // Use ./src rather than ./contracts as Hardhat expects
