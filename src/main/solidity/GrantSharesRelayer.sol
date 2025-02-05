@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.28;
 
-import { AccessControlUpgradeable } from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import { PausableUpgradeable } from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
-import { UUPSUpgradeable } from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {AccessControlUpgradeable} from "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
+import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UUPSUpgradeable {
     //0xfc512fde
@@ -16,14 +16,14 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
 
     /// @custom:storage-location erc7201:grantshares.storage
     struct GSStorage {
-        uint proposalFee;
-        uint executionFee;
+        uint256 proposalFee;
+        uint256 executionFee;
     }
 
     struct Proposal {
         bytes intent;
         string offchainUri;
-        uint linkedProposal;
+        uint256 linkedProposal;
     }
 
     //keccak256(abi.encode(uint256(keccak256("grantshares.storage")) - 1)) & ~bytes32(uint256(0xff))
@@ -34,7 +34,7 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
      * @param proposalFee Fee required to create a proposal
      * @param executionFee Fee required to execute a proposal
      */
-    function initialize(uint proposalFee, uint executionFee) public initializer {
+    function initialize(uint256 proposalFee, uint256 executionFee) public initializer {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _getGSStorage().proposalFee = proposalFee;
         _getGSStorage().executionFee = executionFee;
@@ -46,9 +46,7 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
      * @param proposal Proposal to be created
      */
     function propose(Proposal calldata proposal) external payable whenNotPaused {
-        if (_getGSStorage().proposalFee != msg.value) {
-            revert InvalidPaymentAmount();
-        }
+        if (_getGSStorage().proposalFee != msg.value) revert InvalidPaymentAmount();
         emit CreateProposal(msg.sender, proposal);
     }
 
@@ -58,9 +56,7 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
      * @param proposalId Id of the proposal to be executed
      */
     function execute(uint256 proposalId) external payable whenNotPaused {
-        if (_getGSStorage().executionFee != msg.value) {
-            revert InvalidPaymentAmount();
-        }
+        if (_getGSStorage().executionFee != msg.value) revert InvalidPaymentAmount();
         emit ExecuteProposal(proposalId);
     }
 
@@ -68,7 +64,7 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
      * @dev Sets the fee required to create a proposal
      * @param fee Fee to be paid to create a proposal
      */
-    function setProposalFee(uint fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setProposalFee(uint256 fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _getGSStorage().proposalFee = fee;
     }
 
@@ -76,7 +72,7 @@ contract GrantSharesRelayer is AccessControlUpgradeable, PausableUpgradeable, UU
      * @dev Sets the fee required to execute a proposal
      * @param fee Fee to be paid to execute a proposal
      */
-    function setExecutionFee(uint fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function setExecutionFee(uint256 fee) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _getGSStorage().executionFee = fee;
     }
 
