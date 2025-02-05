@@ -29,6 +29,11 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
     //keccak256(abi.encode(uint256(keccak256("grantshares.storage")) - 1)) & ~bytes32(uint256(0xff))
     bytes32 private constant GSStorageLocation = 0xbf1dcdeffa40dfe9cfe080762b5d715a0ec98727df31130b368e7f82f0d49800;
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     /**
      * @dev Initializes the contract with the sender as the default admin role
      * @param proposalFee Fee required to create a proposal
