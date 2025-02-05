@@ -183,3 +183,5 @@ artifacts/
 typechain-types/
 cache/
 cache_hardhat/
+
+**/.env

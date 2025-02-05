@@ -2,6 +2,7 @@
 src = 'src/main/solidity'
 test = 'src/test/solidity'
 out = 'artifacts'
+fs_permissions = [{ access = "read", path = "./"}]
 build_info = true
 extra_output = ["storageLayout"]
 libs = ['lib']
