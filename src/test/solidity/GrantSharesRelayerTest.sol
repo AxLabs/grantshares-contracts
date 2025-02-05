@@ -42,11 +42,11 @@ contract GrantSharesRelayerTest is Test {
         relayer.propose(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
 
         vm.expectRevert(GrantSharesRelayer.InvalidPaymentAmount.selector);
-        relayer.propose{ value: 2 }(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
+        relayer.propose{value: 2}(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
 
         vm.expectEmit(true, true, false, true, address(relayer));
         emit GrantSharesRelayer.CreateProposal(address(this), GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
-        relayer.propose{ value: 1 }(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
+        relayer.propose{value: 1}(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
     }
 
     function testExecutionFee() public {
@@ -56,11 +56,11 @@ contract GrantSharesRelayerTest is Test {
         relayer.execute(1);
 
         vm.expectRevert(GrantSharesRelayer.InvalidPaymentAmount.selector);
-        relayer.execute{ value: 2 }(1);
+        relayer.execute{value: 2}(1);
 
         vm.expectEmit(true, true, false, true, address(relayer));
         emit GrantSharesRelayer.ExecuteProposal(1);
-        relayer.execute{ value: 1 }(1);
+        relayer.execute{value: 1}(1);
     }
 
     function testPause() public {
