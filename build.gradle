@@ -52,6 +52,7 @@ task compileSolidity(type : Exec) {
 }
 
 task testSolidity(type: Exec) {
+    environment('FOUNDRY_OUT', 'artifacts')
     dependsOn('compileSolidity')
     commandLine 'forge', 'test'
 }
