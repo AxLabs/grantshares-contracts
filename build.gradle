@@ -58,6 +58,11 @@ task testSolidity(type: Exec) {
 }
 test.dependsOn('testSolidity')
 
+task cleanSolidity(type: Delete){
+    delete 'artifacts'
+}
+clean.dependsOn('cleanSolidity')
+
 task contract(type : Exec) {
     dependsOn('npmInstall')
     // use locally installed node by the gradle-node-plugin
