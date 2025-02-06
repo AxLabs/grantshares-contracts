@@ -36,6 +36,7 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
 
     /**
      * @dev Initializes the contract with the sender as the default admin role
+     * @param initialOwner Address of the initial owner
      * @param proposalFee Fee required to create a proposal
      * @param executionFee Fee required to execute a proposal
      */
