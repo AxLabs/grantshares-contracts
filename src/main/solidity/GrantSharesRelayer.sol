@@ -21,7 +21,7 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
     }
 
     struct Proposal {
-        bytes intent;
+        bytes intents;
         string offchainUri;
         uint256 linkedProposal;
     }
