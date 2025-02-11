@@ -99,7 +99,7 @@ public class GrantSharesBridgeAdapter {
         if (balance < amount) abort("insufficient balance");
 
         if (token.equals(new GasToken().getHash())) {
-            bridgeContract.depositNative(executingScriptHash, to, amount, maxFee);
+            bridgeContract.depositGas(executingScriptHash, to, amount, maxFee);
         } else if (token.equals(new NeoToken().getHash())) {
             bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee);
         } else {
@@ -268,7 +268,7 @@ public class GrantSharesBridgeAdapter {
         }
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
-        native void depositNative(Hash160 from, Hash160 to, int amount, int maxFee);
+        native void depositGas(Hash160 from, Hash160 to, int amount, int maxFee);
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositToken(Hash160 neoN3Token, Hash160 from, Hash160 to, int amount, int maxFee);
