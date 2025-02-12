@@ -1,13 +1,15 @@
-const { ethers: any } = require('hardhat');
+import { vars } from 'hardhat/config';
 
+/**
+ * Tests the creation and execution of a proposal using the GrantSharesRelayer contract
+ * 
+ * You need to provide the right address and parameters for your use case, depending on the network you are using
+ */
 async function test_events() {
   const GrantSharesRelayer = await ethers.getContractFactory('GrantSharesRelayer');
-  // console.log('Deploying GrantSharesRelayer...');
-  //TODO: get these from an env file
 
-  const relayerProxy = await GrantSharesRelayer.attach(
-    '0x9b82Ae1050c7C71cDA41E269b8F83478a01D71aE',
-  );
+  const grantSharesRelayerAddress = '0x9b82Ae1050c7C71cDA41E269b8F83478a01D71aE';
+  const relayerProxy = await GrantSharesRelayer.attach(grantSharesRelayerAddress);
 
   const proposal = {
     intents:
@@ -18,8 +20,8 @@ async function test_events() {
   };
   const proposalId = 247;
 
-  await relayerProxy.propose(proposal);
-  // await relayerProxy.execute(proposalId);
+  // await relayerProxy.propose(proposal);
+  await relayerProxy.execute(proposalId);
 }
 
 test_events()
