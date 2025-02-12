@@ -15,6 +15,7 @@ import io.neow3j.devpack.annotations.OnVerification;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
 import io.neow3j.devpack.annotations.Struct;
+import io.neow3j.devpack.constants.NativeContract;
 import io.neow3j.devpack.contracts.ContractInterface;
 import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.FungibleToken;
@@ -26,7 +27,10 @@ import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.Runtime.getExecutingScriptHash;
 import static io.neow3j.devpack.Storage.getStorageContext;
 
-@Permission(contract = "*")
+@Permission.Permissions({
+        @Permission(contract = "*", methods = {"depositGas", "depositToken"}),
+        @Permission(nativeContract = NativeContract.ContractManagement, methods = "update")
+})
 @ManifestExtra(key = "Author", value = "AxLabs")
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The GrantShares bridge adapter contract.")
@@ -38,7 +42,7 @@ import static io.neow3j.devpack.Storage.getStorageContext;
 @SuppressWarnings("unchecked")
 public class GrantSharesBridgeAdapter {
 
-    static StorageContext context = getStorageContext();
+    private static StorageContext context = getStorageContext();
 
     private final static int VERSION_KEY = 0x00;
     private final static int OWNER_KEY = 0x01;
@@ -46,7 +50,7 @@ public class GrantSharesBridgeAdapter {
     private final static int GRANTSHARESTREASURY_CONTRACT_KEY = 0x03;
     private final static int BRIDGE_CONTRACT_KEY = 0x04;
     private static final int MAX_FEE_KEY = 0x05;
-    private static final int WHITELISTED_FUNDER_KEY = 0x07;
+    private static final int WHITELISTED_FUNDER_KEY = 0x06;
 
     // region authorization
 
