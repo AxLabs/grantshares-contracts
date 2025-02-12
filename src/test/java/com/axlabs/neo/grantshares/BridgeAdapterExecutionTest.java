@@ -212,7 +212,7 @@ public class BridgeAdapterExecutionTest {
     @Order(1)
     public void execute_proposal_with_bridge_adapter_gas() throws Throwable {
         GasToken gasToken = new GasToken(neow3j);
-        BigInteger bridgeFee = bridge.callFunctionReturningInt("getFee");
+        BigInteger bridgeFee = bridge.callFunctionReturningInt("gasDepositFee");
 
         BigInteger treasuryBalanceBefore = gasToken.getBalanceOf(treasury.getScriptHash());
         BigInteger bridgeAdapterBalanceBefore = gasToken.getBalanceOf(bridgeAdapter.getScriptHash());
@@ -267,7 +267,7 @@ public class BridgeAdapterExecutionTest {
                 .getFirstExecution();
 
         List<Notification> n = execution.getNotifications();
-        assertThat(n, hasSize(8));
+        assertThat(n, hasSize(7));
 
         // Intent #1: Bridge fee payment from treasury to bridge adapter.
         Notification n0 = n.get(0);
@@ -300,29 +300,22 @@ public class BridgeAdapterExecutionTest {
         assertThat(n3.getState().getList().get(2).getInteger(), is(amount));
 
         // Intent #3: Invoke bridge adapter to bridge.
-        Notification n4 = n.get(4); // Fee transfer
-        assertThat(n4.getContract(), is(gasToken.getScriptHash()));
-        assertThat(n4.getEventName(), is("Transfer"));
-        assertThat(n4.getState().getList().get(0).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
-        assertThat(n4.getState().getList().get(1).getAddress(), is(bridge.getScriptHash().toAddress()));
-        assertThat(n4.getState().getList().get(2).getInteger(), is(bridgeFee));
-
-        Notification n5 = n.get(5); // Token transfer
+        Notification n5 = n.get(4); // Gas transfer including fee
         assertThat(n5.getContract(), is(gasToken.getScriptHash()));
         assertThat(n5.getEventName(), is("Transfer"));
         assertThat(n5.getState().getList().get(0).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
         assertThat(n5.getState().getList().get(1).getAddress(), is(bridge.getScriptHash().toAddress()));
-        assertThat(n5.getState().getList().get(2).getInteger(), is(amount));
+        assertThat(n5.getState().getList().get(2).getInteger(), is(amount.add(bridgeFee)));
 
-        Notification n6 = n.get(6); // Deposit event
+        Notification n6 = n.get(5); // Deposit event
         assertThat(n6.getContract(), is(bridge.getScriptHash()));
-        assertThat(n6.getEventName(), is("NativeDeposit"));
+        assertThat(n6.getEventName(), is("GasDeposit"));
         assertThat(n6.getState().getList().get(0).getAddress(), is(bridgeAdapter.getScriptHash().toAddress()));
         assertThat(n6.getState().getList().get(1).getAddress(), is(recipient.toAddress()));
         assertThat(n6.getState().getList().get(2).getInteger(), is(amount));
 
         // Proposal executed event
-        Notification n7 = n.get(7);
+        Notification n7 = n.get(6);
         assertThat(n7.getContract(), is(gov.getScriptHash()));
         assertThat(n7.getEventName(), is("ProposalExecuted"));
         assertThat(n7.getState().getList().get(0).getInteger(), is(BigInteger.ZERO));
@@ -333,7 +326,7 @@ public class BridgeAdapterExecutionTest {
     public void execute_proposal_with_bridge_adapter_neo() throws Throwable {
         GasToken gasToken = new GasToken(neow3j);
         NeoToken neoToken = new NeoToken(neow3j);
-        BigInteger bridgeFee = bridge.callFunctionReturningInt("getFee");
+        BigInteger bridgeFee = bridge.callFunctionReturningInt("tokenDepositFee", hash160(neoToken.getScriptHash()));
 
         BigInteger treasuryBalanceBeforeNeo = neoToken.getBalanceOf(treasury.getScriptHash());
         BigInteger bridgeAdapterBalanceBeforeNeo = neoToken.getBalanceOf(bridgeAdapter.getScriptHash());
@@ -632,7 +625,7 @@ public class BridgeAdapterExecutionTest {
     public void testUpdate() throws Throwable {
         ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
         assertThat(contractState.getUpdateCounter(), is(0));
-        assertThat(contractState.getNef().getChecksum(), is(2532326755L));
+        assertThat(contractState.getNef().getChecksum(), is(1223764167L));
 
         NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
         assertFalse(response.hasError());

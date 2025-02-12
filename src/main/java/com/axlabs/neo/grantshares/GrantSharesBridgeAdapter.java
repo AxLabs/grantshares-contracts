@@ -61,8 +61,8 @@ public class GrantSharesBridgeAdapter {
 
     @OnVerification
     public static boolean verify() {
-        // This contract is not intended to hold any tokens inbetween two transactions. In each transaction where tokens
-        // are received, they are intended to be forwarded immediately.
+        // This contract is not intended to hold any tokens in between two transactions. In each transaction where
+        // tokens are received, they are intended to be forwarded immediately.
         return true;
     }
 
@@ -91,17 +91,22 @@ public class GrantSharesBridgeAdapter {
 
         Hash160 executingScriptHash = getExecutingScriptHash();
         BridgeContract bridgeContract = new BridgeContract(bridgeContract());
-        int maxFee = maxFee();
+        GasToken gasToken = new GasToken();
 
-        FungibleToken tokenContract = new FungibleToken(token);
-
-        int balance = tokenContract.balanceOf(executingScriptHash);
-        if (balance < amount) abort("insufficient balance");
-
-        if (token.equals(new GasToken().getHash())) {
-            bridgeContract.depositGas(executingScriptHash, to, amount, maxFee);
+        if (token.equals(gasToken.getHash())) {
+            int amountIncludingFee = amount + bridgeContract.gasDepositFee();
+            if (gasToken.balanceOf(executingScriptHash) < amountIncludingFee) {
+                abort("insufficient gas balance for bridge deposit");
+            }
+            bridgeContract.depositGas(executingScriptHash, to, amountIncludingFee, maxFee());
         } else if (token.equals(new NeoToken().getHash())) {
-            bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee);
+            if (gasToken.balanceOf(executingScriptHash) < bridgeContract.tokenDepositFee(token)) {
+                abort("insufficient gas balance for bridge fee");
+            }
+            if (new FungibleToken(token).balanceOf(executingScriptHash) < amount) {
+                abort("insufficient token balance for bridge deposit");
+            }
+            bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee());
         } else {
             abort("unsupported token");
         }
@@ -272,6 +277,12 @@ public class GrantSharesBridgeAdapter {
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositToken(Hash160 neoN3Token, Hash160 from, Hash160 to, int amount, int maxFee);
+
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
+        native int gasDepositFee();
+
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
+        native int tokenDepositFee(Hash160 token);
     }
 
     // endregion
