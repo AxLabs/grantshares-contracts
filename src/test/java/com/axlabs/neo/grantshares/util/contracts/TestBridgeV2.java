@@ -23,7 +23,7 @@ import static io.neow3j.devpack.Storage.getStorageContext;
  * This is a test contract to mimic the behavior of the bridge contract.
  */
 @Permission(contract = "*", methods = "*")
-public class TestBridge {
+public class TestBridgeV2 {
 
     private static final int FEE_KEY = 0x00;
 

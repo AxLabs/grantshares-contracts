@@ -28,7 +28,7 @@ import static io.neow3j.devpack.Runtime.getExecutingScriptHash;
 import static io.neow3j.devpack.Storage.getStorageContext;
 
 @Permission.Permissions({
-        @Permission(contract = "*", methods = {"depositGas", "depositToken"}),
+        @Permission(contract = "*", methods = {"depositGas", "depositNative", "depositToken"}),
         @Permission(nativeContract = NativeContract.ContractManagement, methods = "update")
 })
 @ManifestExtra(key = "Author", value = "AxLabs")
@@ -52,6 +52,8 @@ public class GrantSharesBridgeAdapter {
     private static final int MAX_FEE_KEY = 0x05;
     private static final int WHITELISTED_FUNDER_KEY = 0x06;
 
+    private static final int BRIDGE_VERSION_KEY = 0x10;
+
     // region authorization
 
     private static void onlyOwner() {
@@ -72,6 +74,19 @@ public class GrantSharesBridgeAdapter {
 
     // endregion verify
     // region bridge function
+
+    @Safe
+    public static int bridgeVersion() {
+        return Storage.getInt(context, BRIDGE_VERSION_KEY);
+    }
+
+    public static void setBridgeVersion(Integer version) {
+        onlyOwner();
+        if (version == null || version < 2 || version > 3) {
+            abort("unsupported bridge version");
+        }
+        Storage.put(context, BRIDGE_VERSION_KEY, version);
+    }
 
     /**
      * The bridge fee will be paid by the treasury using a separate intent.
@@ -98,11 +113,20 @@ public class GrantSharesBridgeAdapter {
         GasToken gasToken = new GasToken();
 
         if (token.equals(gasToken.getHash())) {
-            int amountIncludingFee = amount + bridgeContract.gasDepositFee();
-            if (gasToken.balanceOf(executingScriptHash) < amountIncludingFee) {
-                abort("insufficient gas balance for bridge deposit");
+            if (bridgeVersion() == 2) {
+                int amountIncludingFee = amount + bridgeContract.gasDepositFee();
+                if (gasToken.balanceOf(executingScriptHash) < amountIncludingFee) {
+                    abort("insufficient gas balance for bridge deposit");
+                }
+                bridgeContract.depositGas(executingScriptHash, to, amountIncludingFee, maxFee());
+                return;
+            } else if (bridgeVersion() == 3) {
+                if (gasToken.balanceOf(executingScriptHash) < amount + bridgeContract.nativeDepositFee()) {
+                    abort("insufficient gas balance for bridge deposit");
+                }
+                bridgeContract.depositNative(executingScriptHash, to, amount, maxFee());
+                return;
             }
-            bridgeContract.depositGas(executingScriptHash, to, amountIncludingFee, maxFee());
         } else if (token.equals(new NeoToken().getHash())) {
             if (gasToken.balanceOf(executingScriptHash) < bridgeContract.tokenDepositFee(token)) {
                 abort("insufficient gas balance for bridge fee");
@@ -260,6 +284,8 @@ public class GrantSharesBridgeAdapter {
                 abort("invalid whitelisted funder");
             }
             Storage.put(context, WHITELISTED_FUNDER_KEY, whitelistedFunder);
+
+            Storage.put(context, BRIDGE_VERSION_KEY, 2);
         }
     }
 
@@ -276,14 +302,24 @@ public class GrantSharesBridgeAdapter {
             super(contractHash);
         }
 
+        // v2
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositGas(Hash160 from, Hash160 to, int amount, int maxFee);
+
+        // v3
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
+        native void depositNative(Hash160 from, Hash160 to, int amount, int maxFee);
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositToken(Hash160 neoN3Token, Hash160 from, Hash160 to, int amount, int maxFee);
 
+        // v2
         @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
         native int gasDepositFee();
+
+        // v3
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
+        native int nativeDepositFee();
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
         native int tokenDepositFee(Hash160 token);
