@@ -25,10 +25,11 @@ import static java.lang.String.format;
 
 public class UpdateAdapter {
 
-    private static Account deployerAndInitialOwner = Account.fromWIF(
-            "");
-    private static Neow3j neow3j = Neow3j.build(new HttpService(""));
-    private static Hash160 bridgeAdapter = new Hash160("");
+    // N3 testnet node
+    private static final Neow3j neow3j = Neow3j.build(new HttpService("http://seed1t5.neo.org:20332"));
+
+    private static final Hash160 bridgeAdapter = new Hash160("");
+    private static final Account deployerAndInitialOwner = Account.fromWIF("");
 
     private static final String BRIDGE_ADAPTER_CONTRACT_NAME = "GrantSharesBridgeAdapter";
 

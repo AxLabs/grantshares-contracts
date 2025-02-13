@@ -28,8 +28,15 @@ import static io.neow3j.types.ContractParameter.integer;
 
 public class DeployAdapter {
 
-    private static Account deployerAndInitialOwner = Account.fromWIF("");
-    private static Neow3j neow3j = Neow3j.build(new HttpService(""));
+    // N3 testnet node
+    private static final Neow3j neow3j = Neow3j.build(new HttpService("http://seed1t5.neo.org:20332"));
+
+    // N3 testnet contracts
+    private static final Hash160 GRANTSHARES_GOV_HASH = new Hash160("0x7f96d67752ac47928742bc518f528d0f42964645");
+    private static final Hash160 GRANTSHARES_TREASURY_HASH = new Hash160("0xc8dc114f3986579b8f318a484ff0e5f97d120fab");
+    private static final Hash160 NEOX_BRIDGE_HASH = new Hash160("0x2ba94444d43c9a084a5660982a9f95f43f07422e");
+
+    private static final Account deployerAndInitialOwner = Account.fromWIF("");
 
     private static final String BRIDGE_ADAPTER_CONTRACT_NAME = "GrantSharesBridgeAdapter";
 
@@ -53,17 +60,14 @@ public class DeployAdapter {
 
         Hash160 initialOwner = deployerAndInitialOwner.getScriptHash();
         // The following hashes are the contract hashes on testnet.
-        Hash160 govContractHash = new Hash160("0x7f96d67752ac47928742bc518f528d0f42964645");
-        Hash160 treasuryContractHash = new Hash160("0xc8dc114f3986579b8f318a484ff0e5f97d120fab");
-        Hash160 bridgeContractHash = new Hash160("0x2ba94444d43c9a084a5660982a9f95f43f07422e");
         BigInteger initialMaxFee = new GasToken(neow3j).toFractions(new BigDecimal("0.1"));
         Hash160 initialWhitelistedFunder = deployerAndInitialOwner.getScriptHash();
 
         ContractParameter deploymentParam = array(
                 hash160(initialOwner),
-                hash160(govContractHash),
-                hash160(treasuryContractHash),
-                hash160(bridgeContractHash),
+                hash160(GRANTSHARES_GOV_HASH),
+                hash160(GRANTSHARES_TREASURY_HASH),
+                hash160(NEOX_BRIDGE_HASH),
                 integer(initialMaxFee),
                 hash160(initialWhitelistedFunder)
 
