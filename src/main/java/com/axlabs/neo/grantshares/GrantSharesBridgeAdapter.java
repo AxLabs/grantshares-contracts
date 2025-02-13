@@ -111,24 +111,27 @@ public class GrantSharesBridgeAdapter {
         Hash160 executingScriptHash = getExecutingScriptHash();
         BridgeContract bridgeContract = new BridgeContract(bridgeContract());
         GasToken gasToken = new GasToken();
+        int gasBalanceSelf = gasToken.balanceOf(executingScriptHash);
 
         if (token.equals(gasToken.getHash())) {
-            if (bridgeVersion() == 2) {
+            int bridgeVersion = bridgeVersion();
+            assert bridgeVersion == 2 || bridgeVersion == 3 : "unsupported bridge version";
+            if (bridgeVersion == 2) {
                 int amountIncludingFee = amount + bridgeContract.gasDepositFee();
-                if (gasToken.balanceOf(executingScriptHash) < amountIncludingFee) {
+                if (gasBalanceSelf < amountIncludingFee) {
                     abort("insufficient gas balance for bridge deposit");
                 }
                 bridgeContract.depositGas(executingScriptHash, to, amountIncludingFee, maxFee());
                 return;
-            } else if (bridgeVersion() == 3) {
-                if (gasToken.balanceOf(executingScriptHash) < amount + bridgeContract.nativeDepositFee()) {
+            } else {
+                if (gasBalanceSelf < amount + bridgeContract.nativeDepositFee()) {
                     abort("insufficient gas balance for bridge deposit");
                 }
                 bridgeContract.depositNative(executingScriptHash, to, amount, maxFee());
                 return;
             }
         } else if (token.equals(new NeoToken().getHash())) {
-            if (gasToken.balanceOf(executingScriptHash) < bridgeContract.tokenDepositFee(token)) {
+            if (gasBalanceSelf < bridgeContract.tokenDepositFee(token)) {
                 abort("insufficient gas balance for bridge fee");
             }
             if (new FungibleToken(token).balanceOf(executingScriptHash) < amount) {
@@ -146,33 +149,23 @@ public class GrantSharesBridgeAdapter {
     @OnNEP17Payment
     public static void onNEP17Payment(Hash160 from, int amount, Object data) {
         Hash160 callingScriptHash = Runtime.getCallingScriptHash();
-        boolean isGas = callingScriptHash.equals(new GasToken().getHash());
 
-        if (from == null) {
-            // Only Gas-minting is allowed.
-            if (!isGas) {
-                abort("minting only allowed for gas");
-            } else {
-                // Gas minting is accepted.
+        if (callingScriptHash.equals(new GasToken().getHash())) {
+            if (from == null) { // Allow Gas minting from potentially holding Neo.
                 return;
+            } else if (from.equals(grantSharesTrasuryContract()) || from.equals(whitelistedFunder())) {
+                return;
+            } else {
+                abort("only treasury or whitelisted funder");
+            }
+        } else if (callingScriptHash.equals(new NeoToken().getHash())) {
+            if (from.equals(grantSharesTrasuryContract())) {
+                return;
+            } else {
+                abort("only treasury");
             }
         } else {
-            if (from.equals(whitelistedFunder()) && isGas) {
-                // Whitelisted funder is allowed to send Gas tokens.
-                return;
-            }
-            if (!from.equals(grantSharesTrasuryContract())) {
-                abort("only treasury");
-            } else {
-                // Accept only Gas and Neo tokens.
-                if (isGas) {
-                    return;
-                } else if (callingScriptHash.equals(new NeoToken().getHash())) {
-                    return;
-                } else {
-                    abort("unsupported token");
-                }
-            }
+            abort("unsupported token");
         }
     }
 
