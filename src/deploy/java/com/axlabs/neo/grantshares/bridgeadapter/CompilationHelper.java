@@ -1,4 +1,4 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.bridgeadapter;
 
 import io.neow3j.compiler.CompilationUnit;
 import io.neow3j.compiler.Compiler;
