@@ -3,16 +3,11 @@ package com.axlabs.neo.grantshares;
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import com.axlabs.neo.grantshares.util.GrantSharesTreasuryContract;
 import com.axlabs.neo.grantshares.util.IntentParam;
-import io.neow3j.compiler.CompilationUnit;
-import io.neow3j.compiler.Compiler;
-import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NeoToken;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.TransactionBuilder;
-import io.neow3j.types.ContractParameter;
-import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
 import io.neow3j.utils.Numeric;
@@ -20,17 +15,10 @@ import io.neow3j.wallet.Account;
 
 import java.io.IOException;
 import java.math.BigInteger;
-import java.util.HashMap;
-import java.util.Map;
 
 import static com.axlabs.neo.grantshares.Config.getGrantSharesGovHash;
 import static com.axlabs.neo.grantshares.Config.getGrantSharesTreasuryHash;
-import static com.axlabs.neo.grantshares.Config.getIntProperty;
 import static com.axlabs.neo.grantshares.Config.getNeow3j;
-import static com.axlabs.neo.grantshares.DeployConfig.EXPIRATION_LENGTH_KEY;
-import static io.neow3j.types.ContractParameter.any;
-import static io.neow3j.types.ContractParameter.array;
-import static io.neow3j.types.ContractParameter.map;
 
 public class Invocations {
 
@@ -69,7 +57,8 @@ public class Invocations {
         NeoApplicationLog.Execution exec = signSendAwait(
                 gov.createProposal(a.getScriptHash(), "https://github.com/axlabs/grantshares-dev/issues/42", -1,
                         intent
-                ), a);
+                ), a
+        );
     }
 
     static NeoApplicationLog.Execution signSendAwait(TransactionBuilder b, Account signer) throws Throwable {

@@ -1,12 +1,6 @@
 package com.axlabs.neo.grantshares.bridgeadapter;
 
 import com.axlabs.neo.grantshares.GrantSharesBridgeAdapter;
-import com.axlabs.neo.grantshares.GrantSharesGov;
-import com.axlabs.neo.grantshares.GrantSharesTreasury;
-import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
-import com.axlabs.neo.grantshares.util.GrantSharesTreasuryContract;
-import com.axlabs.neo.grantshares.util.contracts.TestBridgeV2;
-import com.axlabs.neo.grantshares.util.contracts.TestBridgeV3;
 import io.neow3j.contract.FungibleToken;
 import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NefFile;
