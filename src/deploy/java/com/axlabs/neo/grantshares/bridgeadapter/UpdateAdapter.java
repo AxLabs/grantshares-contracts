@@ -1,5 +1,6 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.bridgeadapter;
 
+import com.axlabs.neo.grantshares.GrantSharesBridgeAdapter;
 import io.neow3j.constants.NeoConstants;
 import io.neow3j.contract.NefFile;
 import io.neow3j.contract.SmartContract;
@@ -15,9 +16,10 @@ import io.neow3j.types.Hash256;
 import io.neow3j.utils.Await;
 import io.neow3j.wallet.Account;
 
-import static com.axlabs.neo.grantshares.CompilationHelper.compileAndWriteNefAndManifestFiles;
-import static com.axlabs.neo.grantshares.CompilationHelper.readManifest;
-import static com.axlabs.neo.grantshares.CompilationHelper.readNefFile;
+import static com.axlabs.neo.grantshares.bridgeadapter.CompilationHelper.compileAndWriteNefAndManifestFiles;
+import static com.axlabs.neo.grantshares.bridgeadapter.CompilationHelper.readManifest;
+import static com.axlabs.neo.grantshares.bridgeadapter.CompilationHelper.readNefFile;
+import static com.axlabs.neo.grantshares.bridgeadapter.AccountHelper.getBridgeAdapterOwner;
 import static io.neow3j.transaction.AccountSigner.calledByEntry;
 import static io.neow3j.types.ContractParameter.any;
 import static io.neow3j.types.ContractParameter.byteArray;
@@ -29,16 +31,17 @@ public class UpdateAdapter {
     private static final Neow3j neow3j = Neow3j.build(new HttpService("http://seed1t5.neo.org:20332"));
 
     private static final Hash160 bridgeAdapter = new Hash160("");
-    private static final Account deployerAndInitialOwner = Account.fromWIF("");
 
     private static final String BRIDGE_ADAPTER_CONTRACT_NAME = "GrantSharesBridgeAdapter";
 
     public static void main(String[] args) throws Throwable {
+        Account bridgeAdapterOwner = getBridgeAdapterOwner();
+
         compileAndWriteNefAndManifestFiles(GrantSharesBridgeAdapter.class);
-        updateGrantSharesBridgeAdapter();
+        updateGrantSharesBridgeAdapter(bridgeAdapterOwner);
     }
 
-    private static void updateGrantSharesBridgeAdapter() throws Throwable {
+    private static void updateGrantSharesBridgeAdapter(Account bridgeAdapterOwner) throws Throwable {
         NefFile nefFile = readNefFile(BRIDGE_ADAPTER_CONTRACT_NAME);
         ContractManifest manifest = readManifest(BRIDGE_ADAPTER_CONTRACT_NAME);
         if (nefFile == null) {
@@ -58,7 +61,7 @@ public class UpdateAdapter {
 
         TransactionBuilder b = new SmartContract(bridgeAdapter, neow3j)
                 .invokeFunction("update", byteArray(nefFile.toArray()), byteArray(manifestBytes), dataParam)
-                .signers(calledByEntry(deployerAndInitialOwner));
+                .signers(calledByEntry(bridgeAdapterOwner));
         NeoSendRawTransaction response = b.sign().send();
 
         if (response.hasError()) {

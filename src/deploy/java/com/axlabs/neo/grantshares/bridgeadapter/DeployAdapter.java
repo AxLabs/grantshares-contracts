@@ -1,5 +1,6 @@
-package com.axlabs.neo.grantshares;
+package com.axlabs.neo.grantshares.bridgeadapter;
 
+import com.axlabs.neo.grantshares.GrantSharesBridgeAdapter;
 import io.neow3j.contract.ContractManagement;
 import io.neow3j.contract.GasToken;
 import io.neow3j.contract.NefFile;
@@ -18,9 +19,10 @@ import io.neow3j.wallet.Account;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
-import static com.axlabs.neo.grantshares.CompilationHelper.compileAndWriteNefAndManifestFiles;
-import static com.axlabs.neo.grantshares.CompilationHelper.readManifest;
-import static com.axlabs.neo.grantshares.CompilationHelper.readNefFile;
+import static com.axlabs.neo.grantshares.bridgeadapter.CompilationHelper.compileAndWriteNefAndManifestFiles;
+import static com.axlabs.neo.grantshares.bridgeadapter.CompilationHelper.readManifest;
+import static com.axlabs.neo.grantshares.bridgeadapter.CompilationHelper.readNefFile;
+import static com.axlabs.neo.grantshares.bridgeadapter.AccountHelper.getBridgeAdapterOwner;
 import static io.neow3j.transaction.AccountSigner.none;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.hash160;
@@ -36,19 +38,19 @@ public class DeployAdapter {
     private static final Hash160 GRANTSHARES_TREASURY_HASH = new Hash160("0xc8dc114f3986579b8f318a484ff0e5f97d120fab");
     private static final Hash160 NEOX_BRIDGE_HASH = new Hash160("0x2ba94444d43c9a084a5660982a9f95f43f07422e");
 
-    private static final Account deployerAndInitialOwner = Account.fromWIF("");
-
     private static final String BRIDGE_ADAPTER_CONTRACT_NAME = "GrantSharesBridgeAdapter";
 
     // Make sure to fill in the required values in DeployAdapter.java before running this main method.
     public static void main(String[] args) throws Throwable {
+        Account deployerAndInitialOwner = getBridgeAdapterOwner();
+
         compileAndWriteNefAndManifestFiles(GrantSharesBridgeAdapter.class);
-        deployGrantSharesBridgeAdapter();
+        deployGrantSharesBridgeAdapter(deployerAndInitialOwner);
     }
 
     // region deployment
 
-    private static void deployGrantSharesBridgeAdapter() throws Throwable {
+    private static void deployGrantSharesBridgeAdapter(Account deployerAndInitialOwner) throws Throwable {
         NefFile nefFile = readNefFile(BRIDGE_ADAPTER_CONTRACT_NAME);
         ContractManifest manifest = readManifest(BRIDGE_ADAPTER_CONTRACT_NAME);
 
