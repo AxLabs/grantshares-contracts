@@ -23,13 +23,13 @@ import static io.neow3j.devpack.Storage.getStorageContext;
  * This is a test contract to mimic the behavior of the bridge contract.
  */
 @Permission(contract = "*", methods = "*")
-public class TestBridge {
+public class TestBridgeV2 {
 
     private static final int FEE_KEY = 0x00;
 
     // @EventParameterNames({"From", "Recipient", "Amount"}) // Requires neow3j v3.23.0
-    @DisplayName("NativeDeposit")
-    public static Event3Args<Hash160, Hash160, Integer> nativeDeposit;
+    @DisplayName("GasDeposit")
+    public static Event3Args<Hash160, Hash160, Integer> gasDeposit;
 
     // @EventParameterNames({"From", "Recipient", "Amount"}) // Requires neow3j v3.23.0
     @DisplayName("TokenDeposit")
@@ -66,28 +66,31 @@ public class TestBridge {
     }
 
     @Safe
-    public static int getFee() {
+    public static int gasDepositFee() {
         return Storage.getInt(getReadOnlyContext(), FEE_KEY);
     }
 
-    public static void depositNative(Hash160 from, Hash160 to, int amount, int maxFee) {
-        if (getFee() > maxFee) abort("insufficient max fee");
+    public static void depositGas(Hash160 from, Hash160 to, int amountIncludingFee, int maxFee) {
+        if (gasDepositFee() > maxFee) abort("insufficient max fee");
 
         Hash160 executingScriptHash = getExecutingScriptHash();
-        if (!new GasToken().transfer(from, executingScriptHash, getFee(), null)) {
-            abort("fee transfer failed (native)");
+
+        if (!new GasToken().transfer(from, executingScriptHash, amountIncludingFee, null)) {
+            abort("gas transfer failed");
         }
-        if (!new GasToken().transfer(from, executingScriptHash, amount, null)) {
-            abort("native transfer failed");
-        }
-        nativeDeposit.fire(from, to, amount);
+        gasDeposit.fire(from, to, amountIncludingFee - gasDepositFee());
+    }
+
+    @Safe
+    public static int tokenDepositFee(Hash160 token) {
+        return Storage.getInt(getReadOnlyContext(), FEE_KEY);
     }
 
     public static void depositToken(Hash160 token, Hash160 from, Hash160 to, int amount, int maxFee) {
-        if (getFee() > maxFee) abort("insufficient max fee");
+        if (gasDepositFee() > maxFee) abort("insufficient max fee");
 
         Hash160 executingScriptHash = getExecutingScriptHash();
-        if (!new GasToken().transfer(from, executingScriptHash, getFee(), null)) {
+        if (!new GasToken().transfer(from, executingScriptHash, tokenDepositFee(token), null)) {
             abort("fee transfer failed (token)");
         }
         if (!new FungibleToken(token).transfer(from, executingScriptHash, amount, null)) {
