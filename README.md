@@ -10,6 +10,7 @@ at [docs.grantshares.io](https://docs.grantshares.io).
 The Governance and Treasury are deployed on Neo N3 mainnet.  
 - GrantSharesGov: [`0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9`](https://explorer.onegate.space/contractinfo/0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9). 
 - GrantSharesTreasury: [`0x6276c1e3a68280bc6c9c00df755fb691be1162ef`](https://explorer.onegate.space/contractinfo/0x6276c1e3a68280bc6c9c00df755fb691be1162ef)
+- GrantSharesBridgeAdapter: [`0x8346705e69ecc085f2216b4836659686dbab59ee`](https://explorer.onegate.space/contractinfo/0x8346705e69ecc085f2216b4836659686dbab59ee)
 
 ## Development
 
