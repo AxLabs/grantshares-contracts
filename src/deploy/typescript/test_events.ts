@@ -1,4 +1,4 @@
-import { vars } from 'hardhat/config';
+import {ethers} from "hardhat";
 
 /**
  * Tests the creation and execution of a proposal using the GrantSharesRelayer contract
@@ -21,6 +21,8 @@ async function test_events() {
   };
   const proposalId = 268;
 
+  const caller =  (await ethers.getSigners())[0];
+  console.log('Deployer:', caller.address);
 
   const fees = await relayerProxy.getFees();
   const proposalFee = fees.proposalFee;

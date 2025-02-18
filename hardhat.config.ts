@@ -34,14 +34,13 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {
       forking: {
-        url: 'https://sepolia.optimism.io',
+        url: 'https://mainnet-1.rpc.banelabs.org',
       },
       accounts: {
         mnemonic: accountMnemonic,
       },
-      chainId: 11155111,
-      gas: 'auto',
-      gasMultiplier: 1,
+      chainId: 47763,
+      gasPrice: 40000000000,
     },
     op_sepolia: {
       url: 'https://sepolia.optimism.io',

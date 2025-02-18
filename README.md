@@ -11,6 +11,9 @@ The Governance and Treasury are deployed on Neo N3 mainnet.
 - GrantSharesGov: [`0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9`](https://explorer.onegate.space/contractinfo/0xf15976ea5c020aaa12b9989aa9880e990eb5dcc9). 
 - GrantSharesTreasury: [`0x6276c1e3a68280bc6c9c00df755fb691be1162ef`](https://explorer.onegate.space/contractinfo/0x6276c1e3a68280bc6c9c00df755fb691be1162ef)
 
+The Relayer contract is deployed on Neo X mainnet.
+- GrantSharesRelayer: [`0xEBE5BEcFF0D8BEf442ced1eBb042Eb7E9652b98B`](https://neoxscan.ngd.network/address/0xebe5becff0d8bef442ced1ebb042eb7e9652b98b)
+
 ## Development
 
 Clone this repo:
