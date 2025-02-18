@@ -30,7 +30,7 @@ public class UpdateAdapter {
     // N3 testnet node
     private static final Neow3j neow3j = Neow3j.build(new HttpService("http://seed1t5.neo.org:20332"));
 
-    private static final Hash160 bridgeAdapter = new Hash160("");
+    private static final Hash160 bridgeAdapter = new Hash160("0x8346705e69ecc085f2216b4836659686dbab59ee");
 
     private static final String BRIDGE_ADAPTER_CONTRACT_NAME = "GrantSharesBridgeAdapter";
 
