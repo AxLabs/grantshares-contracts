@@ -5,8 +5,11 @@ import {Ownable2StepUpgradeable} from "@openzeppelin/contracts-upgradeable/acces
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 
 contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUPSUpgradeable {
+    using Address for address payable;
+
     //0xfc512fde
     error InvalidPaymentAmount();
 
@@ -88,6 +91,14 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
      */
     function getFees() external pure returns (GSStorage memory) {
         return _getGSStorage();
+    }
+
+    /**
+     * @dev Withdraws the fees accumulated in the contract to the owner's address
+     */
+    function withdrawFees() external onlyOwner {
+        // no reentrancy guard b/c owner is trusted
+        payable(owner()).sendValue(address(this).balance);
     }
 
     /**
