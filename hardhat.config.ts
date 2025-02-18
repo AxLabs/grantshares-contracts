@@ -16,8 +16,9 @@ function getRemappings() {
 task('checkBalance', 'Check deployer balance').setAction(checkBalance);
 
 //!!!TEST MNEMONIC!!! - DO NOT USE IN PRODUCTION
-const accountMnemonic =
-  vars.has("MNEMONIC") ? vars.get("MNEMONIC") : 'cabin remain mom audit drive system nurse sniff mule odor approve bread';
+const accountMnemonic = vars.has('GS_MNEMONIC')
+  ? vars.get('GS_MNEMONIC')
+  : 'cabin remain mom audit drive system nurse sniff mule odor approve bread';
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -57,6 +58,14 @@ const config: HardhatUserConfig = {
         mnemonic: accountMnemonic,
       },
       chainId: 12227332,
+      gasPrice: 40000000000,
+    },
+    neoxMainnet: {
+      url: 'https://mainnet-1.rpc.banelabs.org',
+      accounts: {
+        mnemonic: accountMnemonic,
+      },
+      chainId: 47763,
       gasPrice: 40000000000,
     }
   },
