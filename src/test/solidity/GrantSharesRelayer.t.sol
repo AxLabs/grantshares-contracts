@@ -85,6 +85,27 @@ contract GrantSharesRelayerTest is Test {
         relayer.execute{value: newFee}(1);
     }
 
+    function testWithdrawal() public {
+        // Pay proposal fee
+        relayer.propose{value: DEFAULT_CREATE_FEE}(GrantSharesRelayer.Proposal("intent", "offchainUri", 1));
+
+        // Pay execution fee
+        relayer.execute{value: DEFAULT_EXECUTION_FEE}(1);
+
+        // Check initial balance of owner
+        uint256 initialBalance = owner.balance;
+
+        // Withdraw fees
+        vm.prank(owner);
+        relayer.withdrawFees();
+
+        // Check final balance of owner
+        uint256 finalBalance = owner.balance;
+
+        // Assert that the final balance is increased by the sum of the fees
+        assertEq(finalBalance, initialBalance + DEFAULT_CREATE_FEE + DEFAULT_EXECUTION_FEE);
+    }
+
     function testPause() public {
         vm.prank(owner);
         relayer.pause();
