@@ -1,5 +1,6 @@
 package com.axlabs.neo.grantshares.util.contracts;
 
+import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Storage;
 import io.neow3j.devpack.annotations.DisplayName;
@@ -7,9 +8,11 @@ import io.neow3j.devpack.annotations.OnDeployment;
 import io.neow3j.devpack.annotations.OnNEP17Payment;
 import io.neow3j.devpack.annotations.Permission;
 import io.neow3j.devpack.annotations.Safe;
+import io.neow3j.devpack.annotations.Struct;
 import io.neow3j.devpack.contracts.FungibleToken;
 import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
+import io.neow3j.devpack.contracts.StdLib;
 import io.neow3j.devpack.events.Event3Args;
 import io.neow3j.devpack.events.Event4Args;
 
@@ -65,9 +68,26 @@ public class TestBridgeV2 {
         }
     }
 
+    // This dummy struct is used to imitate the bridge's call to the native StdLib contract when deserializing the
+    // stored bridge data upon fetching the fee value.
+    @Struct
+    private static class StructWithValueOne {
+        public int one;
+
+        StructWithValueOne() {
+            one = 1;
+        }
+    }
+
+    // Returns 1, but includes a call to StdLib for testing purposes to imitate the call to StdLib that the bridge does.
+    private static int getOneWithStdLibCall() {
+        return ((StructWithValueOne) new StdLib().deserialize(
+                new ByteString(new byte[]{0x40, 0x01, 0x21, 0x01, 0x01}))).one;
+    }
+
     @Safe
     public static int gasDepositFee() {
-        return Storage.getInt(getReadOnlyContext(), FEE_KEY);
+        return Storage.getInt(getReadOnlyContext(), FEE_KEY) * getOneWithStdLibCall();
     }
 
     public static void depositGas(Hash160 from, Hash160 to, int amountIncludingFee, int maxFee) {
@@ -83,7 +103,7 @@ public class TestBridgeV2 {
 
     @Safe
     public static int tokenDepositFee(Hash160 token) {
-        return Storage.getInt(getReadOnlyContext(), FEE_KEY);
+        return Storage.getInt(getReadOnlyContext(), FEE_KEY) * getOneWithStdLibCall();
     }
 
     public static void depositToken(Hash160 token, Hash160 from, Hash160 to, int amount, int maxFee) {

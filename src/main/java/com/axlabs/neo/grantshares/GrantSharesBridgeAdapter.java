@@ -356,14 +356,14 @@ public class GrantSharesBridgeAdapter {
         native void depositToken(Hash160 neoN3Token, Hash160 from, Hash160 to, int amount, int maxFee);
 
         // v2
-        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates | io.neow3j.devpack.constants.CallFlags.AllowCall)
         native int gasDepositFee();
 
         // v3
-        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates | io.neow3j.devpack.constants.CallFlags.AllowCall)
         native int nativeDepositFee();
 
-        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates)
+        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates | io.neow3j.devpack.constants.CallFlags.AllowCall)
         native int tokenDepositFee(Hash160 token);
     }
 

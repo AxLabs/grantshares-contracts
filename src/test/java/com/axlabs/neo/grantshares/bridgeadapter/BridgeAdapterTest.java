@@ -282,7 +282,7 @@ public class BridgeAdapterTest {
     public void testUpdate() throws Throwable {
         ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
         assertThat(contractState.getUpdateCounter(), is(0));
-        assertThat(contractState.getNef().getChecksum(), is(2619462457L));
+        assertThat(contractState.getNef().getChecksum(), is(3536054027L));
 
         NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
         assertFalse(response.hasError());
