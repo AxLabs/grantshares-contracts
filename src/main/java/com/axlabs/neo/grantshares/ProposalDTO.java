@@ -4,7 +4,7 @@ import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Map;
 
 /**
- * Used to return all proposal information as one structure in getter methods of the {@link GrantSharesGovOld} contract.
+ * Used to return all proposal information as one structure in getter methods of the {@link GrantSharesGov} contract.
  */
 public class ProposalDTO {
 

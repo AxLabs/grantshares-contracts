@@ -1,10 +1,13 @@
 plugins {
     id 'java'
-    id 'io.neow3j.gradle-plugin' version '3.17.1-SNAPSHOT'
+    id 'io.neow3j.gradle-plugin' version '3.21.1'
+    id "com.github.node-gradle.node" version "7.1.0"
 }
 
-sourceCompatibility = JavaVersion.VERSION_1_8
-targetCompatibility = JavaVersion.VERSION_1_8
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
 
 group 'io.grantshares'
 version '1.0.0'
@@ -24,18 +27,46 @@ sourceSets {
 }
 
 dependencies {
-    implementation 'io.neow3j:devpack:3.17.1-SNAPSHOT'
+    implementation 'io.neow3j:devpack:3.21.1'
 
-    testImplementation 'io.neow3j:devpack-test:3.17.1-SNAPSHOT',
-            'io.neow3j:compiler:3.17.1-SNAPSHOT',
+    testImplementation 'io.neow3j:devpack-test:3.21.1',
+            'io.neow3j:compiler:3.21.1',
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 
-    deployImplementation 'io.neow3j:compiler:3.17.1-SNAPSHOT'
+    deployImplementation 'io.neow3j:compiler:3.21.1'
 }
 
 tasks.withType(Test) {
     useJUnitPlatform()
+}
+
+node {
+    version = '20.18.1'
+    download = true
+}
+
+task compileSolidity(type : Exec) {
+    dependsOn('npmInstall')
+    commandLine 'forge', 'compile'
+}
+
+task testSolidity(type: Exec) {
+    environment('FOUNDRY_OUT', 'artifacts')
+    dependsOn('compileSolidity')
+    commandLine 'forge', 'test'
+}
+test.dependsOn('testSolidity')
+
+task cleanSolidity(type: Delete){
+    delete 'artifacts'
+}
+clean.dependsOn('cleanSolidity')
+
+task contract(type : Exec) {
+    dependsOn('npmInstall')
+    // use locally installed node by the gradle-node-plugin
+    commandLine '.gradle/nodejs/node-v20.18.1-darwin-arm64/bin/npx', 'hardhat', 'run', './src/deploy/typescript/deploy_relayer.ts'
 }
 
 neow3jCompile {

@@ -12,6 +12,7 @@ import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.InvocationResult;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
+import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.test.DeployConfig;
@@ -20,6 +21,7 @@ import io.neow3j.test.DeployContext;
 import io.neow3j.transaction.AccountSigner;
 import io.neow3j.transaction.Transaction;
 import io.neow3j.transaction.Witness;
+import io.neow3j.transaction.exceptions.TransactionConfigurationException;
 import io.neow3j.types.CallFlags;
 import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
@@ -39,22 +41,22 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static com.axlabs.neo.grantshares.util.TestHelper.ALICE;
-import static com.axlabs.neo.grantshares.util.TestHelper.BOB;
-import static com.axlabs.neo.grantshares.util.TestHelper.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.DENISE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EVE;
-import static com.axlabs.neo.grantshares.util.TestHelper.EXECUTE;
-import static com.axlabs.neo.grantshares.util.TestHelper.IS_PAUSED;
-import static com.axlabs.neo.grantshares.util.TestHelper.PAUSE;
-import static com.axlabs.neo.grantshares.util.TestHelper.PHASE_LENGTH;
-import static com.axlabs.neo.grantshares.util.TestHelper.UNPAUSE;
-import static com.axlabs.neo.grantshares.util.TestHelper.UPDATE_CONTRACT;
-import static com.axlabs.neo.grantshares.util.TestHelper.assertAborted;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.EXECUTE;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.IS_PAUSED;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.PAUSE;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.UNPAUSE;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.UPDATE_CONTRACT;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.DENISE;
+import static com.axlabs.neo.grantshares.util.TestHelper.Members.EVE;
+import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.createAndEndorseProposal;
 import static com.axlabs.neo.grantshares.util.TestHelper.createMultiSigAccount;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
@@ -73,6 +75,7 @@ import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ContractTest(contracts = {GrantSharesGov.class, GrantSharesTreasury.class},
@@ -133,7 +136,6 @@ public class GrantSharesTreasuryTest {
     @BeforeAll
     public static void setUp() throws Throwable {
         neow3j = ext.getNeow3j();
-        neow3j.allowTransmissionOnFault();
 
         // contracts
         gov = new GrantSharesGovContract(
@@ -185,7 +187,9 @@ public class GrantSharesTreasuryTest {
         hash = neo.vote(alice, alice.getECKeyPair().getPublicKey())
                 .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
-        assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1000));
+        assertThat(neo.getCandidates().stream()
+                .filter(c -> c.getPublicKey().equals(alice.getECKeyPair().getPublicKey()))
+                .findFirst().get().getVotes().intValue(), is(1000));
 
         // fund treasury
         hash = new NeoToken(neow3j).transfer(bob, treasury.getScriptHash(), BigInteger.valueOf(100))
@@ -195,39 +199,49 @@ public class GrantSharesTreasuryTest {
         hash = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.none(bob)).sign().send()
                 .getSendRawTransaction().getHash();
         Await.waitUntilTransactionIsExecuted(hash, neow3j);
-        assertThat(neo.getCandidates().get(alice.getECKeyPair().getPublicKey()).intValue(), is(1100));
+        assertThat(neo.getCandidates().stream()
+                .filter(c -> c.getPublicKey().equals(alice.getECKeyPair().getPublicKey()))
+                .findFirst().get().getVotes().intValue(), is(1100));
     }
 
     @Test
     @Order(0)
-    public void fail_calling_add_whitelisted_token_directly() throws Throwable {
-        Hash256 tx = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+    public void fail_calling_add_whitelisted_token_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
+                        .sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
     @Order(0)
-    public void fail_calling_remove_whitelisted_token_directly() throws Throwable {
-        Hash256 tx = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+    public void fail_calling_remove_whitelisted_token_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
+                        .sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
     @Order(0)
-    public void fail_calling_add_funder_directly() throws Throwable {
-        Hash256 tx = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+    public void fail_calling_add_funder_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
     @Order(0)
-    public void fail_calling_remove_funder_directly() throws Throwable {
-        Hash256 tx = treasury.removeFunder(charlie.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+    public void fail_calling_remove_funder_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.removeFunder(charlie.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
+                        .sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
@@ -254,9 +268,11 @@ public class GrantSharesTreasuryTest {
 
         ContractParameter data = string("update contract");
 
-        Hash256 tx = treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.invokeFunction(UPDATE_CONTRACT, byteArray(nef.toArray()), byteArray(manifestBytes), data)
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
@@ -264,7 +280,8 @@ public class GrantSharesTreasuryTest {
     public void fail_release_tokens_with_non_whitelisted_token() throws Throwable {
         final Hash160 someToken = new Hash160("1a1512528147558851b39c2cd8aa47da7418aba1");
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), someToken,
-                alice.getScriptHash(), BigInteger.TEN);
+                alice.getScriptHash(), BigInteger.TEN
+        );
         String offchainUri = "fail_release_tokens_with_non_whitelisted_token";
 
         // 1. Create and endorse proposal
@@ -276,16 +293,18 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Token not whitelisted", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Token not whitelisted"));
     }
 
     @Test
     @Order(0)
     public void fail_release_tokens_with_to_high_amount() throws Throwable {
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), GasToken.SCRIPT_HASH,
-                alice.getScriptHash(), GAS_MAX_AMOUNT.add(BigInteger.ONE));
+                alice.getScriptHash(), GAS_MAX_AMOUNT.add(BigInteger.ONE)
+        );
         String offchainUri = "fail_release_tokens_with_to_high_amount";
 
         // 1. Create and endorse proposal
@@ -298,24 +317,29 @@ public class GrantSharesTreasuryTest {
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
 
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Above token's max funding amount", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Above token's max funding amount"));
     }
 
     @Test
     @Order(0)
-    public void fail_calling_release_tokens_directly() throws Throwable {
-        Hash256 tx = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
-                .signers(AccountSigner.calledByEntry(bob)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Not authorised", neow3j);
+    public void fail_calling_release_tokens_directly() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
+                        .signers(AccountSigner.calledByEntry(bob)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not authorised"));
     }
 
     @Test
     @Order(0)
     public void fail_adding_invalid_funder() throws Throwable {
         ContractParameter intent = new IntentParam(treasury.getScriptHash(), "addFunder",
-                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), array(asList(alice.getECKeyPair().getPublicKey())));
+                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"),
+                array(Collections.singletonList(alice.getECKeyPair().getPublicKey()))
+        );
         String offchainUri = "fail_adding_invalid_funder";
 
         // 1. Create and endorse proposal
@@ -327,9 +351,10 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid funder hash", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Invalid funder hash"));
     }
 
     @Test
@@ -347,9 +372,10 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "List of public keys is empty", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("List of public keys is empty"));
     }
 
     @Test
@@ -357,7 +383,9 @@ public class GrantSharesTreasuryTest {
     public void fail_adding_funder_with_invalid_public_key() throws Throwable {
         IntentParam intent = new IntentParam(treasury.getScriptHash(), "addFunder", hash160(alice.getScriptHash()),
                 array(publicKey(alice.getECKeyPair().getPublicKey()),
-                        byteArray("03dab84c1243ec01ab2500e1a8c7a1546a26d734628180b0cf64e72bf776")));
+                        byteArray("03dab84c1243ec01ab2500e1a8c7a1546a26d734628180b0cf64e72bf776")
+                )
+        );
         String offchainUri = "fail_adding_funder_with_invalid_public_key";
 
         // 1. Create and endorse proposal
@@ -369,9 +397,10 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid public key", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Invalid public key"));
     }
 
     @Test
@@ -393,19 +422,22 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id1).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid threshold ratio", neow3j);
-        tx = gov.execute(id2).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid threshold ratio", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id1).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Invalid threshold ratio"));
+        e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id2).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Invalid threshold ratio"));
     }
 
     @Test
     @Order(0)
     public void fail_adding_whitelisted_token_with_invalid_token() throws Throwable {
         ContractParameter intent = new IntentParam(treasury.getScriptHash(), "addWhitelistedToken",
-                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), integer(100));
+                byteArray("3ff68d232a60f23a5805b8c40f7e61747f"), integer(100)
+        );
         String offchainUri = "fail_adding_whitelisted_token_with_invalid_token";
 
         // 1. Create and endorse proposal
@@ -417,16 +449,18 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid token hash", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Invalid token hash"));
     }
 
     @Test
     @Order(0)
     public void fail_adding_whitelisted_token_with_invalid_max_funding_amount() throws Throwable {
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
-                NeoToken.SCRIPT_HASH, BigInteger.ONE.negate());
+                NeoToken.SCRIPT_HASH, BigInteger.ONE.negate()
+        );
         String offchainUri = "fail_adding_whitelisted_token_with_invalid_max_funding_amount";
 
         // 1. Create and endorse proposal
@@ -438,16 +472,18 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Invalid max funding amount", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Invalid max funding amount"));
     }
 
     @Test
     @Order(1)
     public void execute_proposal_with_add_single_sig_funder() throws Throwable {
         IntentParam intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash(),
-                alice.getECKeyPair().getPublicKey());
+                alice.getECKeyPair().getPublicKey()
+        );
         String offchainUri = "execute_proposal_with_add_single_sig_funder";
 
         // 1. Create and endorse proposal
@@ -466,7 +502,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderAdded"));
 
         Map<Hash160, List<ECPublicKey>> funders = treasury.getFunders();
@@ -481,7 +517,8 @@ public class GrantSharesTreasuryTest {
         Account multiSigFunder = Account.createMultiSigAccount(
                 asList(denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()), 1);
         IntentParam intent = IntentParam.addFunderProposal(treasury.getScriptHash(), multiSigFunder.getScriptHash(),
-                denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey());
+                denise.getECKeyPair().getPublicKey(), eve.getECKeyPair().getPublicKey()
+        );
         String offchainUri = "execute_proposal_with_add_multi_sig_funder";
 
         // 1. Create and endorse proposal
@@ -500,7 +537,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderAdded"));
 
         Map<Hash160, List<ECPublicKey>> funders = treasury.getFunders();
@@ -513,7 +550,8 @@ public class GrantSharesTreasuryTest {
     @Order(3)
     public void fail_adding_already_added_funder() throws Throwable {
         ContractParameter intent = IntentParam.addFunderProposal(treasury.getScriptHash(), alice.getScriptHash(),
-                alice.getECKeyPair().getPublicKey());
+                alice.getECKeyPair().getPublicKey()
+        );
         String offchainUri = "fail_adding_already_added_funder";
 
         // 1. Create and endorse proposal
@@ -525,9 +563,10 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Already a funder", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Already a funder"));
     }
 
     @Test
@@ -552,7 +591,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("FunderRemoved"));
 
         Map<Hash160, List<ECPublicKey>> funders = treasury.getFunders();
@@ -574,9 +613,10 @@ public class GrantSharesTreasuryTest {
 
         // 3. Skip till after vote and queued phase, then execute.
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        Hash256 tx = gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign().send()
-                .getSendRawTransaction().getHash();
-        assertAborted(tx, "Not a funder", neow3j);
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> gov.execute(id).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Not a funder"));
     }
 
     @Test
@@ -601,7 +641,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("WhitelistedTokenRemoved"));
 
         Map<Hash160, BigInteger> tokens = treasury.getWhitelistedTokens();
@@ -621,7 +661,8 @@ public class GrantSharesTreasuryTest {
     @Order(12)
     public void execute_proposal_with_add_whitelisted_token() throws Throwable {
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
-                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT_CHANGED);
+                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT_CHANGED
+        );
         String offchainUri = "execute_proposal_with_add_whitelisted_token";
 
         // 1. Create and endorse proposal
@@ -640,7 +681,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("WhitelistedTokenAdded"));
 
         Map<Hash160, BigInteger> tokens = treasury.getWhitelistedTokens();
@@ -655,7 +696,8 @@ public class GrantSharesTreasuryTest {
         assertThat(tokens.get(NeoToken.SCRIPT_HASH), is(NEO_MAX_AMOUNT_CHANGED));
 
         ContractParameter intent = IntentParam.addWhitelistedTokenProposal(treasury.getScriptHash(),
-                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT);
+                NeoToken.SCRIPT_HASH, NEO_MAX_AMOUNT
+        );
         String offchainUri = "execute_proposal_with_change_whitelisted_token_max_amount";
 
         // 1. Create and endorse proposal
@@ -674,7 +716,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("WhitelistedTokenAdded"));
 
         tokens = treasury.getWhitelistedTokens();
@@ -695,12 +737,13 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("Transfer"));
         assertThat(n.getContract(), is(GasToken.SCRIPT_HASH));
         assertThat(n.getState().getList().get(0).getAddress(), is(bob.getAddress()));
         assertThat(n.getState().getList().get(1).getAddress(),
-                is(treasury.getScriptHash().toAddress()));
+                is(treasury.getScriptHash().toAddress())
+        );
         assertThat(n.getState().getList().get(2).getInteger(), is(BigInteger.ONE));
 
         assertThat(gas.getBalanceOf(treasury.getScriptHash()).intValue(), is(initialValue + 1));
@@ -712,7 +755,8 @@ public class GrantSharesTreasuryTest {
         Account acc = Account.create();
         final BigInteger fundingAmount = BigInteger.TEN;
         ContractParameter intent = IntentParam.releaseTokenProposal(treasury.getScriptHash(), GasToken.SCRIPT_HASH,
-                acc.getScriptHash(), fundingAmount);
+                acc.getScriptHash(), fundingAmount
+        );
         String offchainUri = "execute_proposal_with_release_tokens";
 
         // 1. Create and endorse proposal
@@ -731,7 +775,7 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("Transfer"));
 
         assertThat(new GasToken(neow3j).getBalanceOf(acc), is(fundingAmount));
@@ -759,58 +803,70 @@ public class GrantSharesTreasuryTest {
 
     @Order(21)
     @Test
-    public void fail_add_funder_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_add_funder_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.addFunder(alice.getScriptHash(), alice.getECKeyPair().getPublicKey())
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(22)
     @Test
-    public void fail_remove_funder_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.removeFunder(alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_remove_funder_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.removeFunder(alice.getScriptHash()).signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(23)
     @Test
-    public void fail_add_whitelisted_token_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_add_whitelisted_token_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.addWhitelistedToken(GasToken.SCRIPT_HASH, 1).signers(AccountSigner.calledByEntry(alice))
+                        .sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(24)
     @Test
-    public void fail_remove_whitelisted_token_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_remove_whitelisted_token_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.removeWhitelistedToken(GasToken.SCRIPT_HASH).signers(AccountSigner.calledByEntry(alice))
+                        .sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(25)
     @Test
-    public void fail_release_tokens_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_release_tokens_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.releaseTokens(GasToken.SCRIPT_HASH, alice.getScriptHash(), BigInteger.ONE)
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(26)
     @Test
-    public void fail_vote_on_committee_member_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(alice))
-                .sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_vote_on_committee_member_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.voteCommitteeMemberWithLeastVotes().signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(27)
     @Test
-    public void fail_update_contract_on_paused_contract() throws Throwable {
-        Hash256 tx = treasury.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null)
-                .signers(AccountSigner.calledByEntry(alice)).sign().send().getSendRawTransaction().getHash();
-        assertAborted(tx, "Contract is paused", neow3j);
+    public void fail_update_contract_on_paused_contract() {
+        TransactionConfigurationException e = assertThrows(TransactionConfigurationException.class,
+                () -> treasury.updateContract(new byte[]{0x01, 0x02, 0x03}, "the manifest", null)
+                        .signers(AccountSigner.calledByEntry(alice)).sign()
+        );
+        assertTrue(e.getMessage().endsWith("Contract is paused"));
     }
 
     @Order(28)
@@ -858,7 +914,8 @@ public class GrantSharesTreasuryTest {
         ContractParameter data = string("update contract");
 
         ContractParameter intents = array(array(treasury.getScriptHash(), UPDATE_CONTRACT,
-                array(nef.toArray(), manifestBytes, data), CallFlags.ALL.getValue()));
+                array(nef.toArray(), manifestBytes, data), CallFlags.ALL.getValue()
+        ));
         String offchainUri = "execute_proposal_with_update_contract";
 
         // 1. Create and endorse proposal
@@ -877,9 +934,8 @@ public class GrantSharesTreasuryTest {
 
         NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx).send()
                 .getApplicationLog().getExecutions().get(0);
-        NeoApplicationLog.Execution.Notification n = execution.getNotifications().get(0);
+        Notification n = execution.getNotifications().get(0);
         assertThat(n.getEventName(), is("UpdatingContract"));
         assertThat(n.getContract(), is(treasury.getScriptHash()));
     }
-
 }

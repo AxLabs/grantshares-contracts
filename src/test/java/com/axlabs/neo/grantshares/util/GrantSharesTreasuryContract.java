@@ -37,8 +37,9 @@ public class GrantSharesTreasuryContract extends SmartContract {
         Map<StackItem, StackItem> map = callInvokeFunction(getMethodName())
                 .getInvocationResult().getStack().get(0).getMap();
         return map.entrySet().stream().collect(Collectors.toMap(
-                e -> Hash160.fromAddress(e.getKey().getAddress()),
-                e -> e.getValue().getInteger())
+                        e -> Hash160.fromAddress(e.getKey().getAddress()),
+                        e -> e.getValue().getInteger()
+                )
         );
     }
 
@@ -91,11 +92,11 @@ public class GrantSharesTreasuryContract extends SmartContract {
     }
 
     public int setFundersMultiSigThresholdRatio() throws IOException {
-        return callFuncReturningInt(getMethodName()).intValue();
+        return callFunctionReturningInt(getMethodName()).intValue();
     }
 
     public int getFundersMultiSigThresholdRatio() throws IOException {
-        return callFuncReturningInt(getMethodName()).intValue();
+        return callFunctionReturningInt(getMethodName()).intValue();
     }
 
     public TransactionBuilder removeFunder(Hash160 funderHash) {

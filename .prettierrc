@@ -1,0 +1,36 @@
+{
+  "overrides": [
+    {
+      "files": "*.sol",
+      "options": {
+        "printWidth": 120,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": false,
+        "bracketSpacing": true
+      }
+    },
+    {
+      "files": "*.js",
+      "options": {
+        "printWidth": 120,
+        "tabWidth": 4,
+        "useTabs": false,
+        "singleQuote": true,
+        "bracketSpacing": true,
+        "trailingComma": "all"
+      }
+    },
+    {
+      "files": "*.ts",
+      "options": {
+        "printWidth": 100,
+        "tabWidth": 2,
+        "useTabs": false,
+        "singleQuote": true,
+        "bracketSpacing": true,
+        "trailingComma": "all"
+      }
+    }
+  ]
+}

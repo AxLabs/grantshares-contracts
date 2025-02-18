@@ -34,5 +34,4 @@ public class ProposalVotes {
         abstain = 0;
         voters = new Map<>();
     }
-
 }

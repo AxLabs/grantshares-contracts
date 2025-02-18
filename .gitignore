@@ -177,3 +177,11 @@ gradle.properties
 
 *.deploy.properties
 !dev.deploy.properties
+
+node_modules/
+artifacts/
+typechain-types/
+cache/
+cache_hardhat/
+
+**/.env

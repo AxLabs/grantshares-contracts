@@ -54,7 +54,8 @@ public class DeployConfig {
                         MIN_ACCEPTANCE_RATE_KEY, Config.getIntProperty(MIN_ACCEPTANCE_RATE_KEY),
                         MIN_QUORUM_KEY, Config.getIntProperty(MIN_QUORUM_KEY),
                         THRESHOLD_KEY, Config.getIntProperty(THRESHOLD_KEY)
-                ));
+                )
+        );
     }
 
     /**
@@ -94,7 +95,7 @@ public class DeployConfig {
                 hash160(grantSharesGovHash),
                 fundersParam,
                 map(tokens),
-                Config.getIntProperty(THRESHOLD_KEY));
+                Config.getIntProperty(THRESHOLD_KEY)
+        );
     }
-
 }
