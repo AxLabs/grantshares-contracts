@@ -75,11 +75,19 @@ public class GrantSharesBridgeAdapter {
     // endregion verify
     // region bridge function
 
+    /**
+     * @return the bridge version this contract interacts with.
+     */
     @Safe
     public static int bridgeVersion() {
         return Storage.getInt(context, BRIDGE_VERSION_KEY);
     }
 
+    /**
+     * Specifies the version of the bridge that this contract interacts with.
+     *
+     * @param version the bridge version.
+     */
     public static void setBridgeVersion(Integer version) {
         onlyOwner();
         if (version == null || version < 2 || version > 3) {
@@ -91,8 +99,9 @@ public class GrantSharesBridgeAdapter {
     /**
      * The bridge fee will be paid by the treasury using a separate intent.
      *
-     * @param token the token to bridge.
-     * @param to    the recipient of the bridged tokens.
+     * @param token  the token to bridge.
+     * @param to     the recipient of the bridged tokens.
+     * @param amount the amount of tokens to bridge.
      */
     public static void bridge(Hash160 token, Hash160 to, Integer amount) {
         if (!getCallingScriptHash().equals(grantSharesGovContract())) {
@@ -146,6 +155,20 @@ public class GrantSharesBridgeAdapter {
     // endregion bridge function
     // region NEP17 payment
 
+    /**
+     * This contract accepts the following NEP-17 payments:
+     * <ul>
+     *     <li>GAS and NEO from the GrantShares treasury</li>
+     *     <li>GAS from the whitelisted funder</li>
+     *     <li>Minted GAS in the unplanned event of this contract holding NEO</li>
+     * </ul>
+     * <p>
+     * Provided data is ignored.
+     *
+     * @param from   the sender of tokens.
+     * @param amount the amount sent.
+     * @param data   abritrary data.
+     */
     @OnNEP17Payment
     public static void onNEP17Payment(Hash160 from, int amount, Object data) {
         Hash160 callingScriptHash = Runtime.getCallingScriptHash();
@@ -172,6 +195,11 @@ public class GrantSharesBridgeAdapter {
     // endregion
     // region setters
 
+    /**
+     * Sets the whitelisted funder that is allowed to send GAS to this contract.
+     *
+     * @param funder the new whitelisted funder.
+     */
     public static void setWhitelistedFunder(Hash160 funder) {
         onlyOwner();
         if (funder == null || !Hash160.isValid(funder) || funder.isZero()) {
@@ -180,6 +208,11 @@ public class GrantSharesBridgeAdapter {
         Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
     }
 
+    /**
+     * Sets the {@code maxFee} that is used as parameter to the bridge's deposit interface.
+     *
+     * @param maxFee the max fee used for bridge deposits.
+     */
     public static void setMaxFee(Integer maxFee) {
         onlyOwner();
         if (maxFee == null || maxFee < 0) {
@@ -196,11 +229,17 @@ public class GrantSharesBridgeAdapter {
         return Storage.getHash160(context.asReadOnly(), OWNER_KEY);
     }
 
+    /**
+     * @return the max fee that is used for the bridge's deposit functions.
+     */
     @Safe
     public static int maxFee() {
         return Storage.getInt(context.asReadOnly(), MAX_FEE_KEY);
     }
 
+    /**
+     * @return the funder that is allowed to send GAS to this contract.
+     */
     @Safe
     public static Hash160 whitelistedFunder() {
         return Storage.getHash160(context.asReadOnly(), WHITELISTED_FUNDER_KEY);
@@ -290,6 +329,16 @@ public class GrantSharesBridgeAdapter {
     // endregion deployment/update
     // region bridge interface
 
+    /**
+     * The bridge contract interface.
+     * <p>
+     * The interface includes the deposit and fee functions for version 2 and 3 of the bridge. Based on the bridge
+     * adapter's {@code bridgeVersion} either one of them is used to interact with the bridge.
+     * <p>
+     * This additional complexity of combining the bridge version 2 and 3 interface was introduced to simplify the
+     * development and testing processes in place for launching the extension of GrantShares to Neo X during ongoing
+     * bridge updates on Neo N3 testnet and mainnet.
+     */
     static class BridgeContract extends ContractInterface {
         BridgeContract(Hash160 contractHash) {
             super(contractHash);
