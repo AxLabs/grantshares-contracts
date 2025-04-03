@@ -21,6 +21,7 @@ import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.FungibleToken;
 import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
+import io.neow3j.devpack.events.Event1Arg;
 
 import static io.neow3j.devpack.Helper.abort;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
@@ -54,27 +55,31 @@ public class GrantSharesBridgeAdapter {
 
     private static final int BRIDGE_VERSION_KEY = 0x10;
 
-    // region authorization
+    //region events
+    @DisplayName("WhitelistFunderAdded")
+    static Event1Arg<Hash160> whitelistFunderAdded;
+    @DisplayName("MaxFeeChanged")
+    static Event1Arg<Integer> maxFeeChanged;
+    // endregion events
 
+    // region authorization
     private static void onlyOwner() {
         if (!Runtime.checkWitness(owner())) {
             abort("only owner");
         }
     }
-
     // endregion authorization
-    // region verify
 
+    // region verify
     @OnVerification
     public static boolean verify() {
         // This contract is not intended to hold any tokens in between two transactions. In each transaction where
         // tokens are received, they are intended to be forwarded immediately.
         return true;
     }
-
     // endregion verify
-    // region bridge function
 
+    // region bridge function
     /**
      * @return the bridge version this contract interacts with.
      */
@@ -151,10 +156,9 @@ public class GrantSharesBridgeAdapter {
             abort("unsupported token");
         }
     }
-
     // endregion bridge function
-    // region NEP17 payment
 
+    // region NEP17 payment
     /**
      * This contract accepts the following NEP-17 payments:
      * <ul>
@@ -191,10 +195,9 @@ public class GrantSharesBridgeAdapter {
             abort("unsupported token");
         }
     }
-
     // endregion
-    // region setters
 
+    // region setters
     /**
      * Sets the whitelisted funder that is allowed to send GAS to this contract.
      *
@@ -206,6 +209,7 @@ public class GrantSharesBridgeAdapter {
             abort("invalid funder");
         }
         Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
+        whitelistFunderAdded.fire(funder);
     }
 
     /**
@@ -219,11 +223,11 @@ public class GrantSharesBridgeAdapter {
             abort("invalid max fee");
         }
         Storage.put(context, MAX_FEE_KEY, maxFee);
+        maxFeeChanged.fire(maxFee);
     }
-
     // endregion setters
-    // region read-only methods
 
+    // region read-only methods
     @Safe
     public static Hash160 owner() {
         return Storage.getHash160(context.asReadOnly(), OWNER_KEY);
@@ -259,10 +263,9 @@ public class GrantSharesBridgeAdapter {
     public static Hash160 bridgeContract() {
         return Storage.getHash160(context.asReadOnly(), BRIDGE_CONTRACT_KEY);
     }
-
     // endregion
-    // region deployment/update
 
+    // region deployment/update
     @Struct
     static class DeployData {
         Hash160 initialOwner;
@@ -325,10 +328,9 @@ public class GrantSharesBridgeAdapter {
         onlyOwner();
         new ContractManagement().update(nef, manifest, data);
     }
-
     // endregion deployment/update
-    // region bridge interface
 
+    // region bridge interface
     /**
      * The bridge contract interface.
      * <p>
@@ -366,7 +368,6 @@ public class GrantSharesBridgeAdapter {
         @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates | io.neow3j.devpack.constants.CallFlags.AllowCall)
         native int tokenDepositFee(Hash160 token);
     }
-
     // endregion
 
 }
