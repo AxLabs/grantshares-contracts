@@ -360,8 +360,13 @@ public class GrantSharesGov {
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
         proposals.put(id, new StdLib().serialize(new Proposal(id, expiration)));
+        int memberCount = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
+        int quorumVotes = (memberCount * quorum) / 100;
+        if ((memberCount * quorum) % 100 != 0) {
+            quorumVotes += 1; // Round up
+        }
         proposalData.put(id, new StdLib().serialize(
-                new ProposalData(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri))
+                new ProposalData(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri, quorumVotes))
         );
         proposalVotes.put(id, new StdLib().serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
@@ -472,7 +477,11 @@ public class GrantSharesGov {
         ProposalData data = (ProposalData) new StdLib().deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
-        if (voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum) {
+        // first check for old-style proposals that don't have a quorumVotes value
+        if (data.quorumVotes == 0 &&
+                voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum) {
+            Helper.abort("execute" + ": " + "Proposal not voted on");
+        } else if (voteCount < data.quorumVotes) {
             Helper.abort("execute" + ": " + "Quorum not reached");
         }
         int yesNoCount = votes.approve + votes.reject;

@@ -40,13 +40,21 @@ public class ProposalData {
      */
     public String offchainUri;
 
+    /**
+     * The actual number of votes required for this proposal to reach quorum.
+     * This is calculated at proposal creation time based on the quorum percentage
+     * and total number of members at that time.
+     */
+    public int quorumVotes;
+
     public ProposalData(Hash160 proposer, int linkedProposal, int acceptanceRate,
-            int quorum, Intent[] intents, String offchainUri) {
+            int quorum, Intent[] intents, String offchainUri, int quorumVotes) {
         this.proposer = proposer;
         this.linkedProposal = linkedProposal;
         this.acceptanceRate = acceptanceRate;
         this.quorum = quorum;
         this.intents = intents;
         this.offchainUri = offchainUri;
+        this.quorumVotes = quorumVotes;
     }
 }
