@@ -80,7 +80,7 @@ public class GrantSharesBridgeAdapter {
      */
     @Safe
     public static int bridgeVersion() {
-        return Storage.getInt(context, BRIDGE_VERSION_KEY);
+        return Storage.getInt(context.asReadOnly(), BRIDGE_VERSION_KEY);
     }
 
     /**
