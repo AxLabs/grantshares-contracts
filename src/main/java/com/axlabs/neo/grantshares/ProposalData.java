@@ -48,13 +48,13 @@ public class ProposalData {
     public int quorumVotes;
 
     public ProposalData(Hash160 proposer, int linkedProposal, int acceptanceRate,
-            int quorum, Intent[] intents, String offchainUri, int quorumVotes) {
+            int quorum, Intent[] intents, String offchainUri) {
         this.proposer = proposer;
         this.linkedProposal = linkedProposal;
         this.acceptanceRate = acceptanceRate;
         this.quorum = quorum;
         this.intents = intents;
         this.offchainUri = offchainUri;
-        this.quorumVotes = quorumVotes;
+        quorumVotes = 0;
     }
 }

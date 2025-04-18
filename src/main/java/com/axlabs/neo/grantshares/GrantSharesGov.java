@@ -138,7 +138,38 @@ public class GrantSharesGov {
             Storage.put(ctx, MEMBERS_COUNT_KEY, pubKeys.length);
             Storage.put(ctx, PAUSED_KEY, 0);
             Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
+        } else {
+            int maxProposalId = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
+            StdLib stdLib = new StdLib();
+            for (int i = 0; i < maxProposalId; i++) {
+                ProposalData pData = (ProposalData) stdLib.deserialize(GrantSharesGov.proposalData.get(i));
+                int quorumVotes = 0;
+                Proposal proposal = (Proposal) stdLib.deserialize(GrantSharesGov.proposals.get(i));
+                // Proposal is:
+                // endorsed
+                // active == not expired && not executed
+                if (
+                        proposal.endorser != null
+                        && proposal.expiration >= getTime()
+                        && !proposal.executed
+
+                ) {
+                    quorumVotes = computeQuorumVotes(pData);
+                }
+                pData.quorumVotes = quorumVotes;
+                proposalData.put(maxProposalId, stdLib.serialize(data));
+            }
         }
+    }
+
+    private static int computeQuorumVotes(ProposalData pData) {
+        int quorumVotes;
+        int memberCount = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
+        quorumVotes = (memberCount * pData.quorum) / 100;
+        if ((memberCount * pData.quorum) % 100 != 0) {
+            quorumVotes += 1; // Round up
+        }
+        return quorumVotes;
     }
 
     //region SAFE METHODS
@@ -185,6 +216,7 @@ public class GrantSharesGov {
             dto.linkedProposal = p.linkedProposal;
             dto.acceptanceRate = p.acceptanceRate;
             dto.quorum = p.quorum;
+            dto.quorumVotes = p.quorumVotes;
             dto.intents = p.intents;
             dto.offchainUri = p.offchainUri;
         } else {
@@ -359,16 +391,12 @@ public class GrantSharesGov {
 
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
-        proposals.put(id, new StdLib().serialize(new Proposal(id, expiration)));
-        int memberCount = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
-        int quorumVotes = (memberCount * quorum) / 100;
-        if ((memberCount * quorum) % 100 != 0) {
-            quorumVotes += 1; // Round up
-        }
-        proposalData.put(id, new StdLib().serialize(
-                new ProposalData(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri, quorumVotes))
+        StdLib stdLib = new StdLib();
+        proposals.put(id, stdLib.serialize(new Proposal(id, expiration)));
+        proposalData.put(id, stdLib.serialize(
+                new ProposalData(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri))
         );
-        proposalVotes.put(id, new StdLib().serialize(new ProposalVotes()));
+        proposalVotes.put(id, stdLib.serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
 
         // An event can take max 1024 bytes data. Thus, we're not passing the offchainUri since it could be longer.
@@ -403,9 +431,11 @@ public class GrantSharesGov {
         if (members.get(endorser.toByteString()) == null || !checkWitness(endorser)) {
             Helper.abort("endorseProposal" + ": " + "Not authorised");
         }
+
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) Helper.abort("endorseProposal" + ": " + "Proposal doesn't exist");
-        Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
+        StdLib stdLib = new StdLib();
+        Proposal proposal = (Proposal) stdLib.deserialize(proposalBytes);
         if (proposal.expiration <= getTime()) Helper.abort("endorseProposal" + ": " + "Proposal expired");
         if (proposal.endorser != null) Helper.abort("endorseProposal" + ": " + "Proposal already endorsed");
 
@@ -414,7 +444,12 @@ public class GrantSharesGov {
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
-        proposals.put(id, new StdLib().serialize(proposal));
+        proposals.put(id, stdLib.serialize(proposal));
+
+        ProposalData data = (ProposalData) stdLib.deserialize(proposalData.get(id));
+        data.quorumVotes = computeQuorumVotes(data);
+        proposalData.put(id, stdLib.serialize(data));
+
         endorsed.fire(id, endorser);
     }
 

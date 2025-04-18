@@ -47,8 +47,7 @@ public class GrantSharesGovContract extends SmartContract {
     }
 
     public ProposalStruct getProposal(int id) throws IOException, UnexpectedReturnTypeException {
-        List<StackItem> list = callInvokeFunction(getMethodName(), asList(integer(id))).getInvocationResult().getStack()
-                .get(0).getList();
+        List<StackItem> list = callInvokeFunction(getMethodName(), asList(integer(id))).getInvocationResult().getStack().get(0).getList();
         return new ProposalStruct(list);
     }
 

@@ -37,7 +37,7 @@ dependencies {
     deployImplementation 'io.neow3j:compiler:3.21.1'
 }
 
-tasks.withType(Test) {
+tasks.withType(Test).configureEach {
     useJUnitPlatform()
 }
 
@@ -46,24 +46,24 @@ node {
     download = true
 }
 
-task compileSolidity(type : Exec) {
+tasks.register('compileSolidity', Exec) {
     dependsOn('npmInstall')
     commandLine 'forge', 'compile'
 }
 
-task testSolidity(type: Exec) {
+tasks.register('testSolidity', Exec) {
     environment('FOUNDRY_OUT', 'artifacts')
     dependsOn('compileSolidity')
     commandLine 'forge', 'test'
 }
 test.dependsOn('testSolidity')
 
-task cleanSolidity(type: Delete){
+tasks.register('cleanSolidity', Delete) {
     delete 'artifacts'
 }
 clean.dependsOn('cleanSolidity')
 
-task contract(type : Exec) {
+tasks.register('contract', Exec) {
     dependsOn('npmInstall')
     // use locally installed node by the gradle-node-plugin
     commandLine '.gradle/nodejs/node-v20.18.1-darwin-arm64/bin/npx', 'hardhat', 'run', './src/deploy/typescript/deploy_relayer.ts'
