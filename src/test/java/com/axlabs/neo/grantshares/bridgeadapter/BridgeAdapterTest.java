@@ -9,7 +9,9 @@ import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.ContractState;
+import io.neow3j.protocol.core.response.NeoApplicationLog;
 import io.neow3j.protocol.core.response.NeoSendRawTransaction;
+import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.serialization.exceptions.DeserializationException;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
@@ -36,6 +38,7 @@ import java.math.BigInteger;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.BOB;
@@ -185,6 +188,14 @@ public class BridgeAdapterTest {
         assertFalse(response.hasError());
         Hash256 txHash = response.getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(txHash, neow3j);
+        List<NeoApplicationLog.Execution> executions = neow3j
+                .getApplicationLog(txHash).send().getApplicationLog().getExecutions();
+        assertThat(executions.size(), is(1));
+
+        List<Notification> notifications = executions.get(0).getNotifications();
+        assertThat(notifications.size(), is(1));
+        assertThat(notifications.get(0).getEventName(), is("WhitelistedFunderAdded"));
+        assertThat(notifications.get(0).getState().getList().get(0).getAddress(), is(newWhitelistedFunder.toAddress()));
 
         assertThat(bridgeAdapter.callFunctionReturningScriptHash("whitelistedFunder"), is(newWhitelistedFunder));
 
@@ -236,6 +247,16 @@ public class BridgeAdapterTest {
         Hash256 txHash = response.getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(txHash, neow3j);
 
+        List<NeoApplicationLog.Execution> executions = neow3j.getApplicationLog(txHash).send()
+                .getApplicationLog()
+                .getExecutions();
+        assertThat(executions.size(), is(1));
+
+        List<Notification> notifications = executions.get(0).getNotifications();
+        assertThat(notifications.size(), is(1));
+        assertThat(notifications.get(0).getEventName(), is("MaxFeeChanged"));
+        assertThat(notifications.get(0).getState().getList().get(0).getInteger().intValue(), is(newFee));
+
         assertThat(bridgeAdapter.callFunctionReturningInt("maxFee"), is(BigInteger.valueOf(newFee)));
 
         // Reset to default
@@ -282,7 +303,7 @@ public class BridgeAdapterTest {
     public void testUpdate() throws Throwable {
         ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
         assertThat(contractState.getUpdateCounter(), is(0));
-        assertThat(contractState.getNef().getChecksum(), is(3536054027L));
+        assertThat(contractState.getNef().getChecksum(), is(757380169L));
 
         NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
         assertFalse(response.hasError());

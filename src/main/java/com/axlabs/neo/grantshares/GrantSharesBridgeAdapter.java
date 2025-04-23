@@ -56,8 +56,8 @@ public class GrantSharesBridgeAdapter {
     private static final int BRIDGE_VERSION_KEY = 0x10;
 
     //region events
-    @DisplayName("WhitelistFunderAdded")
-    static Event1Arg<Hash160> whitelistFunderAdded;
+    @DisplayName("WhitelistedFunderAdded")
+    static Event1Arg<Hash160> whitelistedFunderAdded;
     @DisplayName("MaxFeeChanged")
     static Event1Arg<Integer> maxFeeChanged;
     // endregion events
@@ -209,7 +209,7 @@ public class GrantSharesBridgeAdapter {
             abort("invalid funder");
         }
         Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
-        whitelistFunderAdded.fire(funder);
+        whitelistedFunderAdded.fire(funder);
     }
 
     /**
