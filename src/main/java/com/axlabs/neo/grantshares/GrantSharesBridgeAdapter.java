@@ -85,27 +85,6 @@ public class GrantSharesBridgeAdapter {
     // region bridge function
 
     /**
-     * @return the bridge version this contract interacts with.
-     */
-    @Safe
-    public static int bridgeVersion() {
-        return Storage.getInt(context.asReadOnly(), BRIDGE_VERSION_KEY);
-    }
-
-    /**
-     * Specifies the version of the bridge that this contract interacts with.
-     *
-     * @param version the bridge version.
-     */
-    public static void setBridgeVersion(Integer version) {
-        onlyOwner();
-        if (version == null || version < 2 || version > 3) {
-            abort("unsupported bridge version");
-        }
-        Storage.put(context, BRIDGE_VERSION_KEY, version);
-    }
-
-    /**
      * The bridge fee will be paid by the treasury using a separate intent.
      *
      * @param token  the token to bridge.
@@ -132,22 +111,11 @@ public class GrantSharesBridgeAdapter {
         int gasBalanceSelf = gasToken.balanceOf(executingScriptHash);
 
         if (token.equals(gasToken.getHash())) {
-            int bridgeVersion = bridgeVersion();
-            assert bridgeVersion == 2 || bridgeVersion == 3 : "unsupported bridge version";
-            if (bridgeVersion == 2) {
-                int amountIncludingFee = amount + bridgeContract.gasDepositFee();
-                if (gasBalanceSelf < amountIncludingFee) {
-                    abort("insufficient gas balance for bridge deposit");
-                }
-                bridgeContract.depositGas(executingScriptHash, to, amountIncludingFee, maxFee());
-                return;
-            } else {
-                if (gasBalanceSelf < amount + bridgeContract.nativeDepositFee()) {
-                    abort("insufficient gas balance for bridge deposit");
-                }
-                bridgeContract.depositNative(executingScriptHash, to, amount, maxFee());
-                return;
+            if (gasBalanceSelf < amount + bridgeContract.nativeDepositFee()) {
+                abort("insufficient gas balance for bridge deposit");
             }
+            bridgeContract.depositNative(executingScriptHash, to, amount, maxFee());
+            return;
         } else if (token.equals(new NeoToken().getHash())) {
             if (gasBalanceSelf < bridgeContract.tokenDepositFee(token)) {
                 abort("insufficient gas balance for bridge fee");
@@ -286,7 +254,13 @@ public class GrantSharesBridgeAdapter {
 
     @OnDeployment
     public static void deploy(Object data, boolean update) {
-        if (!update) {
+        if (update) {
+            if (Storage.getInt(context.asReadOnly(), VERSION_KEY) != 1) {
+                abort("invalid version");
+            }
+            Storage.put(context, VERSION_KEY, 2);
+            Storage.delete(context, BRIDGE_VERSION_KEY);
+        } else {
             Storage.put(context, VERSION_KEY, 1);
 
             // Initialize the contract.
@@ -327,8 +301,6 @@ public class GrantSharesBridgeAdapter {
                 abort("invalid whitelisted funder");
             }
             Storage.put(context, WHITELISTED_FUNDER_KEY, whitelistedFunder);
-
-            Storage.put(context, BRIDGE_VERSION_KEY, 2);
         }
     }
 
@@ -343,34 +315,22 @@ public class GrantSharesBridgeAdapter {
     /**
      * The bridge contract interface.
      * <p>
-     * The interface includes the deposit and fee functions for version 2 and 3 of the bridge. Based on the bridge
-     * adapter's {@code bridgeVersion} either one of them is used to interact with the bridge.
+     * The interface only includes the deposit and fee functions for version 3 of the bridge.
      * <p>
-     * This additional complexity of combining the bridge version 2 and 3 interface was introduced to simplify the
-     * development and testing processes in place for launching the extension of GrantShares to Neo X during ongoing
-     * bridge updates on Neo N3 testnet and mainnet.
+     * If there is a new bridge version in the future with changes to the below interface, this contract will need to
+     * be updated.
      */
     static class BridgeContract extends ContractInterface {
         BridgeContract(Hash160 contractHash) {
             super(contractHash);
         }
 
-        // v2
-        @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
-        native void depositGas(Hash160 from, Hash160 to, int amount, int maxFee);
-
-        // v3
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositNative(Hash160 from, Hash160 to, int amount, int maxFee);
 
         @CallFlags(io.neow3j.devpack.constants.CallFlags.All)
         native void depositToken(Hash160 neoN3Token, Hash160 from, Hash160 to, int amount, int maxFee);
 
-        // v2
-        @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates | io.neow3j.devpack.constants.CallFlags.AllowCall)
-        native int gasDepositFee();
-
-        // v3
         @CallFlags(io.neow3j.devpack.constants.CallFlags.ReadStates | io.neow3j.devpack.constants.CallFlags.AllowCall)
         native int nativeDepositFee();
 

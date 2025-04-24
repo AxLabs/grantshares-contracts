@@ -181,10 +181,6 @@ public class BridgeAdapterTestUsingBridgeV3 {
         owner = alice;
         whitelistedFunder = charlie.getScriptHash();
 
-        Hash256 setBridgeVersionTx = bridgeAdapter.invokeFunction("setBridgeVersion", integer(3))
-                .signers(calledByEntry(owner)).sign().send().getSendRawTransaction().getHash();
-        waitUntilTransactionIsExecuted(setBridgeVersionTx, neow3j);
-
         // fund the treasury with GAS
         GasToken gasToken = new GasToken(neow3j);
         Hash256 tx = gasToken.transfer(bob, treasury.getScriptHash(), gasToken.toFractions(new BigDecimal("100")))
