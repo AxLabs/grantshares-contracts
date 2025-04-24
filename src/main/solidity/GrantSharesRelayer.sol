@@ -17,6 +17,10 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
 
     event ExecuteProposal(uint256 indexed proposalId);
 
+    event ProposalFeeUpdated(uint256 fee);
+
+    event ExecutionFeeUpdated(uint256 fee);
+
     /// @custom:storage-location erc7201:grantshares.storage
     struct GSStorage {
         uint256 proposalFee;
@@ -75,6 +79,7 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
      */
     function setProposalFee(uint256 fee) external onlyOwner {
         _getGSStorage().proposalFee = fee;
+        emit ProposalFeeUpdated(fee);
     }
 
     /**
@@ -83,6 +88,7 @@ contract GrantSharesRelayer is Ownable2StepUpgradeable, PausableUpgradeable, UUP
      */
     function setExecutionFee(uint256 fee) external onlyOwner {
         _getGSStorage().executionFee = fee;
+        emit ExecutionFeeUpdated(fee);
     }
 
     /**

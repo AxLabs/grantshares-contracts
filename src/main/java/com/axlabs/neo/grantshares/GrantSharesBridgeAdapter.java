@@ -21,6 +21,7 @@ import io.neow3j.devpack.contracts.ContractManagement;
 import io.neow3j.devpack.contracts.FungibleToken;
 import io.neow3j.devpack.contracts.GasToken;
 import io.neow3j.devpack.contracts.NeoToken;
+import io.neow3j.devpack.events.Event1Arg;
 
 import static io.neow3j.devpack.Helper.abort;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
@@ -54,6 +55,14 @@ public class GrantSharesBridgeAdapter {
 
     private static final int BRIDGE_VERSION_KEY = 0x10;
 
+    //region events
+
+    @DisplayName("WhitelistedFunderAdded")
+    static Event1Arg<Hash160> whitelistedFunderAdded;
+    @DisplayName("MaxFeeChanged")
+    static Event1Arg<Integer> maxFeeChanged;
+
+    // endregion events
     // region authorization
 
     private static void onlyOwner() {
@@ -206,6 +215,7 @@ public class GrantSharesBridgeAdapter {
             abort("invalid funder");
         }
         Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
+        whitelistedFunderAdded.fire(funder);
     }
 
     /**
@@ -219,6 +229,7 @@ public class GrantSharesBridgeAdapter {
             abort("invalid max fee");
         }
         Storage.put(context, MAX_FEE_KEY, maxFee);
+        maxFeeChanged.fire(maxFee);
     }
 
     // endregion setters

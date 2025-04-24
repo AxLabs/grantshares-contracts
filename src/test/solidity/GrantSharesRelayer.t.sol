@@ -48,6 +48,10 @@ contract GrantSharesRelayerTest is Test {
     function testProposalFee() public {
         vm.prank(owner);
         uint256 newFee = 4;
+
+        // Set new fee
+        vm.expectEmit(true, false, false, true, address(relayer));
+        emit GrantSharesRelayer.ProposalFeeUpdated(newFee);
         relayer.setProposalFee(newFee);
         assertEq(relayer.getFees().proposalFee, newFee);
         assertNotEq(DEFAULT_CREATE_FEE, newFee);
@@ -68,6 +72,10 @@ contract GrantSharesRelayerTest is Test {
     function testExecutionFee() public {
         uint256 newFee = 5;
         vm.prank(owner);
+
+        // Set new fee
+        vm.expectEmit(true, false, false, true, address(relayer));
+        emit GrantSharesRelayer.ExecutionFeeUpdated(newFee);
         relayer.setExecutionFee(newFee);
         assertEq(relayer.getFees().executionFee, newFee);
         assertNotEq(DEFAULT_EXECUTION_FEE, newFee);
