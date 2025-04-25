@@ -53,7 +53,7 @@ public class GrantSharesBridgeAdapter {
     private static final int MAX_FEE_KEY = 0x05;
     private static final int WHITELISTED_FUNDER_KEY = 0x06;
 
-    private static final int BRIDGE_VERSION_KEY = 0x10;
+    private static final int V1_BRIDGE_VERSION_KEY = 0x10;
 
     //region events
 
@@ -259,7 +259,7 @@ public class GrantSharesBridgeAdapter {
                 abort("invalid version");
             }
             Storage.put(context, VERSION_KEY, 2);
-            Storage.delete(context, BRIDGE_VERSION_KEY);
+            Storage.delete(context, V1_BRIDGE_VERSION_KEY);
         } else {
             Storage.put(context, VERSION_KEY, 1);
 
