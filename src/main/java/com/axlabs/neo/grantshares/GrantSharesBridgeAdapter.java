@@ -65,9 +65,9 @@ public class GrantSharesBridgeAdapter {
     // endregion events
     // region authorization
 
-    private static void onlyOwner() {
+    private static void checkOwner() {
         if (!Runtime.checkWitness(owner())) {
-            abort("only owner");
+            abort("unauthorized");
         }
     }
 
@@ -178,7 +178,7 @@ public class GrantSharesBridgeAdapter {
      * @param funder the new whitelisted funder.
      */
     public static void setWhitelistedFunder(Hash160 funder) {
-        onlyOwner();
+        checkOwner();
         if (funder == null || !Hash160.isValid(funder) || funder.isZero()) {
             abort("invalid funder");
         }
@@ -192,7 +192,7 @@ public class GrantSharesBridgeAdapter {
      * @param maxFee the max fee used for bridge deposits.
      */
     public static void setMaxFee(Integer maxFee) {
-        onlyOwner();
+        checkOwner();
         if (maxFee == null || maxFee < 0) {
             abort("invalid max fee");
         }
@@ -270,7 +270,6 @@ public class GrantSharesBridgeAdapter {
                 abort("invalid initial owner");
             }
             Storage.put(context, OWNER_KEY, initialOwner);
-            onlyOwner();
 
             Hash160 gsGovContract = deployData.grantSharesGovContract;
             if (gsGovContract == null || !Hash160.isValid(gsGovContract) || gsGovContract.isZero()) {
@@ -305,7 +304,7 @@ public class GrantSharesBridgeAdapter {
     }
 
     public static void update(ByteString nef, String manifest, Object data) {
-        onlyOwner();
+        checkOwner();
         new ContractManagement().update(nef, manifest, data);
     }
 

@@ -216,7 +216,7 @@ public class BridgeAdapterTest {
         ).signers(calledByEntry(bob));
 
         TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
-        assertThat(thrown.getMessage(), containsString("only owner"));
+        assertThat(thrown.getMessage(), containsString("unauthorized"));
     }
 
     @Test
@@ -272,7 +272,7 @@ public class BridgeAdapterTest {
     public void failSetMaxFee_unauthorized() {
         TransactionBuilder b = bridgeAdapter.invokeFunction("setMaxFee", integer(1)).signers(none(bob));
         TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
-        assertThat(thrown.getMessage(), containsString("only owner"));
+        assertThat(thrown.getMessage(), containsString("unauthorized"));
     }
 
     @Test
@@ -295,7 +295,7 @@ public class BridgeAdapterTest {
     public void testUpdate_notAuthorized() throws Throwable {
         TransactionBuilder b = updateTxBuilder().signers(calledByEntry(bob));
         TransactionConfigurationException thrown = assertThrows(TransactionConfigurationException.class, b::sign);
-        assertThat(thrown.getMessage(), containsString("only owner"));
+        assertThat(thrown.getMessage(), containsString("unauthorized"));
     }
 
     @Test
@@ -303,7 +303,7 @@ public class BridgeAdapterTest {
     public void testUpdate() throws Throwable {
         ContractState contractState = neow3j.getContractState(bridgeAdapter.getScriptHash()).send().getContractState();
         assertThat(contractState.getUpdateCounter(), is(0));
-        assertThat(contractState.getNef().getChecksum(), is(2718263925L));
+        assertThat(contractState.getNef().getChecksum(), is(3275633801L));
 
         NeoSendRawTransaction response = updateTxBuilder().signers(calledByEntry(alice)).sign().send();
         assertFalse(response.hasError());
