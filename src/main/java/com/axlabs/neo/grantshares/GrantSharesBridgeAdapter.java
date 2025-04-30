@@ -85,6 +85,15 @@ public class GrantSharesBridgeAdapter {
     // region bridge function
 
     /**
+     * Deposits the amount of the token to a beneficiary on Neo X. This contract must hold exactly the specified
+     * amount of tokens when this function is called. If the contract holds any tokens after the bridge deposit, the
+     * transaction will be aborted.
+     * <p>
+     * The contract's GAS balance is an exception to this rule since the deposit fee might differ based on the token
+     * or might change during a proposal's lifetime. Therefore, this contrac's {@code maxFee} value is used as
+     * upperbound of how many GAS tokens may still be held by this contract after the bridge deposit. The {@code
+     * maxFee} value can be fetched with {@link GrantSharesBridgeAdapter#maxFee()}.
+     * <p>
      * The bridge fee will be paid by the treasury using a separate intent.
      *
      * @param token  the token to bridge.
@@ -109,13 +118,13 @@ public class GrantSharesBridgeAdapter {
         BridgeContract bridgeContract = new BridgeContract(bridgeContract());
         GasToken gasToken = new GasToken();
         int gasBalanceSelf = gasToken.balanceOf(executingScriptHash);
+        int maxFee = maxFee();
 
         if (token.equals(gasToken.getHash())) {
             if (gasBalanceSelf < amount + bridgeContract.nativeDepositFee()) {
                 abort("insufficient gas balance for bridge deposit");
             }
-            bridgeContract.depositNative(executingScriptHash, to, amount, maxFee());
-            return;
+            bridgeContract.depositNative(executingScriptHash, to, amount, maxFee);
         } else if (token.equals(new NeoToken().getHash())) {
             if (gasBalanceSelf < bridgeContract.tokenDepositFee(token)) {
                 abort("insufficient gas balance for bridge fee");
@@ -123,9 +132,19 @@ public class GrantSharesBridgeAdapter {
             if (new FungibleToken(token).balanceOf(executingScriptHash) < amount) {
                 abort("insufficient token balance for bridge deposit");
             }
-            bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee());
+            bridgeContract.depositToken(token, executingScriptHash, to, amount, maxFee);
+            // Checks that this contract holds no tokens after the deposit. Aborts if it still holds any tokens.
+            checkTokenBalance(new FungibleToken(token), executingScriptHash, 0);
         } else {
             abort("unsupported token");
+        }
+        // Checks that this contract holds maximally the maxFee after the deposit. Aborts if it holds more GAS.
+        checkTokenBalance(gasToken, executingScriptHash, maxFee);
+    }
+
+    private static void checkTokenBalance(FungibleToken token, Hash160 account, int maxAllowed) {
+        if (token.balanceOf(account) > maxAllowed) {
+            abort("unallowed token balance remainder");
         }
     }
 
@@ -209,7 +228,7 @@ public class GrantSharesBridgeAdapter {
     }
 
     /**
-     * @return the max fee that is used for the bridge's deposit functions.
+     * @return the max fee that is used for all the bridge's token deposit functions.
      */
     @Safe
     public static int maxFee() {
