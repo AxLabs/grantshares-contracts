@@ -283,9 +283,9 @@ public class GrantSharesGovTest {
                 .getInteger()
                 .intValue();
         ProposalStruct proposal = gov.getProposal(id);
+        // round up the expected quorum votes
         int expectedQuorumVotes = (memberCount * proposal.quorum + 99) / 100;
         assertThat(proposal.quorumVotes, is(expectedQuorumVotes));
-
 
         // 7. Test emitted "endorsed" event
         Notification ntf = neow3j.getApplicationLog(endorseTx).send().getApplicationLog().getExecutions().get(

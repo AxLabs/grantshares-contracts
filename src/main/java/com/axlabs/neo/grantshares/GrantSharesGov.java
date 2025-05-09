@@ -145,15 +145,11 @@ public class GrantSharesGov {
                 ProposalData pData = (ProposalData) stdLib.deserialize(GrantSharesGov.proposalData.get(i));
                 int quorumVotes = 0;
                 Proposal proposal = (Proposal) stdLib.deserialize(GrantSharesGov.proposals.get(i));
-                // Proposal is:
-                // endorsed
-                // active == not expired && not executed
-                if (
-                        proposal.endorser != null
-                        && proposal.expiration >= getTime()
-                        && !proposal.executed
-
-                ) {
+                //The quorum vote is calculated and set for proposals that have been endorsed and are still active,
+                // i.e., not executed nor expired. Otherwise, a proposal's quorum is set to 0. For already executed or
+                // expired proposals, this value is irrelevant. For proposals that haven't been endorsed yet, the
+                // value will be calculated and set upon endorsement.
+                if (proposal.endorser != null && proposal.expiration >= getTime() && !proposal.executed) {
                     quorumVotes = computeQuorumVotes(pData);
                 }
                 pData.quorumVotes = quorumVotes;
