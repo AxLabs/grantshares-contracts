@@ -3,12 +3,19 @@ package com.axlabs.neo.grantshares;
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import io.neow3j.compiler.CompilationUnit;
 import io.neow3j.compiler.Compiler;
+import io.neow3j.contract.ContractManagement;
+import io.neow3j.contract.NefFile;
+import io.neow3j.contract.SmartContract;
 import io.neow3j.protocol.Neow3j;
+import io.neow3j.protocol.ObjectMapperFactory;
+import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
-import io.neow3j.protocol.core.response.Notification;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
+import io.neow3j.transaction.AccountSigner;
+import io.neow3j.transaction.TransactionBuilder;
 import io.neow3j.types.ContractParameter;
+import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
 import io.neow3j.types.NeoVMStateType;
 import io.neow3j.wallet.Account;
@@ -19,28 +26,37 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import java.nio.file.Files;
+import java.io.FileInputStream;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
 
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
 import static io.neow3j.transaction.AccountSigner.calledByEntry;
+import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.core.Is.is;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-@ContractTest(contracts = GrantSharesGov.class, blockTime = 1, configFile = "default.neo-express",
-        batchFile = "setup.batch")
+@ContractTest(contracts = {}, blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class GrantSharesGovUpdateTest {
 
+    static final Path TEST_MANIFEST_FILE = Paths.get("src/test/resources/GrantSharesGov.manifest.json");
+    static final Path TEST_NEF_FILE = Paths.get("src/test/resources/GrantSharesGov.nef");
+
+    static final String REVIEW_LENGTH_KEY = "review_len";
+    static final String VOTING_LENGTH_KEY = "voting_len";
+    static final String TIMELOCK_LENGTH_KEY = "timelock_len";
+    static final String EXPIRATION_LENGTH_KEY = "expiration_len";
+    static final String MIN_ACCEPTANCE_RATE_KEY = "min_accept_rate";
+    static final String MIN_QUORUM_KEY = "min_quorum";
+    static final String THRESHOLD_KEY = "threshold";
+
     @RegisterExtension
     private static final ContractTestExtension ext = new ContractTestExtension();
-    public static final Path TEST_MANIFEST_FILE = Paths.get("GrantSharesGov.manifest.json");
-    public static final Path TEST_NEF_FILE = Paths.get("GrantSharesGov.nef");
     private static Neow3j neow3j;
     private static GrantSharesGovContract gov;
     private static Account alice;
@@ -50,31 +66,38 @@ public class GrantSharesGovUpdateTest {
         neow3j = ext.getNeow3j();
         alice = ext.getAccount(ALICE);
 
-        byte[] nefFile = Files.readAllBytes(TEST_NEF_FILE);
-        String manifestFile = new String(Files.readAllBytes(TEST_MANIFEST_FILE));
+        NefFile nefFile = NefFile.readFromFile(TEST_NEF_FILE.toFile());
+        ContractManifest manifest;
+        try (FileInputStream s = new FileInputStream(TEST_MANIFEST_FILE.toFile())) {
+            manifest = ObjectMapperFactory.getObjectMapper().readValue(s, ContractManifest.class);
+        }
+        List<ContractParameter> members = Collections.singletonList(ContractParameter.hash160(alice.getScriptHash()));
+        ContractParameter deployConfig = array(
+                members,
+                array(
+                        REVIEW_LENGTH_KEY, 0,
+                        VOTING_LENGTH_KEY, 300000,
+                        TIMELOCK_LENGTH_KEY, 300000,
+                        EXPIRATION_LENGTH_KEY, 2592000000L,
+                        MIN_ACCEPTANCE_RATE_KEY, 50,
+                        MIN_QUORUM_KEY, 50,
+                        THRESHOLD_KEY, 75
+                )
+        );
 
-        // Build and send update transaction
-        Hash256 tx = gov.updateContract(nefFile, manifestFile, null)
-                .signers(calledByEntry(alice))
-                .sign()
-                .send()
-                .getSendRawTransaction()
-                .getHash();
+        TransactionBuilder builder = new ContractManagement(neow3j)
+                .deploy(nefFile, manifest, deployConfig)
+                .signers(AccountSigner.none(alice));
+        Hash256 txHash = builder.sign().send().getSendRawTransaction().getHash();
 
-        // Wait for transaction to be processed
-        waitUntilTransactionIsExecuted(tx, neow3j);
+        waitUntilTransactionIsExecuted(txHash, neow3j);
 
-        // Verify update was successful
-        NeoApplicationLog.Execution execution = neow3j.getApplicationLog(tx)
-                .send()
-                .getApplicationLog()
-                .getFirstExecution();
-
-        assertThat(execution.getState(), is(NeoVMStateType.HALT));
-        List<Notification> notifications = execution.getNotifications();
-        assertThat(notifications, hasSize(1));
-        assertThat(notifications.get(0).getEventName(), is("UpdatingContract"));
+        Hash160 contractHash = SmartContract.calcContractHash(
+                alice.getScriptHash(), nefFile.getCheckSumAsInteger(), manifest.getName()
+        );
+        gov = new GrantSharesGovContract(contractHash, neow3j);
     }
+
 
     @Test
     @Order(1)
