@@ -1,0 +1,330 @@
+{
+  "name" : "GrantSharesGov",
+  "groups" : [ ],
+  "features" : { },
+  "supportedstandards" : [ ],
+  "abi" : {
+    "methods" : [ {
+      "name" : "_deploy",
+      "parameters" : [ {
+        "name" : "data",
+        "type" : "Any"
+      }, {
+        "name" : "update",
+        "type" : "Boolean"
+      } ],
+      "offset" : 0,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "getParameter",
+      "parameters" : [ {
+        "name" : "paramName",
+        "type" : "String"
+      } ],
+      "offset" : 198,
+      "returntype" : "Any",
+      "safe" : true
+    }, {
+      "name" : "getParameters",
+      "parameters" : [ ],
+      "offset" : 217,
+      "returntype" : "Map",
+      "safe" : true
+    }, {
+      "name" : "getProposal",
+      "parameters" : [ {
+        "name" : "id",
+        "type" : "Integer"
+      } ],
+      "offset" : 270,
+      "returntype" : "Any",
+      "safe" : true
+    }, {
+      "name" : "getMembers",
+      "parameters" : [ ],
+      "offset" : 637,
+      "returntype" : "Array",
+      "safe" : true
+    }, {
+      "name" : "getMembersCount",
+      "parameters" : [ ],
+      "offset" : 683,
+      "returntype" : "Integer",
+      "safe" : true
+    }, {
+      "name" : "getProposalCount",
+      "parameters" : [ ],
+      "offset" : 708,
+      "returntype" : "Integer",
+      "safe" : true
+    }, {
+      "name" : "getProposals",
+      "parameters" : [ {
+        "name" : "page",
+        "type" : "Integer"
+      }, {
+        "name" : "itemsPerPage",
+        "type" : "Integer"
+      } ],
+      "offset" : 735,
+      "returntype" : "Any",
+      "safe" : true
+    }, {
+      "name" : "isPaused",
+      "parameters" : [ ],
+      "offset" : 957,
+      "returntype" : "Boolean",
+      "safe" : true
+    }, {
+      "name" : "calcMembersMultiSigAccount",
+      "parameters" : [ ],
+      "offset" : 979,
+      "returntype" : "Hash160",
+      "safe" : true
+    }, {
+      "name" : "calcMembersMultiSigAccountThreshold",
+      "parameters" : [ ],
+      "offset" : 996,
+      "returntype" : "Integer",
+      "safe" : true
+    }, {
+      "name" : "createProposal",
+      "parameters" : [ {
+        "name" : "proposer",
+        "type" : "Hash160"
+      }, {
+        "name" : "intents",
+        "type" : "Array"
+      }, {
+        "name" : "offchainUri",
+        "type" : "String"
+      }, {
+        "name" : "linkedProposal",
+        "type" : "Integer"
+      } ],
+      "offset" : 1155,
+      "returntype" : "Integer",
+      "safe" : false
+    }, {
+      "name" : "createProposal",
+      "parameters" : [ {
+        "name" : "proposer",
+        "type" : "Hash160"
+      }, {
+        "name" : "intents",
+        "type" : "Array"
+      }, {
+        "name" : "offchainUri",
+        "type" : "String"
+      }, {
+        "name" : "linkedProposal",
+        "type" : "Integer"
+      }, {
+        "name" : "acceptanceRate",
+        "type" : "Integer"
+      }, {
+        "name" : "quorum",
+        "type" : "Integer"
+      } ],
+      "offset" : 1231,
+      "returntype" : "Integer",
+      "safe" : false
+    }, {
+      "name" : "endorseProposal",
+      "parameters" : [ {
+        "name" : "id",
+        "type" : "Integer"
+      }, {
+        "name" : "endorser",
+        "type" : "Hash160"
+      } ],
+      "offset" : 2063,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "vote",
+      "parameters" : [ {
+        "name" : "id",
+        "type" : "Integer"
+      }, {
+        "name" : "vote",
+        "type" : "Integer"
+      }, {
+        "name" : "voter",
+        "type" : "Hash160"
+      } ],
+      "offset" : 2610,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "execute",
+      "parameters" : [ {
+        "name" : "id",
+        "type" : "Integer"
+      } ],
+      "offset" : 3134,
+      "returntype" : "Array",
+      "safe" : false
+    }, {
+      "name" : "changeParam",
+      "parameters" : [ {
+        "name" : "paramKey",
+        "type" : "String"
+      }, {
+        "name" : "value",
+        "type" : "Integer"
+      } ],
+      "offset" : 3839,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "addMember",
+      "parameters" : [ {
+        "name" : "memberPubKey",
+        "type" : "PublicKey"
+      } ],
+      "offset" : 4262,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "removeMember",
+      "parameters" : [ {
+        "name" : "memberPubKey",
+        "type" : "PublicKey"
+      } ],
+      "offset" : 4416,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "updateContract",
+      "parameters" : [ {
+        "name" : "nef",
+        "type" : "ByteArray"
+      }, {
+        "name" : "manifest",
+        "type" : "String"
+      }, {
+        "name" : "data",
+        "type" : "Any"
+      } ],
+      "offset" : 4569,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "pause",
+      "parameters" : [ ],
+      "offset" : 4668,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "unpause",
+      "parameters" : [ ],
+      "offset" : 4783,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "abortIfPaused",
+      "parameters" : [ ],
+      "offset" : 4989,
+      "returntype" : "Void",
+      "safe" : false
+    }, {
+      "name" : "_initialize",
+      "parameters" : [ ],
+      "offset" : 5302,
+      "returntype" : "Void",
+      "safe" : false
+    } ],
+    "events" : [ {
+      "name" : "UpdatingContract",
+      "parameters" : [ ]
+    }, {
+      "name" : "ProposalEndorsed",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Integer"
+      }, {
+        "name" : "arg2",
+        "type" : "Hash160"
+      } ]
+    }, {
+      "name" : "ProposalMigrated",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Integer"
+      } ]
+    }, {
+      "name" : "MemberRemoved",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Hash160"
+      } ]
+    }, {
+      "name" : "Voted",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Integer"
+      }, {
+        "name" : "arg2",
+        "type" : "Hash160"
+      }, {
+        "name" : "arg3",
+        "type" : "Integer"
+      } ]
+    }, {
+      "name" : "ParameterChanged",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "String"
+      }, {
+        "name" : "arg2",
+        "type" : "Integer"
+      } ]
+    }, {
+      "name" : "ProposalExecuted",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Integer"
+      } ]
+    }, {
+      "name" : "MemberAdded",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Hash160"
+      } ]
+    }, {
+      "name" : "ContractPaused",
+      "parameters" : [ ]
+    }, {
+      "name" : "ProposalCreated",
+      "parameters" : [ {
+        "name" : "arg1",
+        "type" : "Integer"
+      }, {
+        "name" : "arg2",
+        "type" : "Hash160"
+      }, {
+        "name" : "arg3",
+        "type" : "Integer"
+      }, {
+        "name" : "arg4",
+        "type" : "Integer"
+      } ]
+    }, {
+      "name" : "ContractUnpaused",
+      "parameters" : [ ]
+    } ]
+  },
+  "permissions" : [ {
+    "contract" : "*",
+    "methods" : "*"
+  } ],
+  "trusts" : [ ],
+  "extra" : {
+    "Email" : "info@grantshares.io",
+    "Description" : "The governing contract of the GrantShares DAO",
+    "Author" : "AxLabs",
+    "Website" : "https://grantshares.io"
+  }
+}
