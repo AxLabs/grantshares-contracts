@@ -39,7 +39,6 @@ import java.util.List;
 
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
-import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static io.neow3j.types.ContractParameter.array;
 import static io.neow3j.types.ContractParameter.publicKey;
 import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
@@ -63,6 +62,9 @@ public class GrantSharesGovUpdateTest {
     static final String MIN_QUORUM_KEY = "min_quorum";
     static final String THRESHOLD_KEY = "threshold";
 
+    static final int VOTING_LENGTH = 10000;
+    static final int TIMELOCK_LENGTH = 10000;
+
     @RegisterExtension
     private static final ContractTestExtension ext = new ContractTestExtension();
 
@@ -85,8 +87,8 @@ public class GrantSharesGovUpdateTest {
                 members,
                 array(
                         REVIEW_LENGTH_KEY, 0,
-                        VOTING_LENGTH_KEY, 300000,
-                        TIMELOCK_LENGTH_KEY, 300000,
+                        VOTING_LENGTH_KEY, VOTING_LENGTH,
+                        TIMELOCK_LENGTH_KEY, TIMELOCK_LENGTH,
                         EXPIRATION_LENGTH_KEY, 2592000000L,
                         MIN_ACCEPTANCE_RATE_KEY, 50,
                         MIN_QUORUM_KEY, 50,
@@ -109,6 +111,10 @@ public class GrantSharesGovUpdateTest {
         assertThat(neow3j.getContractState(gov.getScriptHash()).send().getContractState().getNef().getChecksum(),
                 is(1180315207L)
         );
+
+        // Todo: Create two proposals here to test the migration logic:
+        //  1 proposal that should pass the condition for calculating a new quorum votes value,
+        //  and one that doesn't pass the condition and the new quorum votes value remains 0.
     }
 
     private static ContractManifest getContractManifest() throws IOException {
@@ -147,7 +153,6 @@ public class GrantSharesGovUpdateTest {
         return new NefFile(compiler, sourceUrl, asList(methodToken1, methodToken2, methodToken3), nefBytes);
     }
 
-
     @Test
     @Order(1)
     public void update_grant_shares_gov_contract() throws Throwable {
@@ -160,10 +165,8 @@ public class GrantSharesGovUpdateTest {
         // Create and endores proposal to update the GrantSharesGov contract
         int id = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, array(intent), "updateContract");
 
-        ext.fastForwardOneBlock(PHASE_LENGTH);
         TestHelper.voteForProposal(gov, neow3j, id, alice);
-        ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
-        // Todo: find out the reason the execution aborts here
+        ext.fastForwardOneBlock(VOTING_LENGTH + TIMELOCK_LENGTH);
         Hash256 tx = gov.execute(id)
                 .signers(AccountSigner.none(charlie)).sign().send().getSendRawTransaction().getHash();
         waitUntilTransactionIsExecuted(tx, neow3j);
@@ -181,6 +184,9 @@ public class GrantSharesGovUpdateTest {
         // Verify the contract is still functional by calling a method
         GrantSharesGovContract updatedGov = new GrantSharesGovContract(gov.getScriptHash(), neow3j);
         assertFalse(updatedGov.isPaused());
+
+        // Todo: Verify what the migration script should have changed for the proposals that were existing on-chain
+        //  before the update.
     }
 
 }
