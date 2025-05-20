@@ -153,7 +153,7 @@ public class GrantSharesGov {
                     quorumVotes = computeQuorumVotes(pData);
                 }
                 pData.quorumVotes = quorumVotes;
-                proposalData.put(maxProposalId, stdLib.serialize(data));
+                proposalData.put(maxProposalId, stdLib.serialize(pData));
             }
         }
     }
