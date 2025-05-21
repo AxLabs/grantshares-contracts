@@ -5,7 +5,7 @@ import io.neow3j.devpack.Hash160;
 /**
  * The base struct of a proposal created and stored when a user creates a proposal.
  * <p>
- * Additional proposal information is added via the {@link ProposalData struct}.
+ * Additional proposal information is added via the {@link ProposalDataV2 struct}.
  */
 public class Proposal {
 

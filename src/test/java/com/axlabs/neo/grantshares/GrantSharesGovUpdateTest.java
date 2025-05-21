@@ -2,6 +2,8 @@ package com.axlabs.neo.grantshares;
 
 import com.axlabs.neo.grantshares.util.GrantSharesGovContract;
 import com.axlabs.neo.grantshares.util.IntentParam;
+import com.axlabs.neo.grantshares.util.ProposalPaginatedStruct;
+import com.axlabs.neo.grantshares.util.ProposalStruct;
 import com.axlabs.neo.grantshares.util.TestHelper;
 import io.neow3j.compiler.CompilationUnit;
 import io.neow3j.compiler.Compiler;
@@ -37,14 +39,21 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.CREATE;
+import static com.axlabs.neo.grantshares.util.TestHelper.GovernanceMethods.GET_MEMBERS_COUNT;
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.ALICE;
 import static com.axlabs.neo.grantshares.util.TestHelper.Members.CHARLIE;
 import static io.neow3j.types.ContractParameter.array;
+import static io.neow3j.types.ContractParameter.hash160;
+import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.publicKey;
+import static io.neow3j.types.ContractParameter.string;
 import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
+import static org.hamcrest.core.IsNull.nullValue;
+import static org.hamcrest.core.IsNot.not;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ContractTest(contracts = {}, blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
@@ -52,8 +61,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 public class GrantSharesGovUpdateTest {
 
     static final Path TEST_MANIFEST_FILE = Paths.get("src/test/resources/GrantSharesGov.manifest.json");
-    static final Path TEST_NEF_FILE = Paths.get("src/test/resources/GrantSharesGov.nef");
-
     static final String REVIEW_LENGTH_KEY = "review_len";
     static final String VOTING_LENGTH_KEY = "voting_len";
     static final String TIMELOCK_LENGTH_KEY = "timelock_len";
@@ -112,9 +119,24 @@ public class GrantSharesGovUpdateTest {
                 is(1180315207L)
         );
 
-        // Todo: Create two proposals here to test the migration logic:
-        //  1 proposal that should pass the condition for calculating a new quorum votes value,
-        //  and one that doesn't pass the condition and the new quorum votes value remains 0.
+        // Create two proposals to test the migration logic:
+        // First proposal - will be endorsed before update
+        ContractParameter intents1 = array(array(gov.getScriptHash(), "changeParam",
+                array(string("min_accept_rate"), integer(60)), CallFlags.ALL.getValue()
+        ));
+        int id1 = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, intents1, "proposal1");
+
+        // Second proposal - will remain unendorsed until after update
+        ContractParameter intents2 = array(array(gov.getScriptHash(), "changeParam",
+                array(string("min_quorum"), integer(55)), CallFlags.ALL.getValue()
+        ));
+        Hash256 tx = gov.invokeFunction(CREATE, hash160(charlie), intents2, string("proposal2"), integer(-1))
+                .signers(AccountSigner.calledByEntry(charlie))
+                .sign()
+                .send()
+                .getSendRawTransaction()
+                .getHash();
+        waitUntilTransactionIsExecuted(tx, neow3j);
     }
 
     private static ContractManifest getContractManifest() throws IOException {
@@ -159,10 +181,10 @@ public class GrantSharesGovUpdateTest {
         // Compile the new version of the contract
         CompilationUnit res = new Compiler().compile(GrantSharesGov.class.getCanonicalName());
 
-        IntentParam intent = IntentParam.updateContractProposal(gov.getScriptHash(), res.getNefFile(),
-                res.getManifest()
+        IntentParam intent = IntentParam.updateContractProposal(
+                gov.getScriptHash(), res.getNefFile(), res.getManifest()
         );
-        // Create and endores proposal to update the GrantSharesGov contract
+        // Create and endorse proposal to update the GrantSharesGov contract
         int id = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, array(intent), "updateContract");
 
         TestHelper.voteForProposal(gov, neow3j, id, alice);
@@ -178,15 +200,48 @@ public class GrantSharesGovUpdateTest {
                 .getFirstExecution();
 
         assertThat(execution.getState(), is(NeoVMStateType.HALT));
-        assertThat(execution.getNotifications().size(), is(1));
+        assertThat(execution.getNotifications().size(), is(3));
         assertThat(execution.getNotifications().get(0).getEventName(), is("UpdatingContract"));
 
         // Verify the contract is still functional by calling a method
         GrantSharesGovContract updatedGov = new GrantSharesGovContract(gov.getScriptHash(), neow3j);
         assertFalse(updatedGov.isPaused());
 
-        // Todo: Verify what the migration script should have changed for the proposals that were existing on-chain
-        //  before the update.
-    }
+        // Get the total number of members to calculate expected quorum votes
+        int memberCount = updatedGov.callInvokeFunction(GET_MEMBERS_COUNT)
+                .getInvocationResult()
+                .getStack()
+                .get(0)
+                .getInteger()
+                .intValue();
 
+        // Get all proposals to check their migration status
+        ProposalPaginatedStruct page = updatedGov.getProposals(0, 10);
+
+        // Check the first proposal that was endorsed before update
+        ProposalStruct proposal1 = page.items.get(0);
+        int expectedQuorumVotes = (memberCount * proposal1.quorum + 99) / 100; // Round up
+        assertThat(proposal1.quorumVotes, is(expectedQuorumVotes));
+        assertThat(proposal1.endorser, is(not(nullValue())));
+
+        // Check the second proposal that was not endorsed before update
+        ProposalStruct proposal2 = page.items.get(1);
+        assertThat(proposal2.quorumVotes, is(0));
+        assertThat(proposal2.endorser, is(nullValue()));
+
+        // Now endorse the second proposal and verify its quorumVotes gets set correctly
+        Hash256 endorseTx = updatedGov.endorseProposal(proposal2.id, alice.getScriptHash())
+                .signers(AccountSigner.calledByEntry(alice))
+                .sign()
+                .send()
+                .getSendRawTransaction()
+                .getHash();
+        waitUntilTransactionIsExecuted(endorseTx, neow3j);
+
+        // Check that the quorumVotes was set correctly after endorsement
+        proposal2 = updatedGov.getProposal(proposal2.id);
+        expectedQuorumVotes = (memberCount * proposal2.quorum + 99) / 100; // Round up
+        assertThat(proposal2.quorumVotes, is(expectedQuorumVotes));
+        assertThat(proposal2.endorser, is(alice.getScriptHash()));
+    }
 }

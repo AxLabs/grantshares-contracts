@@ -6,7 +6,7 @@ import io.neow3j.devpack.Hash160;
  * Proposal information that is set at the time of creation of a proposal and doesn't change after that.
  * This data was separated from {@link Proposal} in order to save storage costs when updating a proposal.
  */
-public class ProposalData {
+public class ProposalDataV1 {
 
     /**
      * The creator of the proposal.
@@ -40,14 +40,7 @@ public class ProposalData {
      */
     public String offchainUri;
 
-    /**
-     * The actual number of votes required for this proposal to reach quorum.
-     * This is calculated at proposal creation time based on the quorum percentage
-     * and total number of members at that time.
-     */
-    public int quorumVotes;
-
-    public ProposalData(Hash160 proposer, int linkedProposal, int acceptanceRate,
+    public ProposalDataV1(Hash160 proposer, int linkedProposal, int acceptanceRate,
             int quorum, Intent[] intents, String offchainUri) {
         this.proposer = proposer;
         this.linkedProposal = linkedProposal;
@@ -55,6 +48,6 @@ public class ProposalData {
         this.quorum = quorum;
         this.intents = intents;
         this.offchainUri = offchainUri;
-        quorumVotes = 0;
     }
 }
+
