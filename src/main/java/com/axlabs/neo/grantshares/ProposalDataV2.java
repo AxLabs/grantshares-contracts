@@ -58,17 +58,17 @@ public class ProposalDataV2 {
         quorumVotes = 0;
     }
 
-    public ProposalDataV2(ProposalDataV1 oldProposalData, int memberCount) {
+    public ProposalDataV2(ProposalDataV1 oldProposalData) {
         this.proposer = oldProposalData.proposer;
         this.linkedProposal = oldProposalData.linkedProposal;
         this.acceptanceRate = oldProposalData.acceptanceRate;
         this.quorum = oldProposalData.quorum;
         this.intents = oldProposalData.intents;
         this.offchainUri = oldProposalData.offchainUri;
-        computeQuorumVotes(memberCount);
+        this.quorumVotes = 0;
     }
 
-    public void computeQuorumVotes(int memberCount) {
+    public void calculateAndSetQuorumVotes(int memberCount) {
         if (quorumVotes == 0) {
             quorumVotes = (memberCount * quorum) / 100;
             if ((memberCount * quorum) % 100 != 0) {
@@ -77,4 +77,3 @@ public class ProposalDataV2 {
         }
     }
 }
-
