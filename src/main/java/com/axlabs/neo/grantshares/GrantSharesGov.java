@@ -153,7 +153,7 @@ public class GrantSharesGov {
                     memberCount = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
                 }
                 ProposalDataV2 newProposalData = new ProposalDataV2(oldProposalData, memberCount);
-                proposalData.put(maxProposalId, stdLib.serialize(newProposalData));
+                proposalData.put(i, stdLib.serialize(newProposalData));
             }
         }
     }

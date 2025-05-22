@@ -130,7 +130,7 @@ public class GrantSharesGovUpdateTest {
         // Get old style endorser to validate
         List<StackItem> list = gov.callInvokeFunction("getProposal", asList(integer(id))).getInvocationResult()
                 .getStack().get(0).getList();
-        ;
+
         StackItem stackItem = list.get(5);
         assertThat(stackItem.getType(), is(StackItemType.BYTE_STRING));
         assertThat(stackItem.getHexString(), is(reverseByteArrayToHexString(alice.getScriptHash().toArray())));
