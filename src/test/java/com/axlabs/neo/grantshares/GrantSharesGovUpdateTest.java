@@ -133,7 +133,7 @@ public class GrantSharesGovUpdateTest {
 
         StackItem stackItem = list.get(5);
         assertThat(stackItem.getType(), is(StackItemType.BYTE_STRING));
-        assertThat(stackItem.getHexString(), is(reverseByteArrayToHexString(alice.getScriptHash().toArray())));
+        assertThat(Hash160.fromAddress(stackItem.getAddress()), is(alice.getScriptHash()));
 
         // Second proposal - will remain unendorsed until after update
         ContractParameter intents2 = array(array(gov.getScriptHash(), "changeParam",
@@ -146,21 +146,6 @@ public class GrantSharesGovUpdateTest {
                 .getSendRawTransaction()
                 .getHash();
         waitUntilTransactionIsExecuted(tx, neow3j);
-    }
-
-    public static String reverseByteArrayToHexString(byte[] bytes) {
-        for (int i = 0; i < bytes.length / 2; i++) {
-            byte temp = bytes[i];
-            bytes[i] = bytes[bytes.length - 1 - i];
-            bytes[bytes.length - 1 - i] = temp;
-        }
-
-        StringBuilder result = new StringBuilder();
-        for (byte b : bytes) {
-            result.append(String.format("%02x", b));
-        }
-
-        return result.toString();
     }
 
     private static ContractManifest getContractManifest() throws IOException {

@@ -143,18 +143,17 @@ public class GrantSharesGov {
             int memberCount = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
             StdLib stdLib = new StdLib();
             for (int i = 0; i < proposalsCount; i++) {
-                ProposalDataV1 oldProposalData = (ProposalDataV1) stdLib.deserialize(
-                        GrantSharesGov.proposalData.get(i));
-                Proposal proposal = (Proposal) stdLib.deserialize(GrantSharesGov.proposals.get(i));
+                ProposalData proposalData = (ProposalData) stdLib.deserialize(GrantSharesGov.proposalData.get(i));
+                ProposalV1 proposalV1 = (ProposalV1) stdLib.deserialize(GrantSharesGov.proposals.get(i));
                 // The quorum vote is calculated and set for proposals that have been endorsed and are still active,
                 // i.e., not executed nor expired. Otherwise, a proposal's quorum is set to 0. For already executed or
                 // expired proposals, this value is irrelevant. For proposals that haven't been endorsed yet, the
                 // value will be calculated and set upon endorsement.
-                ProposalDataV2 newProposalData = new ProposalDataV2(oldProposalData);
-                if (proposal.endorser != null && proposal.expiration >= getTime() && !proposal.executed) {
-                    newProposalData.calculateAndSetQuorumVotes(memberCount);
+                ProposalV2 proposalV2 = new ProposalV2(proposalV1);
+                if (proposalV2.endorser != null && proposalV2.expiration >= getTime() && !proposalV2.executed) {
+                    proposalV2.calculateAndSetQuorumVotes(proposalData.quorum, memberCount);
                 }
-                proposalData.put(i, stdLib.serialize(newProposalData));
+                proposals.put(i, stdLib.serialize(proposalV2));
             }
         }
     }
@@ -198,12 +197,11 @@ public class GrantSharesGov {
         dto.id = id;
         ByteString bytes = proposalData.get(id);
         if (bytes != null) {
-            ProposalDataV2 p = (ProposalDataV2) new StdLib().deserialize(bytes);
+            ProposalData p = (ProposalData) new StdLib().deserialize(bytes);
             dto.proposer = p.proposer;
             dto.linkedProposal = p.linkedProposal;
             dto.acceptanceRate = p.acceptanceRate;
             dto.quorum = p.quorum;
-            dto.quorumVotes = p.quorumVotes;
             dto.intents = p.intents;
             dto.offchainUri = p.offchainUri;
         } else {
@@ -211,8 +209,9 @@ public class GrantSharesGov {
         }
         bytes = proposals.get(id);
         if (bytes != null) {
-            Proposal p = (Proposal) new StdLib().deserialize(bytes);
+            ProposalV2 p = (ProposalV2) new StdLib().deserialize(bytes);
             dto.endorser = p.endorser;
+            dto.quorumVotes = p.quorumVotes;
             dto.reviewEnd = p.reviewEnd;
             dto.votingEnd = p.votingEnd;
             dto.queuedEnd = p.timeLockEnd;
@@ -379,9 +378,9 @@ public class GrantSharesGov {
         int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
         StdLib stdLib = new StdLib();
-        proposals.put(id, stdLib.serialize(new Proposal(id, expiration)));
+        proposals.put(id, stdLib.serialize(new ProposalV2(id, expiration)));
         proposalData.put(id, stdLib.serialize(
-                new ProposalDataV2(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri))
+                new ProposalData(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri))
         );
         proposalVotes.put(id, stdLib.serialize(new ProposalVotes()));
         Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
@@ -422,20 +421,19 @@ public class GrantSharesGov {
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) Helper.abort("endorseProposal" + ": " + "Proposal doesn't exist");
         StdLib stdLib = new StdLib();
-        Proposal proposal = (Proposal) stdLib.deserialize(proposalBytes);
+        ProposalV2 proposal = (ProposalV2) stdLib.deserialize(proposalBytes);
         if (proposal.expiration <= getTime()) Helper.abort("endorseProposal" + ": " + "Proposal expired");
         if (proposal.endorser != null) Helper.abort("endorseProposal" + ": " + "Proposal already endorsed");
 
+        ProposalData proposalData = (ProposalData) stdLib.deserialize(GrantSharesGov.proposalData.get(id));
+
         proposal.endorser = endorser;
+        proposal.calculateAndSetQuorumVotes(proposalData.quorum, getMembersCount());
         proposal.reviewEnd = getTime() + parameters.getInt(REVIEW_LENGTH_KEY);
         proposal.votingEnd = proposal.reviewEnd + parameters.getInt(VOTING_LENGTH_KEY);
         proposal.timeLockEnd = proposal.votingEnd + parameters.getInt(TIMELOCK_LENGTH_KEY);
         proposal.expiration = proposal.timeLockEnd + parameters.getInt(EXPIRATION_LENGTH_KEY);
         proposals.put(id, stdLib.serialize(proposal));
-
-        ProposalDataV2 proposalData = (ProposalDataV2) stdLib.deserialize(GrantSharesGov.proposalData.get(id));
-        proposalData.calculateAndSetQuorumVotes(Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY));
-        GrantSharesGov.proposalData.put(id, stdLib.serialize(proposalData));
 
         endorsed.fire(id, endorser);
     }
@@ -457,7 +455,7 @@ public class GrantSharesGov {
         }
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) Helper.abort("vote" + ": " + "Proposal doesn't exist");
-        Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
+        ProposalV2 proposal = (ProposalV2) new StdLib().deserialize(proposalBytes);
         int time = getTime();
         if (proposal.endorser == null || time < proposal.reviewEnd || time >= proposal.votingEnd) {
             Helper.abort("vote" + ": " + "Proposal not active");
@@ -490,20 +488,20 @@ public class GrantSharesGov {
         abortIfPaused();
         ByteString proposalBytes = proposals.get(id);
         if (proposalBytes == null) Helper.abort("execute" + ": " + "Proposal doesn't exist");
-        Proposal proposal = (Proposal) new StdLib().deserialize(proposalBytes);
+        ProposalV2 proposal = (ProposalV2) new StdLib().deserialize(proposalBytes);
         if (proposal.endorser == null || getTime() < proposal.timeLockEnd) {
             Helper.abort("execute" + ": " + "Proposal not in execution phase");
         }
         if (proposal.executed) Helper.abort("execute" + ": " + "Proposal already executed");
         if (proposal.expiration <= getTime()) Helper.abort("execute" + ": " + "Proposal expired");
-        ProposalDataV2 data = (ProposalDataV2) new StdLib().deserialize(proposalData.get(id));
+        ProposalData data = (ProposalData) new StdLib().deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
         // first check for old-style proposals that don't have a quorumVotes value
-        if (data.quorumVotes == 0 &&
+        if (proposal.quorumVotes == 0 &&
                 voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum) {
             Helper.abort("execute" + ": " + "Proposal not voted on");
-        } else if (voteCount < data.quorumVotes) {
+        } else if (voteCount < proposal.quorumVotes) {
             Helper.abort("execute" + ": " + "Quorum not reached");
         }
         int yesNoCount = votes.approve + votes.reject;
