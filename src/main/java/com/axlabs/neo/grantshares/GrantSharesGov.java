@@ -142,8 +142,7 @@ public class GrantSharesGov {
             int maxProposalId = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
             StdLib stdLib = new StdLib();
             for (int i = 0; i < maxProposalId; i++) {
-                ProposalDataV1 oldProposalData = (ProposalDataV1) stdLib.deserialize(
-                        GrantSharesGov.proposalData.get(i));
+                ProposalDataV1 oldProposalData = (ProposalDataV1) stdLib.deserialize(GrantSharesGov.proposalData.get(i));
                 Proposal proposal = (Proposal) stdLib.deserialize(GrantSharesGov.proposals.get(i));
                 //The quorum vote is calculated and set for proposals that have been endorsed and are still active,
                 // i.e., not executed nor expired. Otherwise, a proposal's quorum is set to 0. For already executed or

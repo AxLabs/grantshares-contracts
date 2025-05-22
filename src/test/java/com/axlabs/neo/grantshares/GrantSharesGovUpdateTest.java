@@ -15,6 +15,7 @@ import io.neow3j.protocol.Neow3j;
 import io.neow3j.protocol.ObjectMapperFactory;
 import io.neow3j.protocol.core.response.ContractManifest;
 import io.neow3j.protocol.core.response.NeoApplicationLog;
+import io.neow3j.protocol.core.stackitem.StackItem;
 import io.neow3j.test.ContractTest;
 import io.neow3j.test.ContractTestExtension;
 import io.neow3j.transaction.AccountSigner;
@@ -24,6 +25,7 @@ import io.neow3j.types.ContractParameter;
 import io.neow3j.types.Hash160;
 import io.neow3j.types.Hash256;
 import io.neow3j.types.NeoVMStateType;
+import io.neow3j.types.StackItemType;
 import io.neow3j.wallet.Account;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,8 +54,8 @@ import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
 import static java.util.Arrays.asList;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.core.Is.is;
-import static org.hamcrest.core.IsNull.nullValue;
 import static org.hamcrest.core.IsNot.not;
+import static org.hamcrest.core.IsNull.nullValue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @ContractTest(contracts = {}, blockTime = 1, configFile = "default.neo-express", batchFile = "setup.batch")
@@ -124,7 +126,14 @@ public class GrantSharesGovUpdateTest {
         ContractParameter intents1 = array(array(gov.getScriptHash(), "changeParam",
                 array(string("min_accept_rate"), integer(60)), CallFlags.ALL.getValue()
         ));
-        int id1 = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, intents1, "proposal1");
+        int id = TestHelper.createAndEndorseProposal(gov, neow3j, charlie, alice, intents1, "proposal1");
+        // Get old style endorser to validate
+        List<StackItem> list = gov.callInvokeFunction("getProposal", asList(integer(id))).getInvocationResult()
+                .getStack().get(0).getList();
+        ;
+        StackItem stackItem = list.get(5);
+        assertThat(stackItem.getType(), is(StackItemType.BYTE_STRING));
+        assertThat(stackItem.getHexString(), is(reverseByteArrayToHexString(alice.getScriptHash().toArray())));
 
         // Second proposal - will remain unendorsed until after update
         ContractParameter intents2 = array(array(gov.getScriptHash(), "changeParam",
@@ -137,6 +146,21 @@ public class GrantSharesGovUpdateTest {
                 .getSendRawTransaction()
                 .getHash();
         waitUntilTransactionIsExecuted(tx, neow3j);
+    }
+
+    public static String reverseByteArrayToHexString(byte[] bytes) {
+        for (int i = 0; i < bytes.length / 2; i++) {
+            byte temp = bytes[i];
+            bytes[i] = bytes[bytes.length - 1 - i];
+            bytes[bytes.length - 1 - i] = temp;
+        }
+
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02x", b));
+        }
+
+        return result.toString();
     }
 
     private static ContractManifest getContractManifest() throws IOException {
