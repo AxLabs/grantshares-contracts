@@ -497,11 +497,7 @@ public class GrantSharesGov {
         ProposalData data = (ProposalData) new StdLib().deserialize(proposalData.get(id));
         ProposalVotes votes = (ProposalVotes) new StdLib().deserialize(proposalVotes.get(id));
         int voteCount = votes.approve + votes.abstain + votes.reject;
-        // first check for old-style proposals that don't have a quorumVotes value
-        if (proposal.quorumVotes == 0 &&
-                voteCount * 100 / Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) < data.quorum) {
-            Helper.abort("execute" + ": " + "Proposal not voted on");
-        } else if (voteCount < proposal.quorumVotes) {
+        if (voteCount < proposal.quorumVotes) {
             Helper.abort("execute" + ": " + "Quorum not reached");
         }
         int yesNoCount = votes.approve + votes.reject;
