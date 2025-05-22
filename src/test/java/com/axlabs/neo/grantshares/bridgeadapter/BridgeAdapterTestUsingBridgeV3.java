@@ -58,7 +58,6 @@ import static com.axlabs.neo.grantshares.util.TestHelper.Members.FLORIAN;
 import static com.axlabs.neo.grantshares.util.TestHelper.ParameterValues.PHASE_LENGTH;
 import static com.axlabs.neo.grantshares.util.TestHelper.prepareDeployParameter;
 import static com.axlabs.neo.grantshares.util.TestHelper.voteForProposal;
-import static io.neow3j.transaction.AccountSigner.calledByEntry;
 import static io.neow3j.transaction.AccountSigner.global;
 import static io.neow3j.transaction.AccountSigner.none;
 import static io.neow3j.types.ContractParameter.array;
@@ -108,7 +107,8 @@ public class BridgeAdapterTestUsingBridgeV3 {
     static Account eve; // Set to be a DAO member.
     static Account florian; // Set to be a DAO member.
 
-    static String littleEndianAdapterHashHex;
+    static String bridgeAdapterHashLittleEndianHex;
+    static String gsGovHashLittleEndianHex;
 
     // region deploy configuration
 
@@ -180,7 +180,8 @@ public class BridgeAdapterTestUsingBridgeV3 {
                 neow3j
         );
 
-        littleEndianAdapterHashHex = toHexStringNoPrefix(bridgeAdapter.getScriptHash().toLittleEndianArray());
+        gsGovHashLittleEndianHex = toHexStringNoPrefix(gov.getScriptHash().toLittleEndianArray());
+        bridgeAdapterHashLittleEndianHex = toHexStringNoPrefix(bridgeAdapter.getScriptHash().toLittleEndianArray());
 
         alice = ext.getAccount(ALICE);
         bob = ext.getAccount(BOB);
@@ -502,12 +503,14 @@ public class BridgeAdapterTestUsingBridgeV3 {
         // offchainUri used: "native_deposit_gas_remainder_at_limit"
         byte[] proposalScript = hexStringToByteArray(
                 "0f0c256e61746976655f6465706f7369745f6761735f72656d61696e6465725f61745f6c696d69741f0200ca9a3b0c140d165c9899c38bbf5991c5e47b04937258caec690c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f0200ca9a3b0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02002d31010c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52");
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52");
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
 
@@ -573,24 +576,28 @@ public class BridgeAdapterTestUsingBridgeV3 {
         // offchainUri used: "native_deposit_gas_remainder_limit_exceeded"
         byte[] proposalScript = hexStringToByteArray(
                 "0f0c2b6e61746976655f6465706f7369745f6761735f72656d61696e6465725f6c696d69745f65786365656465641f0200ca9a3b0c140d165c9899c38bbf5991c5e47b04937258caec690c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f0200ca9a3b0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
                         reverseHexString(toHexStringNoPrefix(bridgeFee.add(maxFee).add(BigInteger.ONE).toByteArray())) +
                         "0c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52");
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52");
         assertThat(toHexStringNoPrefix(proposalScript),
                 is("0f0c2b6e61746976655f6465706f7369745f6761735f72656d61696e6465725f6c696d69745f65786365656465641f0200ca9a3b0c140d165c9899c38bbf5991c5e47b04937258caec690c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f0200ca9a3b0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
                         "012d3101" +
                         "0c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52")
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52")
         );
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
@@ -641,25 +648,29 @@ public class BridgeAdapterTestUsingBridgeV3 {
         // offchainUri used: "token_deposit_gas_remainder_limit_exceeded"
         byte[] proposalScript = hexStringToByteArray(
                 "0x0f0c24746f6b656e5f6465706f7369745f6761735f72656d61696e6465725f61745f6c696d69741f1a0c149050af308214cff278ece5b894f3c5e43240fb1c0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
                         // sending (bridge fee + maxFee) GAS to the adapter, so that the remainder will be exactly the
                         // limit. The execution should be successful in that case.
                         reverseHexString(toHexString(bridgeFee.add(maxFee).toByteArray())) +
                         "0c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52"
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52"
         );
         assertThat(toHexStringNoPrefix(proposalScript),
                 is("0f0c24746f6b656e5f6465706f7369745f6761735f72656d61696e6465725f61745f6c696d69741f1a0c149050af308214cff278ece5b894f3c5e43240fb1c0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02002d31010c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52")
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52")
         );
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
@@ -731,27 +742,31 @@ public class BridgeAdapterTestUsingBridgeV3 {
         // offchainUri: "token_deposit_gas_remainder_limit_exceeded"
         byte[] proposalScript = hexStringToByteArray(
                 "0f0c2a746f6b656e5f6465706f7369745f6761735f72656d61696e6465725f6c696d69745f65786365656465641f1a0c149050af308214cff278ece5b894f3c5e43240fb1c0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
                         // sending (bridge fee + maxFee + 1) GAS to the adapter, so that the remainder will exceed
                         // the limit by 1. The execution should fail and the tx should abort.
                         reverseHexString(toHexString(bridgeFee.add(adaptersMaxFee).add(BigInteger.ONE).toByteArray())) +
                         "0c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52"
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52"
         );
         assertThat(toHexStringNoPrefix(proposalScript),
                 is("0f0c2a746f6b656e5f6465706f7369745f6761735f72656d61696e6465725f6c696d69745f65786365656465641f1a0c149050af308214cff278ece5b894f3c5e43240fb1c0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
                         "012d3101" +
                         "0c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52")
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52")
         );
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
@@ -790,12 +805,14 @@ public class BridgeAdapterTestUsingBridgeV3 {
                 "0x0f0c1e746f6b656e5f6465706f7369745f72656d61696e696e675f746f6b656e731f1a0c14905" +
                         reverseHexString(toHexString(amount.add(BigInteger.ONE).toByteArray())) +
                         "f308214cff278ece5b894f3c5e43240fb1c0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c066272696467650c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "14c01f1b0c14" +
-                        littleEndianAdapterHashHex +
+                        bridgeAdapterHashLittleEndianHex +
                         "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02809698000c14" +
-                        littleEndianAdapterHashHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c1448dfd5fbd2594cf6590c787571778349a5db802941627d5b52");
+                        bridgeAdapterHashLittleEndianHex +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        gsGovHashLittleEndianHex +
+                        "41627d5b52");
 
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
         int id = TestHelper.sendAndEndorseProposal(gov, neow3j, proposer, alice, b);
