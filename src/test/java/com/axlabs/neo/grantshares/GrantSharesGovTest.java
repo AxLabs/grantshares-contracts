@@ -250,6 +250,8 @@ public class GrantSharesGovTest {
         assertThat(p.votingEnd, is(BigInteger.ZERO));
         assertThat(p.timelockEnd, is(BigInteger.ZERO));
         assertThat(p.expiration, is(greaterThan(BigInteger.ZERO)));
+        assertThat(p.quorumVotes, is(0));
+        assertThat(p.quorum, is(MIN_QUORUM));
 
         // 3. Endorse
         Hash256 endorseTx = gov.invokeFunction(ENDORSE, integer(id), hash160(alice.getScriptHash())).signers(
@@ -273,7 +275,19 @@ public class GrantSharesGovTest {
         assertThat(p.reject, is(0));
         assertThat(p.abstain, is(0));
 
-        // 6. Test emitted "endorsed" event
+        //6. Test the correct quorum votes are stored
+        int memberCount = gov.callInvokeFunction(GET_MEMBERS_COUNT)
+                .getInvocationResult()
+                .getStack()
+                .get(0)
+                .getInteger()
+                .intValue();
+        ProposalStruct proposal = gov.getProposal(id);
+        // round up the expected quorum votes
+        int expectedQuorumVotes = (memberCount * proposal.quorum + 99) / 100;
+        assertThat(proposal.quorumVotes, is(expectedQuorumVotes));
+
+        // 7. Test emitted "endorsed" event
         Notification ntf = neow3j.getApplicationLog(endorseTx).send().getApplicationLog().getExecutions().get(
                 0).getNotifications().get(0);
         assertThat(ntf.getEventName(), is(PROPOSAL_ENDORSED));

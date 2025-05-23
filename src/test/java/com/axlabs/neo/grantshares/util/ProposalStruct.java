@@ -15,6 +15,7 @@ public class ProposalStruct {
     public int linkedProposal;
     public int acceptanceRate;
     public int quorum;
+    public int quorumVotes;
     public Hash160 endorser;
     public BigInteger reviewEnd;
     public BigInteger votingEnd;
@@ -35,22 +36,23 @@ public class ProposalStruct {
                 list.get(2).getInteger().intValue(),
                 list.get(3).getInteger().intValue(),
                 list.get(4).getInteger().intValue(),
-                list.get(5).getValue() == null ? null : Hash160.fromAddress(list.get(5).getAddress()),
-                list.get(6).getInteger(),
+                list.get(5).getInteger().intValue(),
+                list.get(6).getValue() == null ? null : Hash160.fromAddress(list.get(6).getAddress()),
                 list.get(7).getInteger(),
                 list.get(8).getInteger(),
                 list.get(9).getInteger(),
-                list.get(10).getBoolean(),
-                list.get(11).getList().stream().map(i -> new IntentStruct(i.getList())).collect(Collectors.toList()),
-                list.get(12).getString(),
-                list.get(13).getInteger().intValue(),
+                list.get(10).getInteger(),
+                list.get(11).getBoolean(),
+                list.get(12).getList().stream().map(i -> new IntentStruct(i.getList())).collect(Collectors.toList()),
+                list.get(13).getString(),
                 list.get(14).getInteger().intValue(),
                 list.get(15).getInteger().intValue(),
-                list.get(16).getMap() // voters
+                list.get(16).getInteger().intValue(),
+                list.get(17).getMap() // voters
         );
     }
 
-    public ProposalStruct(int id, Hash160 proposer, int linkedProposal, int acceptanceRate, int quorum,
+    public ProposalStruct(int id, Hash160 proposer, int linkedProposal, int acceptanceRate, int quorum, int quorumVotes,
             Hash160 endorser, BigInteger reviewEnd, BigInteger votingEnd, BigInteger timelockEnd, BigInteger expiration,
             boolean executed, List<IntentStruct> intents, String offchainUri, int approve, int reject, int abstain,
             Map<StackItem, StackItem> voters) {
@@ -59,6 +61,7 @@ public class ProposalStruct {
         this.linkedProposal = linkedProposal;
         this.acceptanceRate = acceptanceRate;
         this.quorum = quorum;
+        this.quorumVotes = quorumVotes;
         this.endorser = endorser;
         this.reviewEnd = reviewEnd;
         this.votingEnd = votingEnd;

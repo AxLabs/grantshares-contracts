@@ -13,6 +13,7 @@ public class ProposalDTO {
     public int linkedProposal;
     public int acceptanceRate;
     public int quorum;
+    public int quorumVotes;
     public Hash160 endorser;
     public int reviewEnd;
     public int votingEnd;
