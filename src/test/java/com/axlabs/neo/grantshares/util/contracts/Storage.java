@@ -28,7 +28,7 @@ public class Storage {
      */
     public static int store(ByteString data) {
         int currentCount = io.neow3j.devpack.Storage.getInt(ctx, COUNT_KEY);
-        dataMap.put(currentCount, data.toByteArray());
+        dataMap.put(currentCount, data);
         io.neow3j.devpack.Storage.put(ctx, COUNT_KEY, currentCount + 1);
         return currentCount;
     }
