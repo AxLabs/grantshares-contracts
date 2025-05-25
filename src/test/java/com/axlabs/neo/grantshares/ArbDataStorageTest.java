@@ -28,6 +28,7 @@ import static com.axlabs.neo.grantshares.util.RequestForFunds.buildIntentsBytes;
 import static io.neow3j.types.ContractParameter.hash160;
 import static io.neow3j.types.ContractParameter.integer;
 import static io.neow3j.types.ContractParameter.string;
+import static io.neow3j.utils.Await.waitUntilTransactionIsExecuted;
 import static java.util.Arrays.asList;
 
 @ContractTest(
@@ -156,6 +157,7 @@ public class ArbDataStorageTest {
                 .send()
                 .getSendRawTransaction()
                 .getHash();
+        waitUntilTransactionIsExecuted(tx1, ext.getNeow3j());
         NeoApplicationLog.Execution exec1 = ext.getNeow3j().getApplicationLog(tx1)
                 .send().getApplicationLog().getFirstExecution();
 
@@ -165,6 +167,7 @@ public class ArbDataStorageTest {
                 .send()
                 .getSendRawTransaction()
                 .getHash();
+        waitUntilTransactionIsExecuted(tx2, ext.getNeow3j());
         NeoApplicationLog.Execution exec2 = ext.getNeow3j().getApplicationLog(tx2)
                 .send().getApplicationLog().getFirstExecution();
 
@@ -174,6 +177,7 @@ public class ArbDataStorageTest {
                 .send()
                 .getSendRawTransaction()
                 .getHash();
+        waitUntilTransactionIsExecuted(tx3, ext.getNeow3j());
         NeoApplicationLog.Execution exec3 = ext.getNeow3j().getApplicationLog(tx3)
                 .send().getApplicationLog().getFirstExecution();
 
@@ -192,6 +196,7 @@ public class ArbDataStorageTest {
                 .send()
                 .getSendRawTransaction()
                 .getHash();
+        waitUntilTransactionIsExecuted(tx4, ext.getNeow3j());
         NeoApplicationLog.Execution exec4 = ext.getNeow3j().getApplicationLog(tx4)
                 .send().getApplicationLog().getFirstExecution();
 
@@ -206,6 +211,7 @@ public class ArbDataStorageTest {
                 .send()
                 .getSendRawTransaction()
                 .getHash();
+        waitUntilTransactionIsExecuted(tx5, ext.getNeow3j());
         NeoApplicationLog.Execution exec5 = ext.getNeow3j().getApplicationLog(tx5)
                 .send().getApplicationLog().getFirstExecution();
 
@@ -220,6 +226,7 @@ public class ArbDataStorageTest {
                 .send()
                 .getSendRawTransaction()
                 .getHash();
+        waitUntilTransactionIsExecuted(tx6, ext.getNeow3j());
         NeoApplicationLog.Execution exec6 = ext.getNeow3j().getApplicationLog(tx6)
                 .send().getApplicationLog().getFirstExecution();
 
