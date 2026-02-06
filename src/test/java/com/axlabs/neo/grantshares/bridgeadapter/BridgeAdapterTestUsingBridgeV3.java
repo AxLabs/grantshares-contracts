@@ -109,6 +109,7 @@ public class BridgeAdapterTestUsingBridgeV3 {
 
     static String bridgeAdapterHashLittleEndianHex;
     static String gsGovHashLittleEndianHex;
+    static String gsTreasuryHashLittleEndianHex;
 
     // region deploy configuration
 
@@ -181,6 +182,7 @@ public class BridgeAdapterTestUsingBridgeV3 {
         );
 
         gsGovHashLittleEndianHex = toHexStringNoPrefix(gov.getScriptHash().toLittleEndianArray());
+        gsTreasuryHashLittleEndianHex = toHexStringNoPrefix(treasury.getScriptHash().toLittleEndianArray());
         bridgeAdapterHashLittleEndianHex = toHexStringNoPrefix(bridgeAdapter.getScriptHash().toLittleEndianArray());
 
         alice = ext.getAccount(ALICE);
@@ -506,9 +508,13 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f0200ca9a3b0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02002d31010c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02002d31010c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52");
         TransactionBuilder b = new TransactionBuilder(neow3j).script(proposalScript);
@@ -579,11 +585,15 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f0200ca9a3b0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02" +
                         reverseHexString(toHexStringNoPrefix(bridgeFee.add(maxFee).add(BigInteger.ONE).toByteArray())) +
                         "0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52");
         assertThat(toHexStringNoPrefix(proposalScript),
@@ -591,11 +601,15 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f0200ca9a3b0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02" +
                         "012d3101" +
                         "0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14989b16363233ccc699c6a9a1840ab8cd1934d58214c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52")
         );
@@ -651,13 +665,17 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
+                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02" +
                         // sending (bridge fee + maxFee) GAS to the adapter, so that the remainder will be exactly the
                         // limit. The execution should be successful in that case.
                         reverseHexString(toHexString(bridgeFee.add(maxFee).toByteArray())) +
                         "0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52"
         );
@@ -666,9 +684,13 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02002d31010c14" +
+                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02002d31010c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52")
         );
@@ -745,13 +767,17 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
+                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02" +
                         // sending (bridge fee + maxFee + 1) GAS to the adapter, so that the remainder will exceed
                         // the limit by 1. The execution should fail and the tx should abort.
                         reverseHexString(toHexString(bridgeFee.add(adaptersMaxFee).add(BigInteger.ONE).toByteArray())) +
                         "0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52"
         );
@@ -760,11 +786,15 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f1a0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02" +
+                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02" +
                         "012d3101" +
                         "0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52")
         );
@@ -808,9 +838,13 @@ public class BridgeAdapterTestUsingBridgeV3 {
                         bridgeAdapterHashLittleEndianHex +
                         "14c01f1b0c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c01f02809698000c14" +
+                        "0c14f563ea40bc283d4d0e05c48ea305b3f2a07340ef13c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c01f02809698000c14" +
                         bridgeAdapterHashLittleEndianHex +
-                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c141735a117fbde0edc4ebe9fdd80b97ae04349439514c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
+                        "0c14cf76e28bd0062c4a478ee35561011319f3cfa4d213c00c0d72656c65617365546f6b656e730c14" +
+                        gsTreasuryHashLittleEndianHex +
+                        "14c013c00c14c20704128f809d6f47f8596eafe0ea779538ddfa14c01f0c0e63726561746550726f706f73616c0c14" +
                         gsGovHashLittleEndianHex +
                         "41627d5b52");
 
