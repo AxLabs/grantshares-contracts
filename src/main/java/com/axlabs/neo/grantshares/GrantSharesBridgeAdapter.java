@@ -168,13 +168,13 @@ public class GrantSharesBridgeAdapter {
         if (callingScriptHash.equals(new GasToken().getHash())) {
             if (from == null) { // Allow Gas minting from potentially holding Neo.
                 return;
-            } else if (from.equals(grantSharesTrasuryContract()) || from.equals(whitelistedFunder())) {
+            } else if (from.equals(grantSharesTreasuryContract()) || from.equals(whitelistedFunder())) {
                 return;
             } else {
                 abort("only treasury or whitelisted funder");
             }
         } else if (callingScriptHash.equals(new NeoToken().getHash())) {
-            if (from.equals(grantSharesTrasuryContract())) {
+            if (from.equals(grantSharesTreasuryContract())) {
                 return;
             } else {
                 abort("only treasury");
@@ -245,7 +245,7 @@ public class GrantSharesBridgeAdapter {
     }
 
     @Safe
-    public static Hash160 grantSharesTrasuryContract() {
+    public static Hash160 grantSharesTreasuryContract() {
         return Storage.getHash160(GRANTSHARESTREASURY_CONTRACT_KEY);
     }
 
