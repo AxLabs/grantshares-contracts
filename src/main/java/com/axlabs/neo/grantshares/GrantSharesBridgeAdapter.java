@@ -293,7 +293,7 @@ public class GrantSharesBridgeAdapter {
             Storage.put(GRANTSHARESGOV_CONTRACT_KEY, gsGovContract);
 
             Hash160 gsTreasury = deployData.grantSharesTreasuryContract;
-            if (gsGovContract == null || !Hash160.isValid(gsTreasury) || gsTreasury.isZero()) {
+            if (gsTreasury == null || !Hash160.isValid(gsTreasury) || gsTreasury.isZero()) {
                 abort("invalid GrantSharesTreasury contract");
             }
             Storage.put(GRANTSHARESTREASURY_CONTRACT_KEY, gsTreasury);
