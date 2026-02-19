@@ -139,11 +139,12 @@ public class GovernanceMembersTest {
         List<ECKeyPair.ECPublicKey> newMembers = gov.getMembers();
         assertThat(newMembers.size(), is(initMembers.size() + 1));
         assertThat(newMembers, containsInAnyOrder(
-                bob.getECKeyPair().getPublicKey(),
-                charlie.getECKeyPair().getPublicKey(),
-                alice.getECKeyPair().getPublicKey(),
-                denise.getECKeyPair().getPublicKey()
-        ));
+                        bob.getECKeyPair().getPublicKey(),
+                        charlie.getECKeyPair().getPublicKey(),
+                        alice.getECKeyPair().getPublicKey(),
+                        denise.getECKeyPair().getPublicKey()
+                )
+        );
 
         assertThat(gov.getMembersCount(), is(4));
     }
@@ -194,7 +195,9 @@ public class GovernanceMembersTest {
         ext.fastForwardOneBlock(PHASE_LENGTH + PHASE_LENGTH);
         String exception = gov.execute(id).signers(AccountSigner.calledByEntry(charlie)).callInvokeScript()
                 .getInvocationResult().getException();
-        assertThat(exception, containsString("Incorrect length"));
+        assertThat(exception,
+                containsString("Invalid uncompressed ECPoint encoding length: expected 65 bytes, but got 33 bytes.")
+        );
     }
     //endregion ADD MEMBER
 
@@ -249,10 +252,11 @@ public class GovernanceMembersTest {
         List<ECKeyPair.ECPublicKey> newMembers = gov.getMembers();
         assertThat(newMembers.size(), is(initMembers.size() - 1));
         assertThat(newMembers, containsInAnyOrder(
-                charlie.getECKeyPair().getPublicKey(),
-                alice.getECKeyPair().getPublicKey(),
-                denise.getECKeyPair().getPublicKey()
-        ));
+                        charlie.getECKeyPair().getPublicKey(),
+                        alice.getECKeyPair().getPublicKey(),
+                        denise.getECKeyPair().getPublicKey()
+                )
+        );
     }
 
     @Test
@@ -288,17 +292,19 @@ public class GovernanceMembersTest {
                 .getStack().get(0).getList().stream()
                 .map(StackItem::getByteArray).collect(Collectors.toList());
         assertThat(members, contains(
-                alice.getECKeyPair().getPublicKey().getEncoded(true),
-                charlie.getECKeyPair().getPublicKey().getEncoded(true),
-                denise.getECKeyPair().getPublicKey().getEncoded(true)
-        ));
+                        alice.getECKeyPair().getPublicKey().getEncoded(true),
+                        charlie.getECKeyPair().getPublicKey().getEncoded(true),
+                        denise.getECKeyPair().getPublicKey().getEncoded(true)
+                )
+        );
     }
 
     @Test
     public void calc_members_multisig_account() throws IOException {
         Account membersAccount = createMultiSigAccount(2, alice, charlie, denise);
         assertThat(gov.callInvokeFunction(CALC_MEMBER_MULTI_SIG_ACC).getInvocationResult()
-                .getStack().get(0).getAddress(), is(membersAccount.getAddress()));
+                .getStack().get(0).getAddress(), is(membersAccount.getAddress())
+        );
     }
 
 }
