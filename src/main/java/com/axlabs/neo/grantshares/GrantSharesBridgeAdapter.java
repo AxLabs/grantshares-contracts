@@ -4,7 +4,6 @@ import io.neow3j.devpack.ByteString;
 import io.neow3j.devpack.Hash160;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
-import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.annotations.CallFlags;
 import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
@@ -26,7 +25,6 @@ import io.neow3j.devpack.events.Event1Arg;
 import static io.neow3j.devpack.Helper.abort;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.Runtime.getExecutingScriptHash;
-import static io.neow3j.devpack.Storage.getStorageContext;
 
 @Permission.Permissions({
         @Permission(contract = "*", methods = {"depositGas", "depositNative", "depositToken"}),
@@ -42,8 +40,6 @@ import static io.neow3j.devpack.Storage.getStorageContext;
 @DisplayName("GrantSharesBridgeAdapter")
 @SuppressWarnings("unchecked")
 public class GrantSharesBridgeAdapter {
-
-    private static StorageContext context = getStorageContext();
 
     private final static int VERSION_KEY = 0x00;
     private final static int OWNER_KEY = 0x01;
@@ -201,7 +197,7 @@ public class GrantSharesBridgeAdapter {
         if (funder == null || !Hash160.isValid(funder) || funder.isZero()) {
             abort("invalid funder");
         }
-        Storage.put(context, WHITELISTED_FUNDER_KEY, funder);
+        Storage.put(WHITELISTED_FUNDER_KEY, funder);
         whitelistedFunderAdded.fire(funder);
     }
 
@@ -215,7 +211,7 @@ public class GrantSharesBridgeAdapter {
         if (maxFee == null || maxFee < 0) {
             abort("invalid max fee");
         }
-        Storage.put(context, MAX_FEE_KEY, maxFee);
+        Storage.put(MAX_FEE_KEY, maxFee);
         maxFeeChanged.fire(maxFee);
     }
 
@@ -224,7 +220,7 @@ public class GrantSharesBridgeAdapter {
 
     @Safe
     public static Hash160 owner() {
-        return Storage.getHash160(context.asReadOnly(), OWNER_KEY);
+        return Storage.getHash160(OWNER_KEY);
     }
 
     /**
@@ -232,7 +228,7 @@ public class GrantSharesBridgeAdapter {
      */
     @Safe
     public static int maxFee() {
-        return Storage.getInt(context.asReadOnly(), MAX_FEE_KEY);
+        return Storage.getInt(MAX_FEE_KEY);
     }
 
     /**
@@ -240,22 +236,22 @@ public class GrantSharesBridgeAdapter {
      */
     @Safe
     public static Hash160 whitelistedFunder() {
-        return Storage.getHash160(context.asReadOnly(), WHITELISTED_FUNDER_KEY);
+        return Storage.getHash160(WHITELISTED_FUNDER_KEY);
     }
 
     @Safe
     public static Hash160 grantSharesGovContract() {
-        return Storage.getHash160(context.asReadOnly(), GRANTSHARESGOV_CONTRACT_KEY);
+        return Storage.getHash160(GRANTSHARESGOV_CONTRACT_KEY);
     }
 
     @Safe
     public static Hash160 grantSharesTrasuryContract() {
-        return Storage.getHash160(context.asReadOnly(), GRANTSHARESTREASURY_CONTRACT_KEY);
+        return Storage.getHash160(GRANTSHARESTREASURY_CONTRACT_KEY);
     }
 
     @Safe
     public static Hash160 bridgeContract() {
-        return Storage.getHash160(context.asReadOnly(), BRIDGE_CONTRACT_KEY);
+        return Storage.getHash160(BRIDGE_CONTRACT_KEY);
     }
 
     // endregion
@@ -274,13 +270,13 @@ public class GrantSharesBridgeAdapter {
     @OnDeployment
     public static void deploy(Object data, boolean update) {
         if (update) {
-            if (Storage.getInt(context.asReadOnly(), VERSION_KEY) != 1) {
+            if (Storage.getInt(VERSION_KEY) != 1) {
                 abort("invalid version");
             }
-            Storage.put(context, VERSION_KEY, 2);
-            Storage.delete(context, V1_BRIDGE_VERSION_KEY);
+            Storage.put(VERSION_KEY, 2);
+            Storage.delete(V1_BRIDGE_VERSION_KEY);
         } else {
-            Storage.put(context, VERSION_KEY, 1);
+            Storage.put(VERSION_KEY, 1);
 
             // Initialize the contract.
             DeployData deployData = (DeployData) data;
@@ -288,37 +284,37 @@ public class GrantSharesBridgeAdapter {
             if (initialOwner == null || !Hash160.isValid(initialOwner) || initialOwner.isZero()) {
                 abort("invalid initial owner");
             }
-            Storage.put(context, OWNER_KEY, initialOwner);
+            Storage.put(OWNER_KEY, initialOwner);
 
             Hash160 gsGovContract = deployData.grantSharesGovContract;
             if (gsGovContract == null || !Hash160.isValid(gsGovContract) || gsGovContract.isZero()) {
                 abort("invalid GrantSharesGov contract");
             }
-            Storage.put(context, GRANTSHARESGOV_CONTRACT_KEY, gsGovContract);
+            Storage.put(GRANTSHARESGOV_CONTRACT_KEY, gsGovContract);
 
             Hash160 gsTreasury = deployData.grantSharesTreasuryContract;
             if (gsGovContract == null || !Hash160.isValid(gsTreasury) || gsTreasury.isZero()) {
                 abort("invalid GrantSharesTreasury contract");
             }
-            Storage.put(context, GRANTSHARESTREASURY_CONTRACT_KEY, gsTreasury);
+            Storage.put(GRANTSHARESTREASURY_CONTRACT_KEY, gsTreasury);
 
             Hash160 bridgeContract = deployData.bridgeContract;
             if (bridgeContract == null || !Hash160.isValid(bridgeContract) || bridgeContract.isZero()) {
                 abort("invalid bridge contract");
             }
-            Storage.put(context, BRIDGE_CONTRACT_KEY, bridgeContract);
+            Storage.put(BRIDGE_CONTRACT_KEY, bridgeContract);
 
             Integer initialMaxFee = deployData.initialMaxFee;
             if (initialMaxFee == null || initialMaxFee < 0) {
                 abort("invalid initial max fee");
             }
-            Storage.put(context, MAX_FEE_KEY, initialMaxFee);
+            Storage.put(MAX_FEE_KEY, initialMaxFee);
 
             Hash160 whitelistedFunder = deployData.initialWhitelistedFunder;
             if (whitelistedFunder == null || !Hash160.isValid(whitelistedFunder) || whitelistedFunder.isZero()) {
                 abort("invalid whitelisted funder");
             }
-            Storage.put(context, WHITELISTED_FUNDER_KEY, whitelistedFunder);
+            Storage.put(WHITELISTED_FUNDER_KEY, whitelistedFunder);
         }
     }
 
