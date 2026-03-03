@@ -24,12 +24,14 @@ public class IntentParam extends ContractParameter {
     public static IntentParam releaseTokenProposal(Hash160 treasury, Hash160 token, Hash160 receiver,
             BigInteger amount) {
         return new IntentParam(treasury, "releaseTokens",
-                hash160(token), hash160(receiver), integer(amount));
+                hash160(token), hash160(receiver), integer(amount)
+        );
     }
 
     public static IntentParam changeParamProposal(Hash160 gov, String paramName, int value) {
         return new IntentParam(gov, "changeParam",
-                string(paramName), integer(value));
+                string(paramName), integer(value)
+        );
     }
 
     public static IntentParam addMemberProposal(Hash160 gov, ECPublicKey pubKey) {

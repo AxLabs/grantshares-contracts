@@ -1,0 +1,20 @@
+[profile.default]
+src = 'src/main/solidity'
+test = 'src/test/solidity'
+out = 'artifacts'
+ffi = true
+fs_permissions = [{ access = "read", path = "./"}]
+build_info = true
+extra_output = ["storageLayout"]
+libs = ['lib']
+
+solc = "0.8.28"
+evm_version = "shanghai"
+optimizer = true
+optimizer-runs = 200
+
+[fmt]
+multiline_func_header = "all"
+single_line_statement_blocks = "single"
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

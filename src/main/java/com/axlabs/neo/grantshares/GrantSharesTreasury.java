@@ -12,7 +12,6 @@ import io.neow3j.devpack.List;
 import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
-import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
@@ -35,7 +34,6 @@ import static io.neow3j.devpack.Hash160.isValid;
 import static io.neow3j.devpack.Hash160.zero;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
-import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
@@ -48,7 +46,9 @@ import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 @ManifestExtra(key = "Email", value = "info@grantshares.io")
 @ManifestExtra(key = "Description", value = "The treasury of the GrantShares DAO")
 @ManifestExtra(key = "Website", value = "https://grantshares.io")
+//@formatter:off
 @ContractSourceCode("https://github.com/AxLabs/grantshares-contracts/blob/main/src/main/java/com/axlabs/neo/grantshares/GrantSharesTreasury.java")
+//@formatter:on
 @DisplayName("GrantSharesTreasury")
 public class GrantSharesTreasury {
 
@@ -57,10 +57,10 @@ public class GrantSharesTreasury {
     static final String WHITELISTED_TOKENS_PREFIX = "whitelistedTokens";
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
-    static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap funders = new StorageMap(ctx, FUNDERS_PREFIX); // [hash, List<ECPoint>]
-    static final StorageMap whitelistedTokens = new StorageMap(ctx, WHITELISTED_TOKENS_PREFIX); // [hash, max_amount]
+    static final StorageMap funders = new StorageMap(FUNDERS_PREFIX); // [hash, List<ECPoint>]
+    static final StorageMap whitelistedTokens = new StorageMap(WHITELISTED_TOKENS_PREFIX); // [hash, max_amount]
 
+    //region EVENTS
     @DisplayName("FunderAdded")
     static Event1Arg<Hash160> funderAdded;
     @DisplayName("FunderRemoved")
@@ -87,8 +87,7 @@ public class GrantSharesTreasury {
     static Event3Args<Hash160, Integer, Hash160> tokensReceived;
     @DisplayName("WhitelistedTokenMigrated")
     static Event2Args<Hash160, Integer> whitelistedTokenMigrated;
-    @DisplayName("Error")
-    static Event2Args<String, String> error;
+    //endregion EVENTS
 
     /**
      * Initialises this contract on deployment.
@@ -121,7 +120,7 @@ public class GrantSharesTreasury {
             // Set owner
             Hash160 ownerHash = (Hash160) config[0];
             assert isValid(ownerHash) && ownerHash != Hash160.zero();
-            Storage.put(ctx, OWNER_KEY, ownerHash);
+            Storage.put(OWNER_KEY, ownerHash);
 
             // Set initial funders.
             Object[][] accounts = (Object[][]) config[1]; // [  [hash, [keys...]],  [hash, [keys...]]  ]
@@ -132,7 +131,7 @@ public class GrantSharesTreasury {
                 for (ECPoint key : accountKeys) {
                     assert ECPoint.isValid(key);
                 }
-                funders.put(accountHash.toByteString(), StdLib.serialize(accountKeys));
+                funders.put(accountHash.toByteString(), new StdLib().serialize(accountKeys));
             }
 
             // Set whitelisted tokens
@@ -147,16 +146,7 @@ public class GrantSharesTreasury {
             // set parameter
             int thresholdRatio = (int) config[3];
             assert thresholdRatio > 0 && thresholdRatio <= 100;
-            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, thresholdRatio);
-        } else {
-            Map<Hash160, Integer> tokens = (Map<Hash160, Integer>) data;
-            Hash160[] hashes = tokens.keys();
-            Integer[] maxes = tokens.values();
-            for (int i = 0; i < hashes.length; i++) {
-                assert isValid(hashes[i]) && hashes[i] != zero() && maxes[i] > 0;
-                whitelistedTokens.put(hashes[i].toByteString(), maxes[i]);
-                whitelistedTokenMigrated.fire(hashes[i], maxes[i]);
-            }
+            Storage.put(MULTI_SIG_THRESHOLD_KEY, thresholdRatio);
         }
     }
 
@@ -177,7 +167,7 @@ public class GrantSharesTreasury {
         assert whitelistedTokens.get(Runtime.getCallingScriptHash().toByteString()) != null;
         if (sender == null) {
             // Only allow new token minting from GasToken.
-            assert getCallingScriptHash() == GasToken.getHash();
+            assert getCallingScriptHash() == new GasToken().getHash();
             return;
         }
         assert funders.get(sender.toByteString()) != null;
@@ -195,7 +185,7 @@ public class GrantSharesTreasury {
         Map<Hash160, ECPoint[]> funders = new Map<>();
         while (it.next()) {
             Struct<ByteString, ByteString> entry = it.get();
-            funders.put(new Hash160(entry.key), (ECPoint[]) StdLib.deserialize(entry.value));
+            funders.put(new Hash160(entry.key), (ECPoint[]) new StdLib().deserialize(entry.value));
         }
         return funders;
     }
@@ -204,7 +194,7 @@ public class GrantSharesTreasury {
         Iterator<ByteString> it = funders.find(ValuesOnly);
         List<ECPoint> pubKeys = new List<>();
         while (it.next()) {
-            ECPoint[] keys = (ECPoint[]) StdLib.deserialize(it.get());
+            ECPoint[] keys = (ECPoint[]) new StdLib().deserialize(it.get());
             for (ECPoint key : keys) {
                 pubKeys.add(key);
             }
@@ -224,7 +214,8 @@ public class GrantSharesTreasury {
     public static Hash160 calcFundersMultiSigAddress() throws Exception {
         List<ECPoint> funderPublicKeys = getFunderPublicKeys();
         return Account.createMultiSigAccount(calcFundersMultiSigAddressThreshold(funderPublicKeys.size()),
-                funderPublicKeys.toArray());
+                funderPublicKeys.toArray()
+        );
     }
 
     /**
@@ -249,14 +240,15 @@ public class GrantSharesTreasury {
      * @return The multi-sig account signing threshold.
      */
     private static int calcFundersMultiSigAddressThreshold(int count) throws Exception {
-        int thresholdRatio = Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
+        int thresholdRatio = Storage.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
         if (thresholdTimes100 % 100 != 0) {
             threshold += 1; // Always round up.
         }
-        if (threshold == 0)
+        if (threshold == 0) {
             throw new Exception("[GrantSharesTreasury.calcFundersMultiSigAddressThreshold] Threshold was zero");
+        }
         return threshold;
     }
 
@@ -283,8 +275,9 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static boolean isPaused() {
-        return (boolean) Contract.call(new Hash160(Storage.get(getReadOnlyContext(), OWNER_KEY)),
-                "isPaused", CallFlags.ReadOnly, new Object[]{});
+        return (boolean) Contract.call(new Hash160(Storage.get(OWNER_KEY)), "isPaused", CallFlags.ReadOnly,
+                new Object[]{}
+        );
     }
 
     /**
@@ -294,7 +287,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static int getFundersMultiSigThresholdRatio() {
-        return Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
+        return Storage.getInt(MULTI_SIG_THRESHOLD_KEY);
     }
 
     /**
@@ -308,9 +301,10 @@ public class GrantSharesTreasury {
     public static void setFundersMultiSigThresholdRatio(Integer value) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (value <= 0 || value > 100)
-            fireErrorAndAbort("Invalid threshold ratio", "setFundersMultiSigThresholdRatio");
-        Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
+        if (value <= 0 || value > 100) {
+            Helper.abort("setFundersMultiSigThresholdRatio" + ": " + "Invalid threshold ratio");
+        }
+        Storage.put(MULTI_SIG_THRESHOLD_KEY, value);
         thresholdChanged.fire(value);
     }
 
@@ -328,13 +322,13 @@ public class GrantSharesTreasury {
     public static void addFunder(Hash160 accountHash, ECPoint[] publicKeys) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (funders.get(accountHash.toByteString()) != null) fireErrorAndAbort("Already a funder", "addFunder");
-        if (!isValid(accountHash) || accountHash == zero()) fireErrorAndAbort("Invalid funder hash", "addFunder");
-        if (publicKeys.length == 0) fireErrorAndAbort("List of public keys is empty", "addFunder");
+        if (funders.get(accountHash.toByteString()) != null) Helper.abort("addFunder" + ": " + "Already a funder");
+        if (!isValid(accountHash) || accountHash == zero()) Helper.abort("addFunder" + ": " + "Invalid funder hash");
+        if (publicKeys.length == 0) Helper.abort("addFunder" + ": " + "List of public keys is empty");
         for (ECPoint key : publicKeys) {
-            if (!ECPoint.isValid(key)) fireErrorAndAbort("Invalid public key", "addFunder");
+            if (!ECPoint.isValid(key)) Helper.abort("addFunder" + ": " + "Invalid public key");
         }
-        funders.put(accountHash.toByteString(), StdLib.serialize(publicKeys));
+        funders.put(accountHash.toByteString(), new StdLib().serialize(publicKeys));
         funderAdded.fire(accountHash);
     }
 
@@ -348,7 +342,7 @@ public class GrantSharesTreasury {
     public static void removeFunder(Hash160 accountHash) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (funders.get(accountHash.toByteString()) == null) fireErrorAndAbort("Not a funder", "removeFunder");
+        if (funders.get(accountHash.toByteString()) == null) Helper.abort("removeFunder" + ": " + "Not a funder");
         funders.delete(accountHash.toByteString());
         funderRemoved.fire(accountHash);
     }
@@ -365,8 +359,8 @@ public class GrantSharesTreasury {
     public static void addWhitelistedToken(Hash160 token, int maxFundingAmount) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (!isValid(token) || token == zero()) fireErrorAndAbort("Invalid token hash", "addWhitelistedToken");
-        if (maxFundingAmount <= 0) fireErrorAndAbort("Invalid max funding amount", "addWhitelistedToken");
+        if (!isValid(token) || token == zero()) Helper.abort("addWhitelistedToken" + ": " + "Invalid token hash");
+        if (maxFundingAmount <= 0) Helper.abort("addWhitelistedToken" + ": " + "Invalid max funding amount");
         whitelistedTokens.put(token.toByteString(), maxFundingAmount);
         whitelistedTokenAdded.fire(token, maxFundingAmount);
     }
@@ -381,8 +375,9 @@ public class GrantSharesTreasury {
     public static void removeWhitelistedToken(Hash160 token) {
         abortIfPaused();
         abortIfCallerIsNotOwner();
-        if (whitelistedTokens.get(token.toByteString()) == null)
-            fireErrorAndAbort("Not a whitelisted token", "removeWhitelistedToken");
+        if (whitelistedTokens.get(token.toByteString()) == null) {
+            Helper.abort("removeWhitelistedToken" + ": " + "Not a whitelisted token");
+        }
         whitelistedTokens.delete(token.toByteString());
         whitelistedTokenRemoved.fire(token);
     }
@@ -401,8 +396,8 @@ public class GrantSharesTreasury {
         abortIfPaused();
         abortIfCallerIsNotOwner();
         int maxFundingAmount = whitelistedTokens.getIntOrZero(tokenContract.toByteString());
-        if (maxFundingAmount == 0) fireErrorAndAbort("Token not whitelisted", "releaseTokens");
-        if (amount > maxFundingAmount) fireErrorAndAbort("Above token's max funding amount", "releaseTokens");
+        if (maxFundingAmount == 0) Helper.abort("releaseTokens" + ": " + "Token not whitelisted");
+        if (amount > maxFundingAmount) Helper.abort("releaseTokens" + ": " + "Above token's max funding amount");
         Object[] params = new Object[]{Runtime.getExecutingScriptHash(), to, amount, new Object[]{}};
         boolean success = (boolean) Contract.call(tokenContract, "transfer", CallFlags.All, params);
         if (success) {
@@ -419,14 +414,14 @@ public class GrantSharesTreasury {
      * paused.
      */
     public static void drain() {
-        if (!isPaused()) fireErrorAndAbort("Contract is not paused", "drain");
+        if (!isPaused()) Helper.abort("drain" + ": " + "Contract is not paused");
         Hash160 fundersMultiAddress = null;
         try {
             fundersMultiAddress = calcFundersMultiSigAddress();
         } catch (Exception e) {
-            fireErrorAndAbort(e.getMessage(), "drain");
+            Helper.abort("drain" + ": " + e.getMessage());
         }
-        if (!checkWitness(fundersMultiAddress)) fireErrorAndAbort("Not authorized", "drain");
+        if (!checkWitness(fundersMultiAddress)) Helper.abort("drain" + ": " + "Not authorized");
         Hash160 selfHash = Runtime.getExecutingScriptHash();
         Iterator<ByteString> it = whitelistedTokens.find((byte) (RemovePrefix | KeysOnly));
         while (it.next()) {
@@ -450,14 +445,15 @@ public class GrantSharesTreasury {
     public static void voteCommitteeMemberWithLeastVotes() {
         abortIfPaused();
         ECPoint c = getCommitteeMemberWithLeastVotes();
-        if (!NeoToken.vote(Runtime.getExecutingScriptHash(), c))
-            fireErrorAndAbort("Failed voting on candidate", "voteCommitteeMemberWithLeastVotes");
+        if (!new NeoToken().vote(Runtime.getExecutingScriptHash(), c)) {
+            Helper.abort("voteCommitteeMemberWithLeastVotes" + ": " + "Failed voting on candidate");
+        }
         voted.fire(c);
     }
 
     private static ECPoint getCommitteeMemberWithLeastVotes() {
-        NeoToken.Candidate[] candidates = NeoToken.getCandidates();
-        List<ECPoint> committee = new List<>(NeoToken.getCommittee());
+        NeoToken.Candidate[] candidates = new NeoToken().getCandidates();
+        List<ECPoint> committee = new List<>(new NeoToken().getCommittee());
         int leastVotes = 100000000; // just a large number for initialisation
         ECPoint leastVotesMember = null;
         for (int i = 0; i < candidates.length; i++) {
@@ -485,21 +481,16 @@ public class GrantSharesTreasury {
         abortIfPaused();
         abortIfCallerIsNotOwner();
         updating.fire();
-        ContractManagement.update(nef, manifest, data);
+        new ContractManagement().update(nef, manifest, data);
     }
 
     private static void abortIfCallerIsNotOwner() {
-        if (Runtime.getCallingScriptHash().toByteString() != Storage.get(getReadOnlyContext(), OWNER_KEY))
-            fireErrorAndAbort("Not authorised", "abortIfCallerIsNotOwner");
+        if (Runtime.getCallingScriptHash().toByteString() != Storage.get(OWNER_KEY)) {
+            Helper.abort("abortIfCallerIsNotOwner" + ": " + "Not authorised");
+        }
     }
 
     private static void abortIfPaused() {
-        if (isPaused()) fireErrorAndAbort("Contract is paused", "abortIfCallerIsNotOwner");
+        if (isPaused()) Helper.abort("abortIfCallerIsNotOwner" + ": " + "Contract is paused");
     }
-
-    private static void fireErrorAndAbort(String msg, String method) {
-        error.fire(msg, method);
-        Helper.abort();
-    }
-
 }

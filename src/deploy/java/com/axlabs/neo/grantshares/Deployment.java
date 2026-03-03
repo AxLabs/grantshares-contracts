@@ -41,7 +41,8 @@ public class Deployment {
                     "error message: " + log.getExecutions().get(0).getException());
         }
         Hash160 contractHash = SmartContract.calcContractHash(signer.getScriptHash(),
-                res.getNefFile().getCheckSumAsInteger(), res.getManifest().getName());
+                res.getNefFile().getCheckSumAsInteger(), res.getManifest().getName()
+        );
         System.out.println("GrantSharesGov Contract Hash: " + contractHash);
         return contractHash;
     }
@@ -50,7 +51,8 @@ public class Deployment {
         CompilationUnit res = new Compiler().compile(GrantSharesTreasury.class.getCanonicalName());
         TransactionBuilder builder = new ContractManagement(getNeow3j())
                 .deploy(res.getNefFile(), res.getManifest(),
-                        DeployConfig.getTreasuryDeployConfig(grantSharesGovHash))
+                        DeployConfig.getTreasuryDeployConfig(grantSharesGovHash)
+                )
                 .signers(signer);
 
         Hash256 txHash = builder.sign().send().getSendRawTransaction().getHash();
@@ -63,7 +65,8 @@ public class Deployment {
                     "error message: " + log.getExecutions().get(0).getException());
         }
         Hash160 contractHash = SmartContract.calcContractHash(signer.getScriptHash(),
-                res.getNefFile().getCheckSumAsInteger(), res.getManifest().getName());
+                res.getNefFile().getCheckSumAsInteger(), res.getManifest().getName()
+        );
         System.out.println("GrantSharesTreasury Contract Hash: " + contractHash);
 
     }

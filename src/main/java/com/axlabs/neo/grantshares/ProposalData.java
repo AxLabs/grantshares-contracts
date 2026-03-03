@@ -4,7 +4,7 @@ import io.neow3j.devpack.Hash160;
 
 /**
  * Proposal information that is set at the time of creation of a proposal and doesn't change after that.
- * This data was separated from {@link Proposal} in order to save storage costs when updating a proposal.
+ * This data was separated from {@link ProposalV1} in order to save storage costs when updating a proposal.
  */
 public class ProposalData {
 
@@ -49,5 +49,4 @@ public class ProposalData {
         this.intents = intents;
         this.offchainUri = offchainUri;
     }
-
 }

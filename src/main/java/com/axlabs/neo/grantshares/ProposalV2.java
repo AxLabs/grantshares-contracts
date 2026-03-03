@@ -7,7 +7,7 @@ import io.neow3j.devpack.Hash160;
  * <p>
  * Additional proposal information is added via the {@link ProposalData struct}.
  */
-public class Proposal {
+public class ProposalV2 {
 
     /**
      * The proposals ID. IDs are assigned incrementally.
@@ -18,6 +18,14 @@ public class Proposal {
      * The endorser of the proposal. Is set to null as long as the proposal is not endorsed.
      */
     public Hash160 endorser;
+
+    /**
+     * The actual number of votes required for this proposal to reach quorum.
+     * <p>
+     * This is calculated at proposal creation time based on the quorum percentage and total number of members at
+     * that time.
+     */
+    public int quorumVotes;
 
     /**
      * The end of the review phase. Is set to zero as long as the proposal is not endorsed.
@@ -45,13 +53,34 @@ public class Proposal {
      */
     public boolean executed;
 
-    public Proposal(int id, int expiration) {
+    public ProposalV2(int id, int expiration) {
         this.id = id;
         endorser = null;
+        this.quorumVotes = 0; // Initialize to 0, will be set once endorsed.
         reviewEnd = 0;
         votingEnd = 0;
         timeLockEnd = 0;
         this.expiration = expiration;
         executed = false;
+    }
+
+    public ProposalV2(ProposalV1 proposalV1) {
+        this.id = proposalV1.id;
+        this.endorser = proposalV1.endorser;
+        this.quorumVotes = 0; // Initialize to 0, will be set once endorsed.
+        this.reviewEnd = proposalV1.reviewEnd;
+        this.votingEnd = proposalV1.votingEnd;
+        this.timeLockEnd = proposalV1.timeLockEnd;
+        this.expiration = proposalV1.expiration;
+        this.executed = proposalV1.executed;
+    }
+
+    public void calculateAndSetQuorumVotes(int quorum, int memberCount) {
+        if (quorumVotes == 0) {
+            quorumVotes = (memberCount * quorum) / 100;
+            if ((memberCount * quorum) % 100 != 0) {
+                quorumVotes += 1; // Round up
+            }
+        }
     }
 }
