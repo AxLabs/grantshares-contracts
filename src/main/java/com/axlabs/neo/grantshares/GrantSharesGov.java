@@ -12,7 +12,6 @@ import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Iterator.Struct;
 import io.neow3j.devpack.Storage;
-import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
@@ -28,7 +27,6 @@ import io.neow3j.devpack.events.*;
 import static io.neow3j.devpack.Account.createStandardAccount;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getTime;
-import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
 
 @Permission(contract = "*", methods = "*")
@@ -58,13 +56,12 @@ public class GrantSharesGov {
     static final String PAUSED_KEY = "paused"; // boolean
     static final String MEMBERS_COUNT_KEY = "#_members"; // int
 
-    static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap proposals = new StorageMap(ctx, 1); // [int id: Proposal proposal]
-    static final StorageMap proposalData = new StorageMap(ctx, 2); // [int id: ProposalData proposalData]
-    static final StorageMap proposalVotes = new StorageMap(ctx, 3); // [int id: ProposalVotes proposalVotes]
-    static final StorageMap parameters = new StorageMap(ctx, 4); // [String param_key: int param_value ]
+    static final StorageMap proposals = new StorageMap(1); // [int id: Proposal proposal]
+    static final StorageMap proposalData = new StorageMap(2); // [int id: ProposalData proposalData]
+    static final StorageMap proposalVotes = new StorageMap(3); // [int id: ProposalVotes proposalVotes]
+    static final StorageMap parameters = new StorageMap(4); // [String param_key: int param_value ]
     static final byte MEMBERS_MAP_PREFIX = 5;
-    static final StorageMap members = new StorageMap(ctx, MEMBERS_MAP_PREFIX); // [Hash160 accHash: ECPoint publicKey]
+    static final StorageMap members = new StorageMap(MEMBERS_MAP_PREFIX); // [Hash160 accHash: ECPoint publicKey]
     //endregion CONTRACT VARIABLES
 
     //region EVENTS
@@ -135,12 +132,12 @@ public class GrantSharesGov {
                 members.put(createStandardAccount(pubKey).toByteString(), pubKey.toByteString());
             }
 
-            Storage.put(ctx, MEMBERS_COUNT_KEY, pubKeys.length);
-            Storage.put(ctx, PAUSED_KEY, 0);
-            Storage.put(ctx, PROPOSALS_COUNT_KEY, 0);
+            Storage.put(MEMBERS_COUNT_KEY, pubKeys.length);
+            Storage.put(PAUSED_KEY, 0);
+            Storage.put(PROPOSALS_COUNT_KEY, 0);
         } else {
-            int proposalsCount = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
-            int memberCount = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
+            int proposalsCount = Storage.getInt(PROPOSALS_COUNT_KEY);
+            int memberCount = Storage.getInt(MEMBERS_COUNT_KEY);
             StdLib stdLib = new StdLib();
             for (int i = 0; i < proposalsCount; i++) {
                 ProposalData proposalData = (ProposalData) stdLib.deserialize(GrantSharesGov.proposalData.get(i));
@@ -253,7 +250,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int getMembersCount() {
-        return Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
+        return Storage.getInt(MEMBERS_COUNT_KEY);
     }
 
     /**
@@ -263,7 +260,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int getProposalCount() {
-        return Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
+        return Storage.getInt(PROPOSALS_COUNT_KEY);
     }
 
     /**
@@ -278,7 +275,7 @@ public class GrantSharesGov {
     public static Paginator.Paginated getProposals(int page, int itemsPerPage) throws Exception {
         if (page < 0) throw new Exception("[GrantSharesGov.getProposals] Page number was negative");
         if (itemsPerPage <= 0) throw new Exception("[GrantSharesGov.getProposals] Page number was negative or zero");
-        int n = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
+        int n = Storage.getInt(PROPOSALS_COUNT_KEY);
         int[] pagination = Paginator.calcPagination(n, page, itemsPerPage);
         List<Object> list = new List<>();
         for (int i = pagination[0]; i < pagination[1]; i++) {
@@ -295,7 +292,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static boolean isPaused() {
-        return Storage.getBoolean(getReadOnlyContext(), PAUSED_KEY);
+        return Storage.getBoolean(PAUSED_KEY);
     }
 
     /**
@@ -318,7 +315,7 @@ public class GrantSharesGov {
      */
     @Safe
     public static int calcMembersMultiSigAccountThreshold() throws Exception {
-        int count = Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY);
+        int count = Storage.getInt(MEMBERS_COUNT_KEY);
         int thresholdRatio = parameters.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
@@ -375,7 +372,7 @@ public class GrantSharesGov {
         }
         if (!areIntentsValid(intents)) Helper.abort("createProposal" + ": " + "Invalid intents");
 
-        int id = Storage.getInt(getReadOnlyContext(), PROPOSALS_COUNT_KEY);
+        int id = Storage.getInt(PROPOSALS_COUNT_KEY);
         int expiration = parameters.getInt(EXPIRATION_LENGTH_KEY) + getTime();
         StdLib stdLib = new StdLib();
         proposals.put(id, stdLib.serialize(new ProposalV2(id, expiration)));
@@ -383,7 +380,7 @@ public class GrantSharesGov {
                 new ProposalData(proposer, linkedProposal, acceptanceRate, quorum, intents, offchainUri))
         );
         proposalVotes.put(id, stdLib.serialize(new ProposalVotes()));
-        Storage.put(ctx, PROPOSALS_COUNT_KEY, id + 1);
+        Storage.put(PROPOSALS_COUNT_KEY, id + 1);
 
         // An event can take max 1024 bytes data. Thus, we're not passing the offchainUri since it could be longer.
         created.fire(id, proposer, acceptanceRate, quorum);
@@ -568,7 +565,7 @@ public class GrantSharesGov {
         Hash160 memberHash = createStandardAccount(memberPubKey);
         if (members.get(memberHash.toByteString()) != null) Helper.abort("addMember" + ": " + "Already a member");
         members.put(memberHash.toByteString(), memberPubKey.toByteString());
-        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) + 1);
+        Storage.put(MEMBERS_COUNT_KEY, Storage.getInt(MEMBERS_COUNT_KEY) + 1);
         memberAdded.fire(memberHash);
     }
 
@@ -585,7 +582,7 @@ public class GrantSharesGov {
         Hash160 memberHash = createStandardAccount(memberPubKey);
         if (members.get(memberHash.toByteString()) == null) Helper.abort("removeMember" + ": " + "Not a member");
         members.delete(memberHash.toByteString());
-        Storage.put(ctx, MEMBERS_COUNT_KEY, Storage.getInt(getReadOnlyContext(), MEMBERS_COUNT_KEY) - 1);
+        Storage.put(MEMBERS_COUNT_KEY, Storage.getInt(MEMBERS_COUNT_KEY) - 1);
         memberRemoved.fire(memberHash);
     }
 
@@ -615,7 +612,7 @@ public class GrantSharesGov {
             Helper.abort("pause" + ": " + e.getMessage());
         }
         if (!checkWitness(membersMultiSigHash)) Helper.abort("pause" + ": " + "Not authorized");
-        Storage.put(ctx, PAUSED_KEY, 1);
+        Storage.put(PAUSED_KEY, 1);
         paused.fire();
     }
 
@@ -627,7 +624,7 @@ public class GrantSharesGov {
             Helper.abort("pause" + ": " + e.getMessage());
         }
         if (!checkWitness(membersMultiSigHash)) Helper.abort("unpause" + ": " + "Not authorized");
-        Storage.put(ctx, PAUSED_KEY, 0);
+        Storage.put(PAUSED_KEY, 0);
         unpaused.fire();
     }
 
@@ -638,7 +635,7 @@ public class GrantSharesGov {
     }
 
     public static void abortIfPaused() {
-        if (Storage.getBoolean(getReadOnlyContext(), PAUSED_KEY)) {
+        if (Storage.getBoolean(PAUSED_KEY)) {
             Helper.abort("abortIfPaused" + ": " + "Contract is paused");
         }
     }

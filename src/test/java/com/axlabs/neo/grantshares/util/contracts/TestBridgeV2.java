@@ -19,8 +19,6 @@ import io.neow3j.devpack.events.Event4Args;
 import static io.neow3j.devpack.Helper.abort;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
 import static io.neow3j.devpack.Runtime.getExecutingScriptHash;
-import static io.neow3j.devpack.Storage.getReadOnlyContext;
-import static io.neow3j.devpack.Storage.getStorageContext;
 
 /**
  * This is a test contract to mimic the behavior of the bridge contract.
@@ -41,7 +39,7 @@ public class TestBridgeV2 {
     @OnDeployment
     public static void deploy(Object data, boolean update) {
         if (!update) {
-            Storage.put(getStorageContext(), FEE_KEY, (int) data);
+            Storage.put(FEE_KEY, (int) data);
         }
     }
 
@@ -87,7 +85,7 @@ public class TestBridgeV2 {
 
     @Safe
     public static int gasDepositFee() {
-        return Storage.getInt(getReadOnlyContext(), FEE_KEY) * getOneWithStdLibCall();
+        return Storage.getInt(FEE_KEY) * getOneWithStdLibCall();
     }
 
     public static void depositGas(Hash160 from, Hash160 to, int amountIncludingFee, int maxFee) {
@@ -103,7 +101,7 @@ public class TestBridgeV2 {
 
     @Safe
     public static int tokenDepositFee(Hash160 token) {
-        return Storage.getInt(getReadOnlyContext(), FEE_KEY) * getOneWithStdLibCall();
+        return Storage.getInt(FEE_KEY) * getOneWithStdLibCall();
     }
 
     public static void depositToken(Hash160 token, Hash160 from, Hash160 to, int amount, int maxFee) {

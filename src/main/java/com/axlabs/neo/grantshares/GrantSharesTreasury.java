@@ -12,7 +12,6 @@ import io.neow3j.devpack.List;
 import io.neow3j.devpack.Map;
 import io.neow3j.devpack.Runtime;
 import io.neow3j.devpack.Storage;
-import io.neow3j.devpack.StorageContext;
 import io.neow3j.devpack.StorageMap;
 import io.neow3j.devpack.annotations.ContractSourceCode;
 import io.neow3j.devpack.annotations.DisplayName;
@@ -35,7 +34,6 @@ import static io.neow3j.devpack.Hash160.isValid;
 import static io.neow3j.devpack.Hash160.zero;
 import static io.neow3j.devpack.Runtime.checkWitness;
 import static io.neow3j.devpack.Runtime.getCallingScriptHash;
-import static io.neow3j.devpack.Storage.getReadOnlyContext;
 import static io.neow3j.devpack.constants.FindOptions.KeysOnly;
 import static io.neow3j.devpack.constants.FindOptions.RemovePrefix;
 import static io.neow3j.devpack.constants.FindOptions.ValuesOnly;
@@ -59,9 +57,8 @@ public class GrantSharesTreasury {
     static final String WHITELISTED_TOKENS_PREFIX = "whitelistedTokens";
     static final String MULTI_SIG_THRESHOLD_KEY = "threshold";
 
-    static final StorageContext ctx = Storage.getStorageContext();
-    static final StorageMap funders = new StorageMap(ctx, FUNDERS_PREFIX); // [hash, List<ECPoint>]
-    static final StorageMap whitelistedTokens = new StorageMap(ctx, WHITELISTED_TOKENS_PREFIX); // [hash, max_amount]
+    static final StorageMap funders = new StorageMap(FUNDERS_PREFIX); // [hash, List<ECPoint>]
+    static final StorageMap whitelistedTokens = new StorageMap(WHITELISTED_TOKENS_PREFIX); // [hash, max_amount]
 
     //region EVENTS
     @DisplayName("FunderAdded")
@@ -123,7 +120,7 @@ public class GrantSharesTreasury {
             // Set owner
             Hash160 ownerHash = (Hash160) config[0];
             assert isValid(ownerHash) && ownerHash != Hash160.zero();
-            Storage.put(ctx, OWNER_KEY, ownerHash);
+            Storage.put(OWNER_KEY, ownerHash);
 
             // Set initial funders.
             Object[][] accounts = (Object[][]) config[1]; // [  [hash, [keys...]],  [hash, [keys...]]  ]
@@ -149,7 +146,7 @@ public class GrantSharesTreasury {
             // set parameter
             int thresholdRatio = (int) config[3];
             assert thresholdRatio > 0 && thresholdRatio <= 100;
-            Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, thresholdRatio);
+            Storage.put(MULTI_SIG_THRESHOLD_KEY, thresholdRatio);
         }
     }
 
@@ -243,7 +240,7 @@ public class GrantSharesTreasury {
      * @return The multi-sig account signing threshold.
      */
     private static int calcFundersMultiSigAddressThreshold(int count) throws Exception {
-        int thresholdRatio = Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
+        int thresholdRatio = Storage.getInt(MULTI_SIG_THRESHOLD_KEY);
         int thresholdTimes100 = count * thresholdRatio;
         int threshold = thresholdTimes100 / 100;
         if (thresholdTimes100 % 100 != 0) {
@@ -278,8 +275,8 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static boolean isPaused() {
-        return (boolean) Contract.call(new Hash160(Storage.get(getReadOnlyContext(), OWNER_KEY)),
-                "isPaused", CallFlags.ReadOnly, new Object[]{}
+        return (boolean) Contract.call(new Hash160(Storage.get(OWNER_KEY)), "isPaused", CallFlags.ReadOnly,
+                new Object[]{}
         );
     }
 
@@ -290,7 +287,7 @@ public class GrantSharesTreasury {
      */
     @Safe
     public static int getFundersMultiSigThresholdRatio() {
-        return Storage.getInt(getReadOnlyContext(), MULTI_SIG_THRESHOLD_KEY);
+        return Storage.getInt(MULTI_SIG_THRESHOLD_KEY);
     }
 
     /**
@@ -307,7 +304,7 @@ public class GrantSharesTreasury {
         if (value <= 0 || value > 100) {
             Helper.abort("setFundersMultiSigThresholdRatio" + ": " + "Invalid threshold ratio");
         }
-        Storage.put(ctx, MULTI_SIG_THRESHOLD_KEY, value);
+        Storage.put(MULTI_SIG_THRESHOLD_KEY, value);
         thresholdChanged.fire(value);
     }
 
@@ -488,7 +485,7 @@ public class GrantSharesTreasury {
     }
 
     private static void abortIfCallerIsNotOwner() {
-        if (Runtime.getCallingScriptHash().toByteString() != Storage.get(getReadOnlyContext(), OWNER_KEY)) {
+        if (Runtime.getCallingScriptHash().toByteString() != Storage.get(OWNER_KEY)) {
             Helper.abort("abortIfCallerIsNotOwner" + ": " + "Not authorised");
         }
     }
