@@ -35,7 +35,8 @@ dependencies {
             'org.junit.jupiter:junit-jupiter:5.8.2',
             'org.hamcrest:hamcrest:2.2'
 
-    deployImplementation 'io.neow3j:compiler:3.24.1'
+    deployImplementation 'io.neow3j:compiler:3.24.1',
+            'io.neow3j:contract:3.24.1'
 }
 
 tasks.withType(Test).configureEach {
